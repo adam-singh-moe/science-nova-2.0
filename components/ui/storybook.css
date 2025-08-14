@@ -1,0 +1,377 @@
+/* Storybook CSS for enhanced animations and effects */
+
+@keyframes pageFlip3D {
+  0% {
+    transform: perspective(1000px) rotateY(0deg) scale(1);
+  }
+  50% {
+    transform: perspective(1000px) rotateY(-90deg) scale(0.95);
+  }
+  100% {
+    transform: perspective(1000px) rotateY(-180deg) scale(1);
+  }
+}
+
+@keyframes pageFlipBack3D {
+  0% {
+    transform: perspective(1000px) rotateY(-180deg) scale(1);
+  }
+  50% {
+    transform: perspective(1000px) rotateY(-90deg) scale(0.95);
+  }
+  100% {
+    transform: perspective(1000px) rotateY(0deg) scale(1);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes sparkle {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+
+@keyframes loading-shimmer {
+  0% {
+    background-position: 0% 0%, 0% 10px, 10px -10px, -10px 0px;
+  }
+  50% {
+    background-position: 10px 10px, 10px 20px, 20px 0px, 0px 10px;
+  }
+  100% {
+    background-position: 0% 0%, 0% 10px, 10px -10px, -10px 0px;
+  }
+}
+
+/* Custom classes for storybook animations */
+.storybook-page-flip-forward {
+  animation: pageFlip3D 0.6s ease-in-out;
+}
+
+.storybook-page-flip-backward {
+  animation: pageFlipBack3D 0.6s ease-in-out;
+}
+
+.storybook-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.storybook-shimmer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
+  animation: shimmer 3s infinite;
+}
+
+.storybook-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.storybook-sparkle {
+  animation: sparkle 2s ease-in-out infinite;
+}
+
+/* Interactive word effects */
+.interactive-word {
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.interactive-word:hover {
+  text-shadow: 0 0 15px hsl(var(--accent));
+  transform: scale(1.05);
+}
+
+.interactive-word::after {
+  content: '✨';
+  position: absolute;
+  top: -5px;
+  right: -15px;
+  font-size: 0.7em;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.interactive-word:hover::after {
+  opacity: 1;
+}
+
+/* Page curl effect enhancement */
+.page-curl {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0 0 30px 30px;
+  border-color: transparent transparent rgba(255, 255, 255, 0.3) transparent;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.page-curl:hover {
+  border-width: 0 0 40px 40px;
+  border-color: transparent transparent rgba(255, 255, 255, 0.5) transparent;
+}
+
+/* Background particle effects */
+.background-particles {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.particle {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 50%;
+  animation: float 8s infinite ease-in-out;
+}
+
+.particle:nth-child(1) { width: 4px; height: 4px; left: 10%; animation-delay: 0s; }
+.particle:nth-child(2) { width: 6px; height: 6px; left: 20%; animation-delay: 2s; }
+.particle:nth-child(3) { width: 3px; height: 3px; left: 30%; animation-delay: 4s; }
+.particle:nth-child(4) { width: 5px; height: 5px; left: 40%; animation-delay: 6s; }
+.particle:nth-child(5) { width: 4px; height: 4px; left: 50%; animation-delay: 1s; }
+.particle:nth-child(6) { width: 7px; height: 7px; left: 60%; animation-delay: 3s; }
+.particle:nth-child(7) { width: 3px; height: 3px; left: 70%; animation-delay: 5s; }
+.particle:nth-child(8) { width: 5px; height: 5px; left: 80%; animation-delay: 7s; }
+.particle:nth-child(9) { width: 6px; height: 6px; left: 90%; animation-delay: 2s; }
+
+/* Progress indicator enhancement */
+.progress-dot {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  border-radius: 50%;
+  position: relative;
+}
+
+.progress-dot:hover {
+  transform: scale(1.3);
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.8);
+}
+
+.progress-dot.active {
+  box-shadow: 0 0 15px #ffffff;
+  animation: star-glow 2s ease-in-out infinite;
+}
+
+.progress-dot:not(.active) {
+  animation: faint-pulse 3s ease-in-out infinite;
+}
+
+@keyframes star-glow {
+  0%, 100% {
+    box-shadow: 0 0 15px #ffffff;
+    transform: scale(1.5);
+  }
+  50% {
+    box-shadow: 0 0 25px #ffffff, 0 0 35px rgba(255, 255, 255, 0.5);
+    transform: scale(1.6);
+  }
+}
+
+@keyframes faint-pulse {
+  0%, 100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+/* Navigation arrow enhancement */
+.nav-arrow {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.nav-arrow:hover {
+  transform: scale(1.1);
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .storybook-content {
+    padding: 1rem;
+    font-size: 1rem;
+  }
+  
+  .interactive-word::after {
+    right: -10px;
+    font-size: 0.6em;
+  }
+}
+
+/* Accessibility improvements */
+@media (prefers-reduced-motion: reduce) {
+  .storybook-page-flip-forward,
+  .storybook-page-flip-backward,
+  .storybook-shimmer,
+  .storybook-float,
+  .storybook-sparkle,
+  .particle,
+  .star-glow,
+  .faint-pulse {
+    animation: none;
+  }
+  
+  .interactive-word {
+    transition: none;
+  }
+  
+  .progress-dot.active {
+    box-shadow: 0 0 15px #ffffff;
+    transform: scale(1.5);
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .interactive-word {
+    text-decoration: underline;
+    text-decoration-style: dotted;
+  }
+  
+  .interactive-word:hover {
+    background-color: yellow;
+    color: black;
+  }
+}
+
+/* Curiosity Engine Styles */
+@keyframes pulse-glow-blue {
+  0%, 100% { 
+    text-shadow: 0 0 4px #60a5fa, 0 0 8px #60a5fa; 
+  }
+  50% { 
+    text-shadow: 0 0 8px #93c5fd, 0 0 16px #93c5fd; 
+  }
+}
+
+@keyframes curiosity-sparkle {
+  0%, 100% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}
+
+.curiosity-point {
+  cursor: help; /* Changes the cursor to a question mark */
+  font-weight: bold;
+  color: #93c5fd; /* A bright, friendly blue */
+  animation: pulse-glow-blue 3s infinite ease-in-out;
+  transition: all 0.2s ease-in-out;
+  position: relative;
+  display: inline;
+}
+
+.curiosity-point:hover {
+  color: #ffffff;
+  text-shadow: 0 0 10px #ffffff;
+  transform: scale(1.1);
+  animation: curiosity-sparkle 1.5s infinite ease-in-out;
+}
+
+.curiosity-point::before {
+  content: "✨";
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  font-size: 10px;
+  opacity: 0.7;
+  animation: sparkle 2s infinite ease-in-out;
+  pointer-events: none;
+}
+
+/* Enhanced animation delay classes for variety */
+.animation-delay-100 {
+  animation-delay: 0.1s;
+}
+
+.animation-delay-150 {
+  animation-delay: 0.15s;
+}
+
+.animation-delay-200 {
+  animation-delay: 0.2s;
+}
+
+/* Professor Nova popup animations */
+@keyframes nova-appear {
+  0% {
+    opacity: 0;
+    transform: translateY(50px) scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes nova-avatar-pulse {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(147, 197, 253, 0.8);
+  }
+}
+
+.nova-popup {
+  animation: nova-appear 0.3s ease-out forwards;
+}
+
+.nova-avatar {
+  animation: nova-avatar-pulse 2s infinite ease-in-out;
+}
+
+/* Responsive adjustments for curiosity points */
+@media (max-width: 768px) {
+  .curiosity-point {
+    animation-duration: 2s; /* Faster animation on mobile */
+  }
+  
+  .curiosity-point:hover {
+    transform: scale(1.05); /* Less dramatic scaling on mobile */
+  }
+}

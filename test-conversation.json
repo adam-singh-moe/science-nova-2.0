@@ -1,0 +1,15 @@
+{
+  "message": "How do they make their food?",
+  "userId": "test-context",
+  "gradeLevel": 3,
+  "conversationHistory": [
+    {
+      "role": "user",
+      "content": "What are plants?"
+    },
+    {
+      "role": "assistant",
+      "content": "Plants are amazing living things all around us. They are like nature's chefs, making their own food."
+    }
+  ]
+}
