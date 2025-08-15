@@ -4,10 +4,14 @@ import { useEffect, useState } from "react"
 import { RoleGuard } from "@/components/layout/role-guard"
 import { useAuth } from "@/contexts/auth-context"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 
 type Lesson = { id: string; title: string; topic: string | null; grade_level: number | null; status: 'draft'|'published'; updated_at: string }
 
 export default function AdminLessons() {
+  const router = useRouter()
+  // Redirect to the new Saved page to avoid mixed lists
+  useEffect(() => { router.replace('/admin/lessons/saved') }, [router])
   const { session } = useAuth()
   const [drafts, setDrafts] = useState<Lesson[]>([])
   const [published, setPublished] = useState<Lesson[]>([])
@@ -59,7 +63,7 @@ export default function AdminLessons() {
             </div>
           </div>
           <div className="grid md:grid-cols-2 gap-6">
-            <section>
+            <section id="drafts">
               <h2 className="font-semibold mb-2">Drafts</h2>
               <div className="rounded-lg border bg-white divide-y">
                 {drafts.length===0 && <div className="p-4 text-sm text-gray-500">No drafts</div>}
@@ -77,7 +81,7 @@ export default function AdminLessons() {
                 ))}
               </div>
             </section>
-            <section>
+            <section id="published">
               <h2 className="font-semibold mb-2">Published</h2>
               <div className="rounded-lg border bg-white divide-y">
                 {published.length===0 && <div className="p-4 text-sm text-gray-500">No published lessons</div>}

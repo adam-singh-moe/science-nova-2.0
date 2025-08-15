@@ -6,6 +6,11 @@ import { RoleGuard } from "@/components/layout/role-guard"
 import { VantaBackground } from "@/components/vanta-background"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/contexts/auth-context"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { BookOpen, Boxes, Cog, FileText, Grid3X3, HelpCircle, Layers, Plus, Shuffle, Type } from "lucide-react"
+import { FlashcardsViewer } from "@/components/flashcards-viewer"
+import { QuizViewer } from "@/components/quiz-viewer"
+import { CrosswordViewer } from "@/components/crossword-viewer"
 
 export type ToolKind = "TEXT" | "FLASHCARDS" | "QUIZ" | "CROSSWORD"
 
@@ -27,293 +32,118 @@ const defaultSize: Record<ToolKind, { w: number; h: number }> = {
   CROSSWORD: { w: 600, h: 220 },
 }
 
-function LeftPalette({ onAdd }: { onAdd: (k: ToolKind) => void }) {
-  const btn = "w-full rounded-full py-2 border bg-white/70 hover:bg-white/90 transition"
+function LeftPalette({ onAdd, onOpenSettings }: { onAdd: (k: ToolKind) => void; onOpenSettings: () => void }) {
+  const iconBtn = "w-12 h-12 grid place-items-center rounded-xl border bg-white/80 hover:bg-white transition shadow-sm"
+  const iconWrap = "flex flex-col items-center gap-2"
   return (
-    <aside className="w-14 md:w-56 shrink-0 p-3 md:p-4 bg-white/50 backdrop-blur border-r">
-      <div className="hidden md:block font-semibold mb-2">Tools</div>
-      <div className="grid gap-3">
-        <button className={btn} onClick={() => onAdd("TEXT")}>Text Box</button>
-        <button className={btn} onClick={() => onAdd("FLASHCARDS")}>Flashcards</button>
-        <button className={btn} onClick={() => onAdd("QUIZ")}>Quizzes</button>
-        <button className={btn} onClick={() => onAdd("CROSSWORD")}>Crossword</button>
+    <aside className="w-16 shrink-0 p-3 bg-white/60 backdrop-blur border-r">
+      <div className="flex items-center justify-between mb-4">
+        <span className="sr-only">Tools</span>
+        <button aria-label="Lesson settings" title="Lesson settings" onClick={onOpenSettings} className="w-9 h-9 grid place-items-center rounded-lg border bg-white/80 hover:bg-white shadow-sm">
+          <Cog className="h-4 w-4 text-indigo-600" />
+        </button>
+      </div>
+      <div className={iconWrap}>
+        <button className={iconBtn} title="Text" onClick={() => onAdd("TEXT")}>
+          <Type className="h-5 w-5 text-sky-600" />
+        </button>
+        <button className={iconBtn} title="Flashcards" onClick={() => onAdd("FLASHCARDS")}>
+          <Boxes className="h-5 w-5 text-emerald-600" />
+        </button>
+        <button className={iconBtn} title="Quiz" onClick={() => onAdd("QUIZ")}>
+          <HelpCircle className="h-5 w-5 text-violet-600" />
+        </button>
+        <button className={iconBtn} title="Crossword" onClick={() => onAdd("CROSSWORD")}>
+          <Grid3X3 className="h-5 w-5 text-amber-600" />
+        </button>
       </div>
     </aside>
   )
 }
 
 function RightInspector({ items, selectedId, onSelect, onSave, onPreview, onPublish, onUpdateSelected, meta, onReorder }: { items: PlacedTool[]; selectedId: string | null; onSelect: (id: string) => void; onSave: () => void; onPreview: () => void; onPublish: () => void; onUpdateSelected: (patch: any) => void; meta: { title: string; topic: string; grade: number; vanta: string }; onReorder: (id: string, action: 'up'|'down'|'front'|'back') => void }) {
+  const iconFor = (k: ToolKind) => k==='TEXT'? <Type className="h-3.5 w-3.5 text-sky-600"/> : k==='FLASHCARDS'? <Boxes className="h-3.5 w-3.5 text-emerald-600"/> : k==='QUIZ'? <HelpCircle className="h-3.5 w-3.5 text-violet-600"/> : <Grid3X3 className="h-3.5 w-3.5 text-amber-600"/>
+  const sel = selectedId ? items.find(i=>i.id===selectedId) : null
   return (
-    <aside className="w-64 shrink-0 p-4 bg-white/60 backdrop-blur border-l">
-      <div className="flex gap-2 mb-3">
-        <Button variant="outline" onClick={onSave}>Save</Button>
-        <Button onClick={onPreview}>Preview</Button>
+    <aside className="w-72 shrink-0 p-3 bg-white/70 backdrop-blur border-l">
+      <div className="mb-3 flex gap-2">
+        <Button size="sm" variant="outline" onClick={onSave}>Save</Button>
+        <Button size="sm" onClick={onPreview}>Preview</Button>
+        <Button size="sm" variant="ghost" className="ml-auto" onClick={onPublish}>Publish</Button>
       </div>
-      <Button variant="ghost" className="w-full mb-4 border" onClick={onPublish}>Publish</Button>
-      <div className="font-semibold mb-2">Layers</div>
-      <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
+      <div className="text-xs font-semibold text-gray-700 mb-1">Layers</div>
+      <div className="space-y-1.5 max-h-[58vh] overflow-y-auto pr-1">
         {items
           .slice()
           .sort((a,b)=> (b.z ?? 0) - (a.z ?? 0))
           .map(it => (
-          <div key={it.id} className={`w-full px-2 py-2 rounded border ${selectedId===it.id? 'bg-blue-50 border-blue-300' : 'bg-white/70 hover:bg-white'}`}>
+          <div key={it.id} className={`w-full px-2 py-1.5 rounded-lg border ${selectedId===it.id? 'bg-indigo-50 border-indigo-200' : 'bg-white/80 hover:bg-white'}`}>
             <div className="flex items-center gap-2">
+              <div className="shrink-0">{iconFor(it.kind)}</div>
               <button onClick={() => onSelect(it.id)} className="flex-1 text-left">
-                <div className="text-sm">{it.kind} • {Math.round(it.x)},{Math.round(it.y)}</div>
-                <div className="text-[10px] text-gray-500">z: {it.z ?? 0}</div>
+                <div className="text-[12px] font-medium text-gray-800">{it.kind}</div>
+                <div className="text-[10px] text-gray-500">{Math.round(it.x)},{Math.round(it.y)} • z {it.z ?? 0}</div>
               </button>
               <div className="flex items-center gap-1">
-                <button title="Bring forward" className="px-1 py-0.5 border rounded" onClick={()=>onReorder(it.id,'up')}>▲</button>
-                <button title="Send backward" className="px-1 py-0.5 border rounded" onClick={()=>onReorder(it.id,'down')}>▼</button>
+                <button title="Forward" className="px-1 py-0.5 border rounded" onClick={()=>onReorder(it.id,'up')}>▲</button>
+                <button title="Backward" className="px-1 py-0.5 border rounded" onClick={()=>onReorder(it.id,'down')}>▼</button>
               </div>
             </div>
             {selectedId===it.id && (
-              <div className="mt-1 grid grid-cols-2 gap-1 text-[11px]">
+              <div className="mt-1 grid grid-cols-2 gap-1 text-[10px]">
                 <button className="border rounded px-1 py-0.5" onClick={()=>onReorder(it.id,'front')}>Front</button>
                 <button className="border rounded px-1 py-0.5" onClick={()=>onReorder(it.id,'back')}>Back</button>
               </div>
             )}
           </div>
         ))}
-        {items.length===0 && <div className="text-sm text-gray-500">No tools yet.</div>}
+        {items.length===0 && <div className="text-xs text-gray-500">No tools yet.</div>}
       </div>
-      {/* Properties */}
-      {selectedId && (() => {
-        const sel = items.find(i=>i.id===selectedId)
-        if (!sel) return null
-        return (
-          <div className="mt-4">
-            <div className="font-semibold mb-2">Properties</div>
-            {sel.kind === 'TEXT' && (
-              <div className="space-y-2">
-                <textarea className="w-full border rounded p-2" rows={4} placeholder="Lesson text" value={sel.data?.text || ''} onChange={(e)=>onUpdateSelected({ data: { ...sel.data, text: e.target.value }})} />
-                <button className="w-full px-2 py-1 border rounded" onClick={async()=>{
-                  const res = await fetch('/api/ai-helper', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ tool:'TEXT', grade: meta.grade, topic: meta.topic, prompt: 'Write one concise paragraph.' }) })
-                  const json = await res.json()
-                  if (json?.text) onUpdateSelected({ data: { ...sel.data, text: (sel.data?.text? sel.data.text+'\n\n': '') + json.text } })
-                }}>AI: Generate text</button>
+      <div className="mt-3">
+        <div className="text-xs font-semibold mb-2">Properties</div>
+        {!sel && <div className="text-xs text-gray-500">Select a layer to edit its properties.</div>}
+        {sel && sel.kind !== 'CROSSWORD' && (
+          <div className="text-[11px] text-gray-600">Most settings are edited directly on the tool in the canvas. AI helpers are inside each tool.</div>
+        )}
+        {sel && sel.kind === 'CROSSWORD' && (()=>{
+          const rows = Number(sel.data?.rows || 10)
+          const cols = Number(sel.data?.cols || 10)
+          const words = Array.isArray(sel.data?.words) ? sel.data.words : []
+          const update = (patch:any)=> onUpdateSelected({ data: { ...sel.data, ...patch } })
+          const setWords = (arr:any[])=> onUpdateSelected({ data: { ...sel.data, words: arr } })
+          const addWord = ()=> setWords([...(words||[]), { id: crypto.randomUUID(), row:0, col:0, dir:'across', answer:'', clue:'' }])
+          return (
+            <div className="space-y-2">
+              <label className="text-xs">Rows <input type="number" min={5} max={20} className="w-full border rounded p-1" value={rows} onChange={(e)=>update({ rows: Number(e.target.value) })} /></label>
+              <label className="text-xs">Cols <input type="number" min={5} max={20} className="w-full border rounded p-1" value={cols} onChange={(e)=>update({ cols: Number(e.target.value) })} /></label>
+              <div className="flex items-center gap-2">
+                <button className="px-2 py-1 border rounded" onClick={addWord}>+ Add word</button>
+                <button className="px-2 py-1 border rounded" onClick={async()=>{
+                  const res = await fetch('/api/ai-helper', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ tool:'CROSSWORD', prompt:'suggest words', grade: meta.grade, topic: meta.topic }) })
+                  const j = await res.json(); if (Array.isArray(j?.items)) setWords([...(words||[]), ...j.items.map((w:any)=>({ id: crypto.randomUUID(), row:w.row||0, col:w.col||0, dir:w.dir||'across', answer:(w.answer||'').toUpperCase(), clue:w.clue||'' }))])
+                }}>AI: Suggest words</button>
               </div>
-            )}
-            {sel.kind === 'FLASHCARDS' && (()=>{
-              const cards: Array<{q:string;a:string}> = Array.isArray(sel.data?.cards) ? sel.data.cards : []
-              const updateCards = (arr: Array<{q:string;a:string}>) => onUpdateSelected({ data: { ...sel.data, cards: arr }})
-              return (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="font-medium">Cards ({cards.length})</div>
-                    <button className="px-2 py-1 border rounded" onClick={()=>updateCards([...cards, { q:'', a:'' }])}>+ Add</button>
-                  </div>
-                  <div className="space-y-2 max-h-64 overflow-auto pr-1">
-                    {cards.map((c, idx)=> (
-                      <div key={idx} className="border rounded p-2 bg-white/80">
-                        <div className="flex items-center justify-between mb-1 text-xs text-gray-500">
-                          <div>#{idx+1}</div>
-                          <div className="flex gap-2">
-                            <button className="px-1 py-0.5 border rounded" disabled={idx===0} onClick={()=>{ const arr=[...cards]; const t=arr[idx-1]; arr[idx-1]=arr[idx]; arr[idx]=t; updateCards(arr) }}>Up</button>
-                            <button className="px-1 py-0.5 border rounded" disabled={idx===cards.length-1} onClick={()=>{ const arr=[...cards]; const t=arr[idx+1]; arr[idx+1]=arr[idx]; arr[idx]=t; updateCards(arr) }}>Down</button>
-                            <button className="px-1 py-0.5 border rounded text-red-600" onClick={()=>{ const arr=[...cards]; arr.splice(idx,1); updateCards(arr) }}>Delete</button>
-                          </div>
-                        </div>
-                        <input className="w-full border rounded p-2 mb-1" placeholder="Question" value={c.q} onChange={(e)=>{ const arr=[...cards]; arr[idx] = { ...arr[idx], q: e.target.value }; updateCards(arr) }} />
-                        <input className="w-full border rounded p-2" placeholder="Answer" value={c.a} onChange={(e)=>{ const arr=[...cards]; arr[idx] = { ...arr[idx], a: e.target.value }; updateCards(arr) }} />
-                      </div>
-                    ))}
-                    {cards.length===0 && <div className="text-sm text-gray-500">No cards yet.</div>}
-                  </div>
-                  <button className="w-full px-2 py-1 border rounded" onClick={async()=>{
-                    const res = await fetch('/api/ai-helper', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ tool:'FLASHCARDS', grade: meta.grade, topic: meta.topic }) })
-                    const json = await res.json()
-                    if (Array.isArray(json?.cards)) updateCards([...(cards||[]), ...json.cards])
-                  }}>AI: Suggest flashcards</button>
-                </div>
-              )
-            })()}
-            {sel.kind === 'QUIZ' && (()=>{
-              type QuizItem = { type: 'MCQ'|'TF'|'FIB'; question: string; options?: string[]; answer?: string|boolean }
-              const items: QuizItem[] = Array.isArray(sel.data?.items) ? sel.data.items : []
-              const update = (arr: QuizItem[]) => onUpdateSelected({ data: { ...sel.data, items: arr } })
-              const add = (type: QuizItem['type']) => {
-                if (type === 'MCQ') update([...(items||[]), { type:'MCQ', question:'', options:['',''], answer:'' }])
-                if (type === 'TF') update([...(items||[]), { type:'TF', question:'', answer:true }])
-                if (type === 'FIB') update([...(items||[]), { type:'FIB', question:'', answer:'' }])
-              }
-              const onAi = async () => {
-                const res = await fetch('/api/ai-helper', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ tool:'QUIZ', grade: meta.grade, topic: meta.topic }) })
-                const json = await res.json()
-                if (Array.isArray(json?.items)) {
-                  // Normalize
-                  const mapped: QuizItem[] = json.items.map((it: any) => {
-                    if (it.type === 'MCQ') return { type:'MCQ', question: it.question || '', options: Array.isArray(it.options)? it.options: [], answer: it.answer ?? '' }
-                    if (it.type === 'TF') return { type:'TF', question: it.question || '', answer: !!it.answer }
-                    return { type:'FIB', question: it.question || '', answer: it.answer || '' }
-                  })
-                  update([...(items||[]), ...mapped])
-                }
-              }
-              function exportQuiz() {
-                const data = JSON.stringify(items || [], null, 2)
-                navigator.clipboard.writeText(data)
-                alert('Quiz items copied to clipboard as JSON')
-              }
-              function importQuiz() {
-                const input = prompt('Paste quiz items JSON:')
-                if (!input) return
-                try {
-                  const arr = JSON.parse(input)
-                  if (Array.isArray(arr)) update(arr)
-                } catch { alert('Invalid JSON') }
-              }
-              return (
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center gap-2">
-                    <button className="px-2 py-1 border rounded" onClick={()=>add('MCQ')}>+ MCQ</button>
-                    <button className="px-2 py-1 border rounded" onClick={()=>add('TF')}>+ True/False</button>
-                    <button className="px-2 py-1 border rounded" onClick={()=>add('FIB')}>+ Fill-in</button>
-                    <button className="ml-auto px-2 py-1 border rounded" onClick={onAi}>AI: Suggest quiz</button>
-                    <button className="px-2 py-1 border rounded" onClick={exportQuiz}>Export</button>
-                    <button className="px-2 py-1 border rounded" onClick={importQuiz}>Import</button>
-                  </div>
-                    {items.map((q, idx)=> (
-                      <div key={idx} className="border rounded p-2 bg-white/80">
-                        <div className="flex items-center justify-between mb-2 text-xs text-gray-500">
-                          <div>#{idx+1} • {q.type}</div>
-                          <div className="flex gap-2">
-                            <button className="px-1 py-0.5 border rounded" disabled={idx===0} onClick={()=>{ const arr=[...items]; const t=arr[idx-1]; arr[idx-1]=arr[idx]; arr[idx]=t; update(arr) }}>Up</button>
-                            <button className="px-1 py-0.5 border rounded" disabled={idx===items.length-1} onClick={()=>{ const arr=[...items]; const t=arr[idx+1]; arr[idx+1]=arr[idx]; arr[idx]=t; update(arr) }}>Down</button>
-                            <button className="px-1 py-0.5 border rounded text-red-600" onClick={()=>{ const arr=[...items]; arr.splice(idx,1); update(arr) }}>Delete</button>
-                          </div>
-                        </div>
-                        <input className="w-full border rounded p-2 mb-2" placeholder="Question" value={q.question} onChange={(e)=>{ const arr=[...items]; arr[idx] = { ...arr[idx], question: e.target.value }; update(arr) }} />
-                        {q.type==='MCQ' && (
-                          <div className="space-y-1">
-                            {(q.options || []).map((opt, oi)=> (
-                              <div key={oi} className="flex items-center gap-2">
-                                <input className="border rounded p-1 flex-1" placeholder={`Option ${oi+1}`} value={opt} onChange={(e)=>{ const arr=[...items]; const ops=[...(arr[idx].options||[])]; ops[oi]=e.target.value; arr[idx] = { ...arr[idx], options: ops }; update(arr) }} />
-                                <label className="text-xs flex items-center gap-1"><input type="radio" name={`ans-${idx}`} checked={q.answer===opt} onChange={()=>{ const arr=[...items]; arr[idx] = { ...arr[idx], answer: opt }; update(arr) }} /> Correct</label>
-                                <button className="px-1 py-0.5 border rounded" onClick={()=>{ const arr=[...items]; const ops=[...(arr[idx].options||[])]; ops.splice(oi,1); arr[idx] = { ...arr[idx], options: ops }; update(arr) }}>×</button>
-                              </div>
-                            ))}
-                            <button className="px-2 py-1 border rounded" onClick={()=>{ const arr=[...items]; const ops=[...(arr[idx].options||[])]; ops.push(''); arr[idx] = { ...arr[idx], options: ops }; update(arr) }}>+ Option</button>
-                          </div>
-                        )}
-                        {q.type==='TF' && (
-                          <div className="flex items-center gap-3 text-xs">
-                            <label className="flex items-center gap-1"><input type="radio" name={`tf-${idx}`} checked={q.answer===true} onChange={()=>{ const arr=[...items]; arr[idx] = { ...arr[idx], answer: true }; update(arr) }} /> True</label>
-                            <label className="flex items-center gap-1"><input type="radio" name={`tf-${idx}`} checked={q.answer===false} onChange={()=>{ const arr=[...items]; arr[idx] = { ...arr[idx], answer: false }; update(arr) }} /> False</label>
-                          </div>
-                        )}
-                        {q.type==='FIB' && (
-                          <input className="w-full border rounded p-2" placeholder="Answer" value={(q.answer as string) || ''} onChange={(e)=>{ const arr=[...items]; arr[idx] = { ...arr[idx], answer: e.target.value }; update(arr) }} />
-                        )}
-                      </div>
-                    ))}
-                    {items.length===0 && <div className="text-sm text-gray-500">No quiz items yet.</div>}
-                  </div>
-              )
-            })()}
-            {sel.kind === 'CROSSWORD' && (()=>{
-              type CWWord = { id: string; row: number; col: number; dir: 'across'|'down'; answer: string; clue?: string }
-              const rows = Number(sel.data?.rows || 10)
-              const cols = Number(sel.data?.cols || 10)
-              const words: CWWord[] = Array.isArray(sel.data?.words) ? sel.data.words : []
-              const update = (patch: any) => onUpdateSelected({ data: { rows, cols, words, ...sel.data, ...patch }})
-              const addWord = () => update({ words: [...words, { id: crypto.randomUUID(), row: 0, col: 0, dir: 'across', answer: '', clue: '' }] })
-              const aiSuggest = async () => {
-                const res = await fetch('/api/ai-helper', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ tool:'CROSSWORD', grade: meta.grade, topic: meta.topic }) })
-                const json = await res.json()
-                if (Array.isArray(json?.words)) {
-                  const newOnes = json.words.slice(0, 10 - words.length).map((w:string)=> ({ id: crypto.randomUUID(), row: 0, col: 0, dir: 'across', answer: (w||'').toUpperCase(), clue: '' }))
-                  update({ words: [...words, ...newOnes] })
-                }
-              }
-              function exportCrossword() {
-                const data = JSON.stringify({ rows, cols, words }, null, 2)
-                navigator.clipboard.writeText(data)
-                alert('Crossword copied to clipboard as JSON')
-              }
-              function importCrossword() {
-                const input = prompt('Paste crossword JSON:')
-                if (!input) return
-                try {
-                  const obj = JSON.parse(input)
-                  if (typeof obj==='object' && Array.isArray(obj.words)) update({ rows: obj.rows||10, cols: obj.cols||10, words: obj.words })
-                } catch { alert('Invalid JSON') }
-              }
-              // Simple validation: out-of-bounds and cell conflicts
-              const conflicts: Array<string> = []
-              const cellMap = new Map<string, string>()
-              for (const w of words) {
-                const ans = (w.answer||'').toUpperCase()
-                for (let k=0;k<ans.length;k++){
-                  const r = w.dir==='down'? w.row+k : w.row
-                  const c = w.dir==='across'? w.col+k : w.col
-                  if (r<0||r>=rows||c<0||c>=cols){ conflicts.push(`Word ${w.answer} out of bounds`) ; break }
-                  const key = `${r},${c}`
-                  const prev = cellMap.get(key)
-                  if (!prev) cellMap.set(key, ans[k])
-                  else if (prev!==ans[k]) { conflicts.push(`Conflict at (${r+1},${c+1}) between letters ${prev}/${ans[k]}`); break }
-                }
-              }
-              return (
-                <div className="space-y-3 text-sm">
-                  <div className="grid grid-cols-2 gap-2">
-                    <label className="flex items-center gap-2">Rows <input type="number" min={5} max={20} className="border rounded p-1 w-20" value={rows} onChange={(e)=>update({ rows: Number(e.target.value) })} /></label>
-                    <label className="flex items-center gap-2">Cols <input type="number" min={5} max={20} className="border rounded p-1 w-20" value={cols} onChange={(e)=>update({ cols: Number(e.target.value) })} /></label>
-                  </div>
-                  <div className={`text-xs ${conflicts.length? 'text-red-600':'text-green-700'}`}>
-                    {conflicts.length? `${conflicts.length} issues found` : 'No conflicts detected'}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button className="px-2 py-1 border rounded" onClick={addWord}>+ Add word</button>
-                    <button className="px-2 py-1 border rounded" onClick={aiSuggest}>AI: Suggest words</button>
-                    <button className="px-2 py-1 border rounded" onClick={exportCrossword}>Export</button>
-                    <button className="px-2 py-1 border rounded" onClick={importCrossword}>Import</button>
-                  </div>
-                  <div className="max-h-64 overflow-auto space-y-2 pr-1">
-                    {words.map((w, idx)=> (
-                      <div key={w.id} className="border rounded p-2 bg-white/80">
-                        <div className="flex items-center justify-between mb-2 text-xs text-gray-500">
-                          <div>#{idx+1} • {w.dir.toUpperCase()}</div>
-                          <div className="flex gap-2">
-                            <button className="px-1 py-0.5 border rounded" disabled={idx===0} onClick={()=>{ const arr=[...words]; const t=arr[idx-1]; arr[idx-1]=arr[idx]; arr[idx]=t; update({ words: arr }) }}>Up</button>
-                            <button className="px-1 py-0.5 border rounded" disabled={idx===words.length-1} onClick={()=>{ const arr=[...words]; const t=arr[idx+1]; arr[idx+1]=arr[idx]; arr[idx]=t; update({ words: arr }) }}>Down</button>
-                            <button className="px-1 py-0.5 border rounded text-red-600" onClick={()=>{ const arr=[...words]; arr.splice(idx,1); update({ words: arr }) }}>Delete</button>
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
-                          <label className="text-xs">Row <input type="number" min={0} max={rows-1} className="w-full border rounded p-1" value={w.row} onChange={(e)=>{ const arr=[...words]; arr[idx] = { ...arr[idx], row: Number(e.target.value) }; update({ words: arr }) }} /></label>
-                          <label className="text-xs">Col <input type="number" min={0} max={cols-1} className="w-full border rounded p-1" value={w.col} onChange={(e)=>{ const arr=[...words]; arr[idx] = { ...arr[idx], col: Number(e.target.value) }; update({ words: arr }) }} /></label>
-                          <label className="text-xs">Dir
-                            <select className="w-full border rounded p-1" value={w.dir} onChange={(e)=>{ const arr=[...words]; arr[idx] = { ...arr[idx], dir: e.target.value as any }; update({ words: arr }) }}>
-                              <option value="across">across</option>
-                              <option value="down">down</option>
-                            </select>
-                          </label>
-                          <label className="text-xs">Answer <input className="w-full border rounded p-1 uppercase" value={w.answer} onChange={(e)=>{ const arr=[...words]; arr[idx] = { ...arr[idx], answer: e.target.value.toUpperCase() }; update({ words: arr }) }} /></label>
-                          <label className="col-span-2 text-xs">Clue <input className="w-full border rounded p-1" value={w.clue || ''} onChange={(e)=>{ const arr=[...words]; arr[idx] = { ...arr[idx], clue: e.target.value }; update({ words: arr }) }} /></label>
-                        </div>
-                      </div>
-                    ))}
-                    {words.length===0 && <div className="text-sm text-gray-500">No words yet. Add or use AI to suggest.</div>}
-                  </div>
-                </div>
-              )
-            })()}
-          </div>
-        )
-      })()}
+            </div>
+          )
+        })()}
+      </div>
     </aside>
   )
 }
 
 type GuideLines = { v: number[]; h: number[] }
-function Draggable({ item, onChange, selected, onSelect, onConfigure, onDuplicate, onDelete, onDragState, snap, gridSize, allItems, onGuideChange }: { item: PlacedTool; onChange: (p: Partial<PlacedTool>) => void; selected: boolean; onSelect: () => void; onConfigure: () => void; onDuplicate: () => void; onDelete: () => void; onDragState: (dragging: boolean) => void; snap: boolean; gridSize: number; allItems: PlacedTool[]; onGuideChange: (g: GuideLines) => void }) {
-  const start = useRef<{x:number;y:number;w:number;h:number;mx:number;my:number;resizing:boolean} | null>(null)
+function Draggable({ item, onChange, selected, onSelect, onConfigure, onDuplicate, onDelete, onDragState, snap, gridSize, allItems, onGuideChange, onActivate }: { item: PlacedTool; onChange: (p: Partial<PlacedTool>) => void; selected: boolean; onSelect: () => void; onConfigure: () => void; onDuplicate: () => void; onDelete: () => void; onDragState: (dragging: boolean) => void; snap: boolean; gridSize: number; allItems: PlacedTool[]; onGuideChange: (g: GuideLines) => void; onActivate: () => void }) {
+  const start = useRef<{x:number;y:number;w:number;h:number;mx:number;my:number;resizing:boolean; dir?: 'n'|'s'|'e'|'w'|'ne'|'nw'|'se'|'sw'} | null>(null)
+  const textRef = useRef<HTMLDivElement | null>(null)
+  const [flipMap, setFlipMap] = useState<Record<string, boolean>>({})
+  const [view, setView] = useState<'edit'|'preview'>('edit')
   const threshold = 6
 
-  const onMouseDown = (e: React.MouseEvent) => {
+  // Start drag only from header bar or resize handles
+  const beginDrag = (e: React.MouseEvent) => {
     onSelect();
-    start.current = { x: item.x, y: item.y, w: item.w, h: item.h, mx: e.clientX, my: e.clientY, resizing: (e.target as HTMLElement).dataset.handle === 'se' }
+    const dir = (e.target as HTMLElement).dataset.handle as any
+    start.current = { x: item.x, y: item.y, w: item.w, h: item.h, mx: e.clientX, my: e.clientY, resizing: !!dir, dir }
     window.addEventListener('mousemove', onMove)
     window.addEventListener('mouseup', onUp)
     onDragState(true)
@@ -325,27 +155,57 @@ function Draggable({ item, onChange, selected, onSelect, onConfigure, onDuplicat
     const guides: GuideLines = { v: [], h: [] }
     const others = allItems.filter(i=>i.id!==item.id)
     if (start.current.resizing) {
-      let nw = Math.max(240, start.current.w + dx)
-      let nh = Math.max(140, start.current.h + dy)
+      const minW = 240, minH = 140
+      const dir = start.current.dir || 'se'
+      // Keep opposite edges anchored when dragging N or W handles
+      let L = start.current.x
+      let T = start.current.y
+      let R = start.current.x + start.current.w
+      let B = start.current.y + start.current.h
+
+      if (dir.includes('e')) { R = L + Math.max(minW, start.current.w + dx) }
+      if (dir.includes('s')) { B = T + Math.max(minH, start.current.h + dy) }
+      if (dir.includes('w')) { L = Math.min(R - minW, start.current.x + dx); L = Math.max(0, L) }
+      if (dir.includes('n')) { T = Math.min(B - minH, start.current.y + dy); T = Math.max(0, T) }
+
+      // Snap
       if (snap) {
-        nw = Math.round(nw / gridSize) * gridSize
-        nh = Math.round(nh / gridSize) * gridSize
+        if (dir.includes('w')) { const sx = Math.round(L / gridSize) * gridSize; L = Math.min(R - minW, Math.max(0, sx)) }
+        if (dir.includes('n')) { const sy = Math.round(T / gridSize) * gridSize; T = Math.min(B - minH, Math.max(0, sy)) }
+        if (dir.includes('e')) { const sw = Math.round((R - L) / gridSize) * gridSize; R = L + Math.max(minW, sw) }
+        if (dir.includes('s')) { const sh = Math.round((B - T) / gridSize) * gridSize; B = T + Math.max(minH, sh) }
       }
-      // Align to neighbor right/bottom edges
-      const L = item.x, T = item.y
-      const R = L + nw, B = T + nh
+
+      // Simple alignment guides for moved edges
       for (const it of others) {
         const l = it.x, r = it.x + it.w, cx = it.x + it.w/2
         const t = it.y, b = it.y + it.h, cy = it.y + it.h/2
-        if (Math.abs(R - l) <= threshold) { nw = l - L; guides.v.push(l) }
-        if (Math.abs(R - r) <= threshold) { nw = r - L; guides.v.push(r) }
-        if (Math.abs(B - t) <= threshold) { nh = t - T; guides.h.push(t) }
-        if (Math.abs(B - b) <= threshold) { nh = b - T; guides.h.push(b) }
-        if (Math.abs(R - cx) <= threshold) { nw = cx - L; guides.v.push(cx) }
-        if (Math.abs(B - cy) <= threshold) { nh = cy - T; guides.h.push(cy) }
+        if (dir.includes('e')) {
+          if (Math.abs(R - l) <= threshold) { R = l; guides.v.push(l) }
+          if (Math.abs(R - r) <= threshold) { R = r; guides.v.push(r) }
+          if (Math.abs(R - cx) <= threshold) { R = cx; guides.v.push(cx) }
+        }
+        if (dir.includes('w')) {
+          if (Math.abs(L - l) <= threshold) { L = l; guides.v.push(l) }
+          if (Math.abs(L - r) <= threshold) { L = r; guides.v.push(r) }
+          if (Math.abs(L - cx) <= threshold) { L = cx; guides.v.push(cx) }
+        }
+        if (dir.includes('s')) {
+          if (Math.abs(B - t) <= threshold) { B = t; guides.h.push(t) }
+          if (Math.abs(B - b) <= threshold) { B = b; guides.h.push(b) }
+          if (Math.abs(B - cy) <= threshold) { B = cy; guides.h.push(cy) }
+        }
+        if (dir.includes('n')) {
+          if (Math.abs(T - t) <= threshold) { T = t; guides.h.push(t) }
+          if (Math.abs(T - b) <= threshold) { T = b; guides.h.push(b) }
+          if (Math.abs(T - cy) <= threshold) { T = cy; guides.h.push(cy) }
+        }
       }
+
+      const nw = Math.max(minW, R - L)
+      const nh = Math.max(minH, B - T)
       onGuideChange(guides)
-      onChange({ w: nw, h: nh })
+      onChange({ x: L, y: T, w: nw, h: nh })
     } else {
       const nx = Math.max(0, start.current.x + dx)
       const ny = Math.max(0, start.current.y + dy)
@@ -384,57 +244,216 @@ function Draggable({ item, onChange, selected, onSelect, onConfigure, onDuplicat
 
   return (
     <div
-  className={`absolute shadow-sm ${selected? 'ring-2 ring-blue-400': ''}`}
-  style={{ left: item.x, top: item.y, width: item.w, height: item.h, zIndex: item.z ?? 0 }}
-      onMouseDown={onMouseDown}
+      className={`absolute shadow-sm ${selected? 'ring-2 ring-blue-400': ''}`}
+      style={{ left: item.x, top: item.y, width: item.w, height: item.h, zIndex: item.z ?? 0 }}
     >
       <div className="h-full w-full bg-white/80 backdrop-blur border rounded-xl overflow-hidden">
-        <div className="h-8 px-3 flex items-center justify-between text-xs text-gray-600 border-b bg-white/70">
+        <div className="h-8 px-3 flex items-center justify-between text-xs text-gray-600 border-b bg-white/70 cursor-move select-none" onMouseDown={beginDrag}>
           <div className="flex items-center gap-2">
             <span>{item.kind}</span>
-            <button onClick={(e)=>{e.stopPropagation();onConfigure();}} className="px-2 py-0.5 rounded border hover:bg-white">Configure</button>
+            <span className="text-gray-300">•</span>
+            <button className={`px-2 py-0.5 rounded border ${view==='edit'?'bg-blue-50 border-blue-300':''}`} onMouseDown={(e)=>e.stopPropagation()} onClick={(e)=>{e.stopPropagation(); setView('edit')}}>Edit</button>
+            <button className={`px-2 py-0.5 rounded border ${view==='preview'?'bg-blue-50 border-blue-300':''}`} onMouseDown={(e)=>e.stopPropagation()} onClick={(e)=>{e.stopPropagation(); setView('preview')}}>Preview</button>
+            {item.kind==='CROSSWORD' && (
+              <button onClick={(e)=>{e.stopPropagation();onConfigure();}} className="px-2 py-0.5 rounded border hover:bg-white">Configure</button>
+            )}
             <button onClick={(e)=>{e.stopPropagation();onDuplicate();}} className="px-2 py-0.5 rounded border hover:bg-white">Duplicate</button>
             <button onClick={(e)=>{e.stopPropagation();onDelete();}} className="px-2 py-0.5 rounded border hover:bg-white text-red-600">Delete</button>
           </div>
-          <button data-handle="se" className="w-3 h-3 rounded-sm bg-gray-400" title="Resize from bottom-right" />
+          {/* drag-only header; resize handles are shown on selection below */}
         </div>
-        <div className="p-3 text-sm text-gray-700 h-[calc(100%-2rem)] overflow-auto">
+        {/* Resize handles (8 directions) */}
+        {selected && (
+          <>
+            {/* corners */}
+            <button data-handle="nw" title="Resize"
+              className="absolute z-10 w-3 h-3 bg-gray-400 rounded-sm cursor-nwse-resize"
+              style={{ top: 0, left: 0, transform: 'translate(-50%, -50%)' }} onMouseDown={beginDrag} />
+            <button data-handle="ne" title="Resize"
+              className="absolute z-10 w-3 h-3 bg-gray-400 rounded-sm cursor-nesw-resize"
+              style={{ top: 0, right: 0, transform: 'translate(50%, -50%)' }} onMouseDown={beginDrag} />
+            <button data-handle="sw" title="Resize"
+              className="absolute z-10 w-3 h-3 bg-gray-400 rounded-sm cursor-nesw-resize"
+              style={{ bottom: 0, left: 0, transform: 'translate(-50%, 50%)' }} onMouseDown={beginDrag} />
+            <button data-handle="se" title="Resize"
+              className="absolute z-10 w-3 h-3 bg-gray-400 rounded-sm cursor-nwse-resize"
+              style={{ bottom: 0, right: 0, transform: 'translate(50%, 50%)' }} onMouseDown={beginDrag} />
+            {/* edges */}
+            <button data-handle="n" title="Resize"
+              className="absolute z-10 w-3 h-3 bg-gray-400 rounded-sm cursor-n-resize"
+              style={{ top: 0, left: '50%', transform: 'translate(-50%, -50%)' }} onMouseDown={beginDrag} />
+            <button data-handle="s" title="Resize"
+              className="absolute z-10 w-3 h-3 bg-gray-400 rounded-sm cursor-s-resize"
+              style={{ bottom: 0, left: '50%', transform: 'translate(-50%, 50%)' }} onMouseDown={beginDrag} />
+            <button data-handle="w" title="Resize"
+              className="absolute z-10 w-3 h-3 bg-gray-400 rounded-sm cursor-w-resize"
+              style={{ left: 0, top: '50%', transform: 'translate(-50%, -50%)' }} onMouseDown={beginDrag} />
+            <button data-handle="e" title="Resize"
+              className="absolute z-10 w-3 h-3 bg-gray-400 rounded-sm cursor-e-resize"
+              style={{ right: 0, top: '50%', transform: 'translate(50%, -50%)' }} onMouseDown={beginDrag} />
+          </>
+        )}
+        <div className="p-3 text-sm text-gray-700 h-[calc(100%-2rem)] overflow-auto sn-tool-content" onMouseDown={(e)=>{ e.stopPropagation(); onSelect(); onActivate(); }}>
           {item.kind === "TEXT" && (
-            <div className="prose max-w-none opacity-80">
-              <p>{item.data?.text || 'Sample text…'}</p>
+            <div className="h-full flex flex-col gap-2">
+              <div className="flex items-center gap-1 text-xs">
+                <button className="px-2 py-1 border rounded" onMouseDown={(e)=>{e.preventDefault(); textRef.current?.focus(); document.execCommand('bold')}}>Bold</button>
+                <button className="px-2 py-1 border rounded" onMouseDown={(e)=>{e.preventDefault(); textRef.current?.focus(); document.execCommand('italic')}}>Italic</button>
+                <button className="px-2 py-1 border rounded" onMouseDown={(e)=>{e.preventDefault(); textRef.current?.focus(); document.execCommand('formatBlock', false, 'h2')}}>H2</button>
+                <button className="px-2 py-1 border rounded" onMouseDown={(e)=>{e.preventDefault(); textRef.current?.focus(); document.execCommand('formatBlock', false, 'p')}}>P</button>
+                <button className="px-2 py-1 border rounded" onClick={async (e)=>{
+                  e.preventDefault()
+                  try {
+                    const res = await fetch('/api/ai-helper', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ tool:'TEXT', prompt:'Write a concise paragraph.' }) })
+                    const j = await res.json(); if (j?.text && textRef.current) { textRef.current.innerHTML = (textRef.current.innerHTML? textRef.current.innerHTML + '<br/><br/>' : '') + j.text; onChange({ data: { ...item.data, html: textRef.current.innerHTML, text: textRef.current.innerText }}) }
+                  } catch {}
+                }}>AI: Generate</button>
+              </div>
+              <div
+                ref={textRef}
+                contentEditable
+                suppressContentEditableWarning
+                className="prose max-w-none min-h-40 bg-white/60 rounded p-3 outline-none"
+                onInput={(e)=>{
+                  const html = (e.currentTarget as HTMLDivElement).innerHTML
+                  const text = (e.currentTarget as HTMLDivElement).innerText
+                  onChange({ data: { ...item.data, html, text } })
+                }}
+                dangerouslySetInnerHTML={{ __html: (item.data?.html || item.data?.text) ? (item.data?.html || (item.data?.text as string).replace(/\n/g,'<br/>')) : 'Sample text…' }}
+              />
             </div>
           )}
           {item.kind === "FLASHCARDS" && (() => {
-            const cards = Array.isArray(item.data?.cards) ? item.data.cards : []
+            const cards: Array<{id?:string;q:string;a:string}> = Array.isArray(item.data?.cards) ? item.data.cards : []
+            const addCard = () => onChange({ data: { ...item.data, cards: [...cards, { id: crypto.randomUUID(), q: '', a: '' }] }})
+            const setCard = (idx:number, patch: Partial<{q:string;a:string}>) => { const arr=[...cards]; arr[idx] = { ...arr[idx], ...patch } as any; onChange({ data: { ...item.data, cards: arr }}) }
+            const delCard = (idx:number) => { const arr=[...cards]; arr.splice(idx,1); onChange({ data: { ...item.data, cards: arr }}) }
+            const move = (idx:number, dir:number) => { const arr=[...cards]; const t=arr[idx+dir]; arr[idx+dir]=arr[idx]; arr[idx]=t; onChange({ data: { ...item.data, cards: arr }}) }
+            const aiOne = async () => {
+              try { const res = await fetch('/api/ai-helper', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ tool:'FLASHCARDS', prompt:'one Q/A', limit:1 }) }); const j = await res.json(); const qa = Array.isArray(j?.items)? j.items[0] : (j || {}); if (qa?.q || qa?.a) onChange({ data: { ...item.data, cards: [...cards, { id: crypto.randomUUID(), q: qa.q || '', a: qa.a || '' }] }}) } catch {}
+            }
+            if (view === 'preview') {
+              return (
+                <div className="h-full overflow-auto">
+                  <FlashcardsViewer cards={cards.map(c=>({q:c.q||'', a:c.a||''}))} />
+                </div>
+              )
+            }
             return (
-              <div>
-                <div className="font-semibold">Flashcards ({cards.length || 0})</div>
-                {cards.length ? (
-                  <ul className="list-disc pl-5">
-                    {cards.slice(0, 2).map((c:any, i:number) => (
-                      <li key={i}><span className="font-medium">Q</span>: {c.q || '—'} <span className="ml-2 font-medium">A</span>: {c.a || '—'}</li>
-                    ))}
-                  </ul>
-                ) : (
-                  <div className="text-gray-500">No cards yet</div>
-                )}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="font-semibold">Flashcards ({cards.length})</div>
+                  <div className="flex gap-2">
+                    <button className="px-2 py-1 border rounded" onClick={aiOne}>AI: Suggest</button>
+                    <button className="px-2 py-1 border rounded" onClick={addCard}>+ Add</button>
+                  </div>
+                </div>
+                <div className="grid gap-2">
+                  {cards.map((c, idx)=> (
+                    <div key={c.id || idx} className="border rounded-lg p-2 bg-white/70">
+                      <div className="text-xs text-gray-500 flex items-center justify-between">
+                        <span>#{idx+1}</span>
+                        <div className="flex gap-1">
+                          <button className="px-1 py-0.5 border rounded" disabled={idx===0} onClick={()=>move(idx,-1)}>Up</button>
+                          <button className="px-1 py-0.5 border rounded" disabled={idx===cards.length-1} onClick={()=>move(idx,1)}>Down</button>
+                          <button className="px-1 py-0.5 border rounded text-red-600" onClick={()=>delCard(idx)}>Delete</button>
+                        </div>
+                      </div>
+                      <div className="mt-2 flex gap-2">
+                        <div className="flex-1">
+                          <div className="text-xs mb-1">Question</div>
+                          <input className="w-full border rounded p-2" value={c.q || ''} onChange={(e)=>setCard(idx,{ q: e.target.value })} />
+                        </div>
+                        <div className="flex-1">
+                          <div className="text-xs mb-1">Answer</div>
+                          <input className="w-full border rounded p-2" value={c.a || ''} onChange={(e)=>setCard(idx,{ a: e.target.value })} />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {cards.length===0 && <div className="text-gray-500">No cards yet. Add or use AI to suggest.</div>}
+                </div>
               </div>
             )
           })()}
           {item.kind === "QUIZ" && (() => {
-            const q = Array.isArray(item.data?.items) ? item.data.items : []
+            type Q = any
+            const list: Q[] = Array.isArray(item.data?.items) ? item.data.items : []
+            const add = (type:'MCQ'|'TF'|'FIB') => {
+              const base: any = { id: crypto.randomUUID(), type, question: '' }
+              if (type==='MCQ') base.options = ['', '']; base.answer = 0
+              if (type==='TF') base.answer = true
+              if (type==='FIB') base.answer = ''
+              onChange({ data: { ...item.data, items: [...list, base] }})
+            }
+            const set = (idx:number, patch:any) => { const arr=[...list]; arr[idx] = { ...arr[idx], ...patch }; onChange({ data: { ...item.data, items: arr }}) }
+            const del = (idx:number) => { const arr=[...list]; arr.splice(idx,1); onChange({ data: { ...item.data, items: arr }}) }
+            const move = (idx:number, dir:number) => { const arr=[...list]; const t=arr[idx+dir]; arr[idx+dir]=arr[idx]; arr[idx]=t; onChange({ data: { ...item.data, items: arr }}) }
+            const aiOne = async (idx?:number) => {
+              try { const res = await fetch('/api/ai-helper', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ tool:'QUIZ', prompt:'one item', limit:1 })}); const j = await res.json(); const item0 = Array.isArray(j?.items)? j.items[0] : undefined; if (item0) onChange({ data: { ...item.data, items: [...list, item0] }}) } catch {}
+            }
+            if (view === 'preview') {
+              return (
+                <div className="h-full overflow-auto">
+                  <QuizViewer items={list} />
+                </div>
+              )
+            }
             return (
-              <div>
-                <div className="font-semibold">Quiz ({q.length || 0})</div>
-                {q.length ? (
-                  <ul className="list-decimal pl-5">
-                    {q.slice(0,2).map((qi:any, i:number) => (
-                      <li key={i}>{qi.question || 'Untitled'} <span className="text-xs text-gray-500">[{qi.type}]</span></li>
-                    ))}
-                  </ul>
-                ) : (
-                  <div className="text-gray-500">No questions yet</div>
-                )}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="font-semibold">Quiz ({list.length})</div>
+                  <div className="flex items-center gap-2">
+                    <select className="border rounded p-1 text-xs" onChange={(e)=>{ const t=e.target.value as any; if (t) { add(t); e.currentTarget.selectedIndex=0 }}}>
+                      <option value="">+ Add</option>
+                      <option value="MCQ">Multiple choice</option>
+                      <option value="TF">True/False</option>
+                      <option value="FIB">Fill in blank</option>
+                    </select>
+                    <button className="px-2 py-1 border rounded" onClick={()=>aiOne()}>AI: Suggest one</button>
+                  </div>
+                </div>
+                <div className="grid gap-2">
+                  {list.map((q, idx)=> (
+                    <div key={q.id || idx} className="border rounded-lg p-2 bg-white/70">
+                      <div className="text-xs text-gray-500 flex items-center justify-between">
+                        <span>#{idx+1} [{q.type}]</span>
+                        <div className="flex gap-1">
+                          <button className="px-1 py-0.5 border rounded" disabled={idx===0} onClick={()=>move(idx,-1)}>Up</button>
+                          <button className="px-1 py-0.5 border rounded" disabled={idx===list.length-1} onClick={()=>move(idx,1)}>Down</button>
+                          <button className="px-1 py-0.5 border rounded text-red-600" onClick={()=>del(idx)}>Delete</button>
+                        </div>
+                      </div>
+                      <div className="mt-2 space-y-2">
+                        <input className="w-full border rounded p-2" placeholder="Question" value={q.question || ''} onChange={(e)=>set(idx,{ question: e.target.value })} />
+                        {q.type==='MCQ' && (
+                          <div className="space-y-1">
+                            {(q.options || []).map((op:string, oi:number)=> (
+                              <div key={oi} className="flex items-center gap-2">
+                                <input type="radio" name={`mcq-${item.id}-${idx}`} checked={q.answer===oi} onChange={()=>set(idx,{ answer: oi })} />
+                                <input className="flex-1 border rounded p-2" placeholder={`Option ${oi+1}`} value={op} onChange={(e)=>{ const opts=[...(q.options||[])]; opts[oi]=e.target.value; set(idx,{ options: opts }) }} />
+                                <button className="px-2 py-1 border rounded" onClick={()=>set(idx,{ options: [...(q.options||[]), ''] })}>+ Opt</button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {q.type==='TF' && (
+                          <div className="flex items-center gap-4 text-sm">
+                            <label className="flex items-center gap-1"><input type="radio" name={`tf-${item.id}-${idx}`} checked={q.answer===true} onChange={()=>set(idx,{ answer: true })}/> True</label>
+                            <label className="flex items-center gap-1"><input type="radio" name={`tf-${item.id}-${idx}`} checked={q.answer===false} onChange={()=>set(idx,{ answer: false })}/> False</label>
+                          </div>
+                        )}
+                        {q.type==='FIB' && (
+                          <input className="w-full border rounded p-2" placeholder="Correct answer" value={q.answer || ''} onChange={(e)=>set(idx,{ answer: e.target.value })} />
+                        )}
+                        <div>
+                          <button className="px-2 py-1 border rounded" onClick={()=>aiOne(idx)}>AI: Suggest this</button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {list.length===0 && <div className="text-gray-500">No questions yet. Use + Add or AI.</div>}
+                </div>
               </div>
             )
           })()}
@@ -442,11 +461,18 @@ function Draggable({ item, onChange, selected, onSelect, onConfigure, onDuplicat
             const rows = Number(item.data?.rows || 10)
             const cols = Number(item.data?.cols || 10)
             const words = Array.isArray(item.data?.words) ? item.data.words : []
+            if (view === 'preview') {
+              return (
+                <div className="h-full overflow-auto">
+                  <CrosswordViewer rows={rows} cols={cols} words={words} />
+                </div>
+              )
+            }
             return (
               <div>
                 <div className="font-semibold">Crossword {rows}×{cols}</div>
                 {words.length ? (
-                  <div className="text-xs text-gray-600">{words.length} words</div>
+                  <div className="text-xs text-gray-600">{words.length} words • Switch to Preview to view grid</div>
                 ) : (
                   <div className="text-gray-500">No words yet</div>
                 )}
@@ -462,6 +488,7 @@ function Draggable({ item, onChange, selected, onSelect, onConfigure, onDuplicat
 export default function LessonBuilder() {
   const [items, setItems] = useState<PlacedTool[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [activeId, setActiveId] = useState<string | null>(null)
   const [meta, setMeta] = useState({ title: "", topic: "", grade: 3, vanta: "globe", difficulty: 2 as 1|2|3 })
   const [lessonId, setLessonId] = useState<string | null>(null)
   const canvasRef = useRef<HTMLDivElement | null>(null)
@@ -473,6 +500,7 @@ export default function LessonBuilder() {
   const autoSaveRef = useRef<NodeJS.Timeout | null>(null)
   const firstLoadRef = useRef(true)
   const { session } = useAuth()
+  const [showMetaDialog, setShowMetaDialog] = useState(true)
 
   const addTool = (k: ToolKind) => {
     const size = defaultSize[k]
@@ -510,6 +538,14 @@ export default function LessonBuilder() {
   const saveDraft = async (opts?: { silent?: boolean }): Promise<string | null> => {
     if (!session) { alert('Sign in required'); return null }
     try {
+      // Enforce required meta fields only for explicit actions (not autosave)
+      if (!meta.title.trim() || !meta.topic.trim() || !meta.grade || !meta.vanta) {
+        if (!opts?.silent) {
+          setShowMetaDialog(true)
+          alert('Please fill lesson settings before saving')
+        }
+        return null
+      }
       const token = session.access_token
       const payload = {
         id: lessonId || undefined,
@@ -535,19 +571,19 @@ export default function LessonBuilder() {
       return null
     }
   }
-  // Autosave when items/meta change
+  // Autosave when items/meta change (skip while settings dialog is open)
   useEffect(() => {
     if (firstLoadRef.current) { firstLoadRef.current = false; return }
     if (autoSaveRef.current) clearTimeout(autoSaveRef.current)
-    autoSaveRef.current = setTimeout(() => { saveDraft({ silent: true }) }, 1500)
+    autoSaveRef.current = setTimeout(() => { if (!showMetaDialog) saveDraft({ silent: true }) }, 1500)
     return () => { if (autoSaveRef.current) clearTimeout(autoSaveRef.current) }
-  }, [items, meta.title, meta.topic, meta.grade, meta.vanta])
+  }, [items, meta.title, meta.topic, meta.grade, meta.vanta, showMetaDialog])
   const preview = () => { sessionStorage.setItem('lessonPreview', JSON.stringify({ meta, items })); window.open('/lessons/preview','_blank') }
   const publish = async () => {
     if (!session) { alert('Sign in required'); return }
     try {
       // Ensure save first
-  const savedId = await saveDraft()
+  const savedId = await saveDraft({ silent: false })
   const idToPublish = savedId || lessonId
   if (!idToPublish) throw new Error('No lesson id to publish')
       const token = session.access_token
@@ -562,9 +598,9 @@ export default function LessonBuilder() {
     <div className="min-h-screen bg-slate-50">
       <RoleGuard allowed={["TEACHER", "ADMIN", "DEVELOPER"]}>
         <div className="h-screen w-full grid" style={{ gridTemplateColumns: 'auto 1fr auto' }}>
-          <LeftPalette onAdd={addTool} />
+          <LeftPalette onAdd={addTool} onOpenSettings={()=>setShowMetaDialog(true)} />
           <div className="relative overflow-y-auto" tabIndex={0} onKeyDown={(e)=>{
-            if (!selectedId) return
+            if (!selectedId || activeId) return
             const delta = e.shiftKey ? 10 : 1
             const sel = items.find(i=>i.id===selectedId)
             if (!sel) return
@@ -573,72 +609,44 @@ export default function LessonBuilder() {
             if (e.key==='ArrowUp') { e.preventDefault(); updateItem(sel.id, { y: Math.max(0, sel.y - delta) }) }
             if (e.key==='ArrowDown') { e.preventDefault(); updateItem(sel.id, { y: sel.y + delta }) }
             if (e.key==='Delete') { e.preventDefault(); if (confirm('Delete selected block?')) setItems(prev=>prev.filter(i=>i.id!==selectedId)) }
+          }} onMouseDown={(e)=>{
+            // clicking empty canvas clears active tool
+            if (!(e.target as HTMLElement).closest('.sn-tool-content')) setActiveId(null)
           }}>
-            <div className="sticky top-0 z-10 m-3 rounded-xl border bg-white/70 backdrop-blur p-3 grid gap-3 grid-cols-1 md:grid-cols-8">
-              <input className="border rounded p-2" placeholder="Lesson title" value={meta.title} onChange={(e)=>setMeta({...meta,title:e.target.value})} />
-              <input className="border rounded p-2" placeholder="Topic" value={meta.topic} onChange={(e)=>setMeta({...meta,topic:e.target.value})} />
-              <select className="border rounded p-2" value={meta.grade} onChange={(e)=>setMeta({...meta,grade:Number(e.target.value)})}>
-                {[1,2,3,4,5,6].map(g=> <option key={g} value={g}>{`Grade ${g}`}</option>)}
-              </select>
-              <select className="border rounded p-2" value={meta.vanta} onChange={(e)=>setMeta({...meta,vanta:e.target.value})}>
-                {['globe','birds','halo','net','topology','clouds2','rings','cells','waves'].map(v=> <option key={v} value={v}>{v}</option>)}
-              </select>
-              <select className="border rounded p-2" value={meta.difficulty} onChange={(e)=>setMeta({...meta,difficulty: Number(e.target.value) as 1|2|3})}>
-                <option value={1}>Easy</option>
-                <option value={2}>Moderate</option>
-                <option value={3}>Challenging</option>
-              </select>
-              <div className="flex items-center gap-2 text-sm">
-                <label className="flex items-center gap-1"><input type="checkbox" checked={showGrid} onChange={(e)=>setShowGrid(e.target.checked)} /> Grid</label>
-                <label className="flex items-center gap-1"><input type="checkbox" checked={snapToGrid} onChange={(e)=>setSnapToGrid(e.target.checked)} /> Snap</label>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <label className="flex items-center gap-1">Grid
-                  <select className="border rounded p-1 ml-1" value={gridSize} onChange={(e)=>setGridSize(Number(e.target.value))}>
-                    {[10,20,40].map(gs => <option key={gs} value={gs}>{gs}px</option>)}
-                  </select>
-                </label>
-              </div>
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={()=>{ void saveDraft() }}>Save</Button>
-                <Button onClick={preview}>Preview</Button>
-              </div>
-            </div>
             {/* Vanta only inside the canvas container */}
-            <div className="relative mx-auto my-6 rounded-xl max-w-[1200px] border overflow-hidden">
+            <div className="relative mx-4 my-6 rounded-xl border overflow-hidden">
               <VantaBackground scoped effect={meta.vanta}>
                 <div ref={canvasRef} className="relative min-h-[2400px]" style={{ backgroundColor: 'rgba(255,255,255,0.06)' }}>
-                  {/* gridlines */}
-                  {showGrid && hGridLines.map((y,i)=> <div key={`h-${i}`} className="absolute left-0 right-0 border-t border-dashed" style={{ top: y, borderColor: dragging? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.25)' }} />)}
-                  {showGrid && vGridLines.map((x,i)=> <div key={`v-${i}`} className="absolute top-0 bottom-0 border-l border-dashed" style={{ left: x, borderColor: dragging? 'rgba(255,255,255,0.45)' : 'rgba(255,255,255,0.18)' }} />)}
-
+                  {/* compact canvas controls */}
+                  <div className="absolute right-3 top-3 z-20 flex items-center gap-2 rounded-full border bg-white/80 px-3 py-1 text-xs shadow">
+                    <label className="flex items-center gap-1"><input type="checkbox" checked={showGrid} onChange={(e)=>setShowGrid(e.target.checked)} /> Grid</label>
+                    <span className="text-gray-300">|</span>
+                    <label className="flex items-center gap-1"><input type="checkbox" checked={snapToGrid} onChange={(e)=>setSnapToGrid(e.target.checked)} /> Snap</label>
+                    <span className="text-gray-300">|</span>
+                    <select className="border rounded px-1 py-0.5" value={gridSize} onChange={(e)=>setGridSize(Number(e.target.value))}>
+                      {[10,20,40].map(gs => <option key={gs} value={gs}>{gs}px</option>)}
+                    </select>
+                  </div>
                   {/* alignment guides */}
-                  {guides.v.map((x, i)=> <div key={`gv-${i}`} className="absolute top-0 bottom-0 border-l border-red-400/70" style={{ left: x }} />)}
-                  {guides.h.map((y, i)=> <div key={`gh-${i}`} className="absolute left-0 right-0 border-t border-red-400/70" style={{ top: y }} />)}
-
-          {items
-                    .slice()
-                    .sort((a,b)=> (a.z ?? 0) - (b.z ?? 0))
-                    .map(it => (
+                  {guides.v.map((x,i)=>(<div key={`gv-${i}`} className="absolute top-0 bottom-0 w-px bg-rose-400/70" style={{left:x}}/>))}
+                  {guides.h.map((y,i)=>(<div key={`gh-${i}`} className="absolute left-0 right-0 h-px bg-rose-400/70" style={{top:y}}/>))}
+                  {/* items */}
+          {items.map(it => (
                     <Draggable
                       key={it.id}
                       item={it}
-                      selected={selectedId===it.id}
-                      onSelect={()=>{ setSelectedId(it.id); /* bring to front */
-                        setItems(prev=>{
-                          const maxZ = Math.max(0, ...prev.map(p=>p.z ?? 0))
-                          return prev.map(p=> p.id===it.id ? { ...p, z: (maxZ+1) } : p)
-                        })
-                      }}
+                      selected={selectedId === it.id}
+            onSelect={()=>setSelectedId(it.id)}
+            onActivate={()=>setActiveId(it.id)}
                       onChange={(p)=>updateItem(it.id,p)}
-                      onConfigure={()=>alert('Open configure panel (coming next)')}
+                      onConfigure={()=>setShowMetaDialog(true)}
                       onDuplicate={()=>setItems(prev=>{ const copy={...it,id:crypto.randomUUID(),y:it.y+20,x:it.x+20}; return [...prev, copy] })}
                       onDelete={()=>{ if (confirm('Delete this block?')) setItems(prev=>prev.filter(x=>x.id!==it.id)) }}
                       onDragState={setDragging}
-            snap={snapToGrid}
-            gridSize={gridSize}
-            allItems={items}
-            onGuideChange={setGuides}
+                      snap={snapToGrid}
+                      gridSize={gridSize}
+                      allItems={items}
+                      onGuideChange={setGuides}
                     />
                   ))}
                 </div>
@@ -664,6 +672,37 @@ export default function LessonBuilder() {
           }} />
         </div>
       </RoleGuard>
+
+      {/* Lesson settings modal */}
+      <Dialog open={showMetaDialog} onOpenChange={setShowMetaDialog}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Lesson settings</DialogTitle>
+            <DialogDescription>These details are required to save your lesson. You can adjust them anytime.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3">
+            <input className="border rounded p-2" placeholder="Lesson title" value={meta.title} onChange={(e)=>setMeta({...meta,title:e.target.value})} />
+            <input className="border rounded p-2" placeholder="Topic" value={meta.topic} onChange={(e)=>setMeta({...meta,topic:e.target.value})} />
+            <div className="grid grid-cols-3 gap-2">
+              <select className="border rounded p-2" value={meta.grade} onChange={(e)=>setMeta({...meta,grade:Number(e.target.value)})}>
+                {[1,2,3,4,5,6].map(g=> <option key={g} value={g}>{`Grade ${g}`}</option>)}
+              </select>
+              <select className="border rounded p-2" value={meta.vanta} onChange={(e)=>setMeta({...meta,vanta:e.target.value})}>
+                {['globe','birds','halo','net','topology','clouds2','rings','cells','waves'].map(v=> <option key={v} value={v}>{v}</option>)}
+              </select>
+              <select className="border rounded p-2" value={meta.difficulty} onChange={(e)=>setMeta({...meta,difficulty: Number(e.target.value) as 1|2|3})}>
+                <option value={1}>Easy</option>
+                <option value={2}>Moderate</option>
+                <option value={3}>Challenging</option>
+              </select>
+            </div>
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={()=>setShowMetaDialog(false)}>Close</Button>
+              <Button onClick={()=>setShowMetaDialog(false)}>Done</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -187,7 +187,7 @@ export function CrosswordViewer({
                 return (
                   <input
                     key={c}
-                    className={`w-8 h-8 border text-center uppercase outline-none ${cellClasses(r, c)} ${showCorrect ? (correct ? 'border-green-500' : 'border-red-500') : ''}`}
+                    className={`w-8 h-8 border text-center uppercase outline-none transition-colors ${cellClasses(r, c)} ${showCorrect ? (correct ? 'border-green-500' : 'border-red-500') : 'hover:bg-gray-50 focus:border-blue-400'}`}
                     value={val}
                     maxLength={1}
                     onChange={(e) => onInput(r, c, e.target.value)}

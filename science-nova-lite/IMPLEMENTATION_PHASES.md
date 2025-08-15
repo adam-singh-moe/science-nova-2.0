@@ -233,6 +233,26 @@ Key edits:
 Validation:
 - Published lessons mirror builder layout; content no longer clips and remains scrollable within blocks.
 
+---
+
+## Phase 13 — Builder UI overhaul (compact tools, modal settings, wider canvas, layers redesign)
+Date: 2025-08-15
+Goal: Modernize the lesson builder UX with more canvas space, an icon-only tool palette, a required settings modal, and a compact, navigable layers panel. Remove duplicate Save/Preview controls and keep a single action cluster.
+
+Key edits:
+- `app/admin/lessons/builder/page.tsx`
+  - Replaced the top metadata bar with a modal dialog (“Lesson settings”); opened by default and via a new settings button in the tools rail. Enforces required fields on save.
+  - Left palette switched to icon-only buttons (Text, Flashcards, Quiz, Crossword) with colored icons; significantly narrower to give space to canvas.
+  - Canvas container widened (removed fixed max width) with floating compact grid/snap/size controls; grid overlay unchanged in function.
+  - Right inspector redesigned: compact Layers list with icons, smaller typography, and clearer reordering controls; single Save/Preview and Publish actions.
+  - Minor styling polish: rounded surfaces, backdrop blur, subtle borders.
+
+Validation:
+- Modal prompts for Title/Topic/Grade/Vanta before first save; attempting to save without them reopens modal.
+- Only one set of Save/Preview/Publish controls remains (in the inspector).
+- Tools rail is compact and the canvas area is noticeably wider.
+- Layers panel shows items with color-coded icons and z-order controls.
+
 ## Updating this document
 - At the end of each meaningful increment, add a new Phase section summarizing:
   - Goal, the files changed (and why), and validation.

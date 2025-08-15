@@ -69,9 +69,33 @@ export function FlashcardsViewer({ cards, storageKey, initialMode }: { cards: Ca
           <div className="text-sm text-gray-500 mb-1">Card {index+1} of {total}</div>
           {mode==='flip' ? (
             <div className="cursor-pointer select-none" onClick={()=>setFlipped(f=>!f)}>
-              <div className="font-semibold mb-2">{flipped ? 'Answer' : 'Question'}</div>
-              <div className="text-gray-800">{flipped ? (card.a || '—') : (card.q || '—')}</div>
-              <div className="mt-2 text-xs text-gray-500">Click to flip</div>
+              <div className="font-semibold mb-2">Flip the card</div>
+              <div style={{ perspective: '1000px' }}>
+                <div
+                  className="relative rounded-xl border bg-white shadow-sm"
+                  style={{ transformStyle: 'preserve-3d', transition: 'transform 650ms cubic-bezier(0.22, 1, 0.36, 1)', transform: flipped ? 'rotateY(180deg)' : 'rotateY(0deg)', minHeight: 180 }}
+                >
+                  <div
+                    className="absolute inset-0 flex items-center justify-center p-6"
+                    style={{ backfaceVisibility: 'hidden' }}
+                  >
+                    <div className="text-center">
+                      <div className="text-xs uppercase tracking-wide text-gray-500 mb-1">Question</div>
+                      <div className="text-gray-800">{card.q || '—'}</div>
+                    </div>
+                  </div>
+                  <div
+                    className="absolute inset-0 flex items-center justify-center p-6"
+                    style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
+                  >
+                    <div className="text-center">
+                      <div className="text-xs uppercase tracking-wide text-gray-500 mb-1">Answer</div>
+                      <div className="text-gray-800">{card.a || '—'}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-2 text-xs text-gray-500">Click or press “F” to flip</div>
             </div>
           ) : (
             <div>

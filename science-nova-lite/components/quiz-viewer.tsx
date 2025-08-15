@@ -128,7 +128,7 @@ export function QuizViewer({ items, storageKey, initialMode }: { items: QuizItem
         }
 
         return (
-          <div key={idx} className="rounded border p-4 bg-white/95">
+          <div key={idx} className="rounded border p-4 bg-white/95 transition-shadow duration-200 hover:shadow-sm">
             <div className="mb-3">
               <span className="font-medium">Q{idx + 1}.</span>{" "}
               <span>{q.question || "Question"}</span>
@@ -141,7 +141,7 @@ export function QuizViewer({ items, storageKey, initialMode }: { items: QuizItem
                   const correct = isChecked && normalize(opt) === normalize(String(q.answer ?? ""))
                   const wrong = isChecked && selected && !correct
                   return (
-                    <label key={oi} className={`flex items-center gap-2 rounded px-2 py-1 cursor-pointer ${correct ? "bg-green-50" : ""} ${wrong ? "bg-red-50" : ""}`}>
+                    <label key={oi} className={`flex items-center gap-2 rounded px-2 py-1 cursor-pointer transition-colors ${correct ? "bg-green-50" : ""} ${wrong ? "bg-red-50" : "hover:bg-gray-50"}`}>
                       <input
                         type="radio"
                         name={`q-${idx}`}
@@ -167,7 +167,7 @@ export function QuizViewer({ items, storageKey, initialMode }: { items: QuizItem
                     <button
                       key={String(val)}
                       type="button"
-                      className={`px-3 py-1 rounded border ${selected ? "bg-blue-600 text-white border-blue-600" : "bg-white"} ${correct ? "!bg-green-600 !text-white !border-green-600" : ""} ${wrong ? "!bg-red-600 !text-white !border-red-600" : ""}`}
+                      className={`px-3 py-1 rounded border transition-colors ${selected ? "bg-blue-600 text-white border-blue-600" : "bg-white hover:bg-gray-50"} ${correct ? "!bg-green-600 !text-white !border-green-600" : ""} ${wrong ? "!bg-red-600 !text-white !border-red-600" : ""}`}
                       onClick={() => setResponses((prev) => ({ ...prev, [idx]: val }))}
                     >
                       {val ? "True" : "False"}

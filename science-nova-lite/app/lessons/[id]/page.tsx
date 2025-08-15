@@ -23,23 +23,32 @@ export default async function LessonView({ params, searchParams }: { params: { i
   const vanta = lesson.vanta_effect || 'globe'
 
   const canvasHeight = items.length ? Math.max(...items.map((it:any) => (Number(it.y)||0)+(Number(it.h)||0))) + 120 : 600
+  const canvasWidth = items.length ? Math.max(...items.map((it:any) => (Number(it.x)||0)+(Number(it.w)||0))) + 120 : 900
 
   return (
     <VantaBackground effect={vanta}>
       <main className="min-h-screen py-10">
-        <div className="max-w-[1200px] mx-auto">
+  <div className="mx-auto" style={{ width: canvasWidth }}>
           <div className="bg-white/80 backdrop-blur rounded-xl border p-6 mb-4">
             <h1 className="text-2xl font-bold mb-1">{lesson.title}</h1>
             {lesson.topic && <div className="text-sm text-gray-600">{lesson.topic}</div>}
           </div>
-          <div className="relative rounded-xl border overflow-hidden" style={{ minHeight: canvasHeight }}>
+          <div className="relative rounded-xl border overflow-visible" style={{ minHeight: canvasHeight }}>
             {items.map((it: any) => (
               <div
                 key={it.id}
                 className="absolute rounded-xl p-4 bg-white/85 backdrop-blur border shadow-sm"
                 style={{ left: Math.max(0, Number(it.x)||0), top: Math.max(0, Number(it.y)||0), width: Math.max(240, Number(it.w)||600), height: Math.max(160, Number(it.h)||220), overflow: 'auto' }}
               >
-                {it.kind === 'TEXT' && <div className="prose max-w-none whitespace-pre-wrap">{it.data?.text || 'Text block'}</div>}
+                {it.kind === 'TEXT' && (
+                  <div className="prose max-w-none">
+                    {it.data?.html ? (
+                      <div dangerouslySetInnerHTML={{ __html: it.data.html }} />
+                    ) : (
+                      <div className="whitespace-pre-wrap">{it.data?.text || 'Text block'}</div>
+                    )}
+                  </div>
+                )}
                 {it.kind === 'FLASHCARDS' && (()=>{
                   const cards: Array<{q:string;a:string}> = Array.isArray(it.data?.cards) ? it.data.cards : (it.data?.q || it.data?.a ? [{ q: it.data.q || '', a: it.data.a || '' }] : [])
                   const storageKey = `sn-flash:${lesson.id}:${it.id}`
