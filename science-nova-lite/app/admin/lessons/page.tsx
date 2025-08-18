@@ -5,6 +5,9 @@ import { RoleGuard } from "@/components/layout/role-guard"
 import { useAuth } from "@/contexts/auth-context"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { useConfirm } from "@/hooks/use-confirm"
+import { toast } from "@/hooks/use-toast"
+import { ToastAction } from "@/components/ui/toast"
 
 type Lesson = { id: string; title: string; topic: string | null; grade_level: number | null; status: 'draft'|'published'; updated_at: string }
 
@@ -13,6 +16,7 @@ export default function AdminLessons() {
   // Redirect to the new Saved page to avoid mixed lists
   useEffect(() => { router.replace('/admin/lessons/saved') }, [router])
   const { session } = useAuth()
+  const confirmDialog = useConfirm()
   const [drafts, setDrafts] = useState<Lesson[]>([])
   const [published, setPublished] = useState<Lesson[]>([])
   const [loading, setLoading] = useState(false)
@@ -43,12 +47,41 @@ export default function AdminLessons() {
 
   const onDelete = async (id: string) => {
     if (!session) return
-    if (!confirm('Delete this lesson?')) return
+    const confirm = await confirmDialog({
+      title: 'Delete lesson?',
+      description: 'This action cannot be undone.',
+      actionText: 'Delete',
+      cancelText: 'Cancel',
+      variant: 'destructive',
+    })
+    if (!confirm) return
     const token = session.access_token
+    const prevDrafts = drafts
+    const prevPublished = published
+    // Optimistic remove from both arrays (page redirects, but keep consistent)
+    setDrafts(prevDrafts.filter(l => l.id !== id))
+    setPublished(prevPublished.filter(l => l.id !== id))
     const res = await fetch('/api/lessons', { method: 'DELETE', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ id }) })
     const json = await res.json()
-    if (!res.ok) { alert(json?.error || 'Delete failed'); return }
-    fetchLessons()
+    if (!res.ok) {
+      setDrafts(prevDrafts)
+      setPublished(prevPublished)
+      toast({ title: 'Delete failed', description: json?.error || 'Could not delete the lesson.', variant: 'destructive' })
+      return
+    }
+    const t = toast({
+      title: 'Lesson deleted',
+      description: 'The lesson was removed.',
+      variant: 'success',
+      action: (
+        <ToastAction altText="Undo" onClick={() => {
+          setDrafts(prevDrafts)
+          setPublished(prevPublished)
+          t.dismiss()
+          toast({ title: 'Delete undone', description: 'The lesson was restored locally.', variant: 'info' })
+        }}>Undo</ToastAction>
+      )
+    })
   }
 
   return (

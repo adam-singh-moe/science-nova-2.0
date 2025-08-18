@@ -18,6 +18,7 @@ export function QuizViewer({ items, storageKey, initialMode }: { items: QuizItem
   const [checked, setChecked] = useState<Record<number, boolean>>({})
   const [mode, setMode] = useState<'practice'|'review'>(initialMode || 'practice')
   const [submitted, setSubmitted] = useState(false)
+  const [mounted, setMounted] = React.useState(false)
 
   // Load persisted state
   React.useEffect(() => {
@@ -45,6 +46,11 @@ export function QuizViewer({ items, storageKey, initialMode }: { items: QuizItem
       window.localStorage.setItem(storageKey, data)
     } catch {}
   }, [responses, checked, mode, submitted, storageKey])
+
+  React.useEffect(() => {
+    const t = setTimeout(() => setMounted(true), 10)
+    return () => clearTimeout(t)
+  }, [])
 
   const results = useMemo(() => {
     let correct = 0
@@ -88,16 +94,16 @@ export function QuizViewer({ items, storageKey, initialMode }: { items: QuizItem
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
+    <div className={`space-y-4 transition-all duration-500 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-1'}`}>
+      <div className="sticky top-0 z-10 bg-white/70 backdrop-blur rounded-lg border p-2 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <span className="text-xs text-gray-500">Mode</span>
-          <div className="inline-flex rounded border overflow-hidden">
-            <button type="button" className={`px-3 py-1 text-sm ${mode==='practice' ? 'bg-blue-600 text-white' : 'bg-white'}`} onClick={() => { setMode('practice') }}>Practice</button>
-            <button type="button" className={`px-3 py-1 text-sm ${mode==='review' ? 'bg-blue-600 text-white' : 'bg-white'}`} onClick={() => { setMode('review'); setSubmitted(false); setChecked({}) }}>Review</button>
+          <div className="inline-flex rounded-lg border bg-white/80 overflow-hidden">
+            <button type="button" className={`px-3 py-1.5 text-sm transition-colors ${mode==='practice' ? 'bg-amber-600 text-white' : 'hover:bg-amber-50/40'}`} onClick={() => { setMode('practice') }}>Practice</button>
+            <button type="button" className={`px-3 py-1.5 text-sm transition-colors ${mode==='review' ? 'bg-amber-600 text-white' : 'hover:bg-amber-50/40'}`} onClick={() => { setMode('review'); setSubmitted(false); setChecked({}) }}>Review</button>
           </div>
         </div>
-        <div className="text-sm text-gray-700">
+        <div className="text-sm text-gray-700 whitespace-nowrap">
           Score: {results.correct}/{results.totalChecked} checked{results.totalChecked < results.total ? ` (of ${results.total})` : ""}
           {results.totalChecked > 0 && (
             <span> — {Math.round((results.correct / Math.max(1, results.totalChecked)) * 100)}%</span>
@@ -105,13 +111,13 @@ export function QuizViewer({ items, storageKey, initialMode }: { items: QuizItem
         </div>
         <div className="flex items-center gap-2">
           {mode==='practice' ? (
-            <button type="button" className="px-3 py-1 rounded border bg-white hover:bg-gray-50" onClick={reviewAll}>Review all</button>
+            <button type="button" className="px-3 py-1.5 rounded border bg-white hover:bg-amber-50/60" onClick={reviewAll}>Review all</button>
           ) : (
-            <button type="button" className="px-3 py-1 rounded border bg-white hover:bg-gray-50" onClick={submitReview} disabled={submitted}>
+            <button type="button" className="px-3 py-1.5 rounded border bg-white hover:bg-amber-50/60 disabled:opacity-50" onClick={submitReview} disabled={submitted}>
               {submitted ? 'Submitted' : 'Submit review'}
             </button>
           )}
-          <button type="button" className="px-3 py-1 rounded border bg-white hover:bg-gray-50" onClick={resetAll}>Reset</button>
+          <button type="button" className="px-3 py-1.5 rounded border bg-white hover:bg-amber-50/60" onClick={resetAll}>Reset</button>
         </div>
       </div>
 
@@ -128,10 +134,10 @@ export function QuizViewer({ items, storageKey, initialMode }: { items: QuizItem
         }
 
         return (
-          <div key={idx} className="rounded border p-4 bg-white/95 transition-shadow duration-200 hover:shadow-sm">
-            <div className="mb-3">
-              <span className="font-medium">Q{idx + 1}.</span>{" "}
-              <span>{q.question || "Question"}</span>
+      <div key={idx} className="rounded-xl border p-4 bg-white/95 shadow-sm transition-shadow duration-200 hover:shadow-md">
+            <div className="mb-3 flex items-start gap-2">
+        <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-600 text-white text-xs mt-0.5">{idx + 1}</span>
+              <span className="font-medium">{q.question || "Question"}</span>
             </div>
 
             {q.type === "MCQ" && (
@@ -141,11 +147,11 @@ export function QuizViewer({ items, storageKey, initialMode }: { items: QuizItem
                   const correct = isChecked && normalize(opt) === normalize(String(q.answer ?? ""))
                   const wrong = isChecked && selected && !correct
                   return (
-                    <label key={oi} className={`flex items-center gap-2 rounded px-2 py-1 cursor-pointer transition-colors ${correct ? "bg-green-50" : ""} ${wrong ? "bg-red-50" : "hover:bg-gray-50"}`}>
+          <label key={oi} className={`flex items-center gap-2 rounded px-2 py-1 cursor-pointer transition-all border ${selected ? 'border-amber-300 bg-amber-50/40 scale-[1.01] shadow-sm' : 'border-transparent'} ${correct ? "bg-green-50" : ""} ${wrong ? "bg-red-50" : "hover:bg-gray-50"}`}>
                       <input
                         type="radio"
                         name={`q-${idx}`}
-                        className="accent-blue-600"
+            className="accent-amber-600"
                         disabled={false}
                         checked={selected}
                         onChange={() => setResponses((prev) => ({ ...prev, [idx]: opt }))}
@@ -167,7 +173,7 @@ export function QuizViewer({ items, storageKey, initialMode }: { items: QuizItem
                     <button
                       key={String(val)}
                       type="button"
-                      className={`px-3 py-1 rounded border transition-colors ${selected ? "bg-blue-600 text-white border-blue-600" : "bg-white hover:bg-gray-50"} ${correct ? "!bg-green-600 !text-white !border-green-600" : ""} ${wrong ? "!bg-red-600 !text-white !border-red-600" : ""}`}
+                      className={`px-3 py-1.5 rounded border transition-all ${selected ? "bg-amber-600 text-white border-amber-600 scale-[1.02] shadow-sm" : "bg-white hover:bg-gray-50"} ${correct ? "!bg-green-600 !text-white !border-green-600" : ""} ${wrong ? "!bg-red-600 !text-white !border-red-600" : ""}`}
                       onClick={() => setResponses((prev) => ({ ...prev, [idx]: val }))}
                     >
                       {val ? "True" : "False"}
@@ -181,7 +187,7 @@ export function QuizViewer({ items, storageKey, initialMode }: { items: QuizItem
               <div className="flex items-center gap-2">
                 <input
                   type="text"
-                  className={`flex-1 rounded border px-3 py-2 ${isChecked ? (isCorrect ? "border-green-500" : "border-red-500") : "border-gray-300"}`}
+                  className={`flex-1 rounded border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-200 ${isChecked ? (isCorrect ? "border-green-500" : "border-red-500") : "border-gray-300"}`}
                   placeholder="Your answer"
                   value={typeof r === "string" ? r : ""}
                   onChange={(e) => setResponses((prev) => ({ ...prev, [idx]: e.target.value }))}
@@ -193,7 +199,7 @@ export function QuizViewer({ items, storageKey, initialMode }: { items: QuizItem
               {mode==='practice' ? (
                 <button
                   type="button"
-                  className="px-3 py-1 rounded border bg-white hover:bg-gray-50"
+                  className="px-3 py-1.5 rounded border bg-white hover:bg-amber-50/60"
                   onClick={() => setChecked((prev) => ({ ...prev, [idx]: true }))}
                 >
                   Check

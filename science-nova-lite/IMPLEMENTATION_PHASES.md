@@ -7,7 +7,7 @@ Conventions:
 - Dates reflect when the phase was completed or last materially updated.
 - Each phase lists: goal, key edits (files + intent), and validation notes.
 
-Last updated: 2025-08-14
+Last updated: 2025-08-16
 
 ---
 
@@ -252,6 +252,56 @@ Validation:
 - Only one set of Save/Preview/Publish controls remains (in the inspector).
 - Tools rail is compact and the canvas area is noticeably wider.
 - Layers panel shows items with color-coded icons and z-order controls.
+
+---
+
+## Phase 14 — Fixed builder width (1280), vertical auto-grow, Vanta removed from builder; preview/student height parity
+Date: 2025-08-16
+Goal: Constrain the authoring canvas to a fixed student width (1280) while allowing height to auto-expand as content grows; remove Vanta from the builder view (keep it only in preview/student); persist and render extended height consistently across preview and student pages. Also align zoom behavior so Fit is width-based and the minimum zoom is anchored to fit-width.
+
+Key edits:
+- `app/admin/lessons/builder/page.tsx`
+  - Fixed canvas width to 1280px; height becomes dynamic and can only grow (no auto-shrink yet).
+  - Horizontal drag/resize clamped within [0, 1280]; vertical movement/resizing can request canvas growth when crossing the bottom edge.
+  - Reworked zoom controls: Fit now calculates by width; minimum zoom is clamped to fit-width; 100% equals the actual student scale.
+  - Pan/zoom clamping updated to respect the current dynamic canvas height.
+  - Removed Vanta from the builder entirely to keep the editing surface neutral; grid/tools remain.
+  - Persisted only `meta.canvasHeight` (builder width is constant at 1280); save/preview flows updated accordingly.
+  - Fixed an accidental JSX corruption from a previous edit and revalidated compile-time checks.
+
+- `app/lessons/preview/page.tsx`
+  - Desktop container set to width 1280 with `min-height = meta.canvasHeight` (fallback to design height when absent); Vanta remains visible here.
+
+- `app/lessons/[id]/page.tsx`
+  - Student container mirrors preview: width 1280 with `min-height = meta.canvasHeight`; Vanta remains visible here as the student-facing background.
+
+Validation:
+- In the builder, dragging/resizing a block past the bottom edge increases canvas height; horizontal movement is constrained to the 1280px width.
+- Zoom Fit matches width; 100% is the student scale; can’t zoom below fit-width.
+- Vanta is not shown in the builder; it appears as expected in preview and student pages.
+- After Save, `meta.canvasHeight` is stored; both Preview and Student reflect the extended height.
+
+---
+
+## Phase 15 — Image tool (URL-based) added to builder, preview, and student
+Date: 2025-08-16
+Goal: Provide a simple Image block authors can position/resize on the canvas. Images use URL source (no upload yet), with basic fit modes and optional caption/alt text.
+
+Key edits:
+- `app/admin/lessons/builder/page.tsx`
+  - Added new tool kind `IMAGE` with default size 480×320.
+  - Left palette: new Image icon button.
+  - Draggable content: URL input, fit selector (contain/cover/fill), alt and caption fields, live preview.
+  - No changes to canvas invariants: width remains 1280, vertical auto-grow preserved.
+- `app/lessons/preview/page.tsx`
+  - Render IMAGE blocks with object-fit and caption in both absolute (desktop) and stacked (mobile) layouts.
+- `app/lessons/[id]/page.tsx`
+  - Same IMAGE rendering for published lessons, includes per-block layout consistency.
+
+Validation:
+- Adding an Image block shows a preview after pasting a valid URL; fit modes behave visually.
+- Preview and Student pages display the image at the correct absolute position/size on desktop, stacked on mobile.
+- No regressions to existing tools or canvas behavior (Vanta still not shown in builder; width fixed to 1280; min-height uses saved canvasHeight).
 
 ## Updating this document
 - At the end of each meaningful increment, add a new Phase section summarizing:

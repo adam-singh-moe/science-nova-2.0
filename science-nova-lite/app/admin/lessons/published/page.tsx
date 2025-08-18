@@ -5,9 +5,13 @@ import Link from "next/link"
 import { RoleGuard } from "@/components/layout/role-guard"
 import { useAuth } from "@/contexts/auth-context"
 import { Search, Edit, Trash2, ExternalLink } from "lucide-react"
+import { useConfirm } from "@/hooks/use-confirm"
+import { toast } from "@/hooks/use-toast"
+import { ToastAction } from "@/components/ui/toast"
 
 export default function PublishedLessonsPage() {
   const { session } = useAuth()
+  const confirmDialog = useConfirm()
   const [lessons, setLessons] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState("")
@@ -30,12 +34,37 @@ export default function PublishedLessonsPage() {
 
   const onDelete = async (id: string) => {
     if (!session) return
-    if (!confirm("Delete this published lesson?")) return
+    const confirm = await confirmDialog({
+      title: "Delete published lesson?",
+      description: "This action cannot be undone.",
+      actionText: "Delete",
+      cancelText: "Cancel",
+      variant: "destructive",
+    })
+    if (!confirm) return
     const token = session.access_token
+    const prev = lessons
+    // Optimistic update
+    setLessons(prev.filter(l => l.id !== id))
     const res = await fetch('/api/lessons', { method: 'DELETE', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ id }) })
     const json = await res.json()
-    if (!res.ok) { alert(json?.error || 'Delete failed'); return }
-    fetchPublished()
+    if (!res.ok) {
+      setLessons(prev)
+      toast({ title: 'Delete failed', description: json?.error || 'Could not delete the lesson.', variant: 'destructive' })
+      return
+    }
+    const t = toast({
+      title: 'Lesson deleted',
+      description: 'The lesson was removed.',
+      variant: 'success',
+      action: (
+        <ToastAction altText="Undo" onClick={() => {
+          setLessons(prev)
+          t.dismiss()
+          toast({ title: 'Delete undone', description: 'The lesson was restored locally.', variant: 'info' })
+        }}>Undo</ToastAction>
+      )
+    })
   }
 
   return (

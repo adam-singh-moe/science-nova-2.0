@@ -25,6 +25,8 @@ export function CrosswordViewer({
   const [responses, setResponses] = React.useState<Record<string, string>>({})
   const [selectedId, setSelectedId] = React.useState<string | null>(null)
   const [submitted, setSubmitted] = React.useState(false)
+  const [focused, setFocused] = React.useState<{ r: number; c: number } | null>(null)
+  const [mounted, setMounted] = React.useState(false)
 
   // Build cell map
   const cells = React.useMemo(() => {
@@ -84,6 +86,11 @@ export function CrosswordViewer({
       localStorage.setItem(storageKey, JSON.stringify({ responses, submitted }))
     } catch {}
   }, [responses, submitted, storageKey])
+
+  React.useEffect(() => {
+    const t = setTimeout(() => setMounted(true), 10)
+    return () => clearTimeout(t)
+  }, [])
 
   const inputRef = React.useRef<HTMLInputElement>(null)
 
@@ -170,10 +177,21 @@ export function CrosswordViewer({
     return (responses[key] || "") === expected
   }
 
+  function isCompletedWord(w: CWWord) {
+    const ans = (w.answer || "").toUpperCase()
+    for (let k = 0; k < ans.length; k++) {
+      const r = w.dir === "down" ? w.row + k : w.row
+      const c = w.dir === "across" ? w.col + k : w.col
+      const key = cellKey(r, c)
+      if ((responses[key] || "") !== ans[k]) return false
+    }
+    return true
+  }
+
   const selected = currentWord()
 
   return (
-    <div className="grid gap-4 md:grid-cols-[auto_1fr]">
+    <div className={`grid gap-4 md:grid-cols-[auto_1fr] transition-all duration-500 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-1'}`}>
       <div>
         <div className="inline-block">
           {grid.map((row, r) => (
@@ -184,14 +202,17 @@ export function CrosswordViewer({
                 const isSel = selectedId && cell.words.includes(selectedId)
                 const showCorrect = submitted
                 const correct = showCorrect && isCorrectCell(r, c)
-                return (
+                const wrongClass = showCorrect && !correct && (responses[cellKey(r,c)] || "").length > 0 ? 'line-through text-red-600' : ''
+        return (
                   <input
                     key={c}
-                    className={`w-8 h-8 border text-center uppercase outline-none transition-colors ${cellClasses(r, c)} ${showCorrect ? (correct ? 'border-green-500' : 'border-red-500') : 'hover:bg-gray-50 focus:border-blue-400'}`}
+          className={`w-8 h-8 border text-center uppercase outline-none transition-all ${cellClasses(r, c)} ${showCorrect ? (correct ? 'border-green-500' : 'border-red-500') : 'hover:bg-emerald-50 focus:border-emerald-400'} ${wrongClass} ${focused && focused.r===r && focused.c===c ? 'ring-2 ring-emerald-400 scale-[1.05]' : ''}`}
                     value={val}
                     maxLength={1}
-                    onChange={(e) => onInput(r, c, e.target.value)}
-                    onFocus={() => selectByCell(r, c)}
+                    readOnly={submitted && correct}
+          onChange={(e) => onInput(r, c, e.target.value)}
+          onFocus={() => { selectByCell(r, c); setFocused({ r, c }) }}
+          onBlur={() => setFocused(null)}
                     onKeyDown={(e) => {
                       if (e.key === 'ArrowLeft') { e.preventDefault(); moveFocus(r, c, 'left') }
                       else if (e.key === 'ArrowRight') { e.preventDefault(); moveFocus(r, c, 'right') }
@@ -205,26 +226,29 @@ export function CrosswordViewer({
           ))}
         </div>
         <div className="mt-3 flex items-center gap-2">
-          <button className="px-3 py-1 rounded border bg-white hover:bg-gray-50" onClick={() => setSubmitted(true)}>
+          <button className="px-3 py-1 rounded border bg-white hover:bg-emerald-50/60" onClick={() => setSubmitted(true)}>
             Check all
           </button>
           {selected && (
             <>
-              <button className="px-3 py-1 rounded border bg-white hover:bg-gray-50" onClick={() => revealWord(selected)}>Reveal word</button>
+              <button className="px-3 py-1 rounded border bg-white hover:bg-emerald-50/60" onClick={() => revealWord(selected)}>Reveal word</button>
             </>
           )}
-          <button className="px-3 py-1 rounded border bg-white hover:bg-gray-50" onClick={resetAll}>Reset</button>
+          <button className="px-3 py-1 rounded border bg-white hover:bg-emerald-50/60" onClick={resetAll}>Reset</button>
         </div>
       </div>
       <div>
         <div className="font-medium mb-2">Clues</div>
         <div className="space-y-2">
-          {words.map((w, i) => (
-            <button key={w.id} className={`w-full text-left px-2 py-1 rounded border ${selectedId===w.id ? 'bg-blue-50 border-blue-300' : 'bg-white'}`} onClick={() => setSelectedId(w.id)}>
-              <div className="text-sm">{i+1}. {w.clue || w.answer}</div>
-              <div className="text-xs text-gray-500">{w.dir} at ({w.row+1},{w.col+1}) • {w.answer.length} letters</div>
-            </button>
-          ))}
+          {words.map((w, i) => {
+            const completed = isCompletedWord(w)
+            return (
+              <button key={w.id} className={`w-full text-left px-2 py-1 rounded border transition-colors ${selectedId===w.id ? 'bg-emerald-50 border-emerald-300' : 'bg-white hover:bg-emerald-50/40'} ${completed ? 'opacity-60' : ''}`} onClick={() => setSelectedId(w.id)}>
+                <div className="text-sm">{i+1}. {w.clue || w.answer}</div>
+                <div className="text-xs text-gray-500">{w.dir} at ({w.row+1},{w.col+1}) • {w.answer.length} letters</div>
+              </button>
+            )
+          })}
           {words.length===0 && <div className="text-sm text-gray-500">No words configured.</div>}
         </div>
       </div>

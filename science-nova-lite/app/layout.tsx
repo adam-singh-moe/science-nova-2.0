@@ -5,6 +5,7 @@ import { AuthProvider } from "@/contexts/auth-context"
 import { Toaster } from "@/components/ui/toaster"
 import { AnimatePresenceWrapper } from "@/components/layout/animate-presence-wrapper"
 import { AppChrome } from "@/components/layout/app-chrome"
+import { ConfirmProvider } from "@/hooks/use-confirm"
 
 export const metadata: Metadata = {
   title: "Science Nova Lite",
@@ -13,14 +14,16 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+  <html lang="en" suppressHydrationWarning>
       <body>
         <AuthProvider>
-          <AnimatePresenceWrapper>
-            <AppChrome>
-              {children}
-            </AppChrome>
-          </AnimatePresenceWrapper>
+          <ConfirmProvider>
+            <AnimatePresenceWrapper>
+              <AppChrome>
+                {children}
+              </AppChrome>
+            </AnimatePresenceWrapper>
+          </ConfirmProvider>
           <Toaster />
         </AuthProvider>
       </body>

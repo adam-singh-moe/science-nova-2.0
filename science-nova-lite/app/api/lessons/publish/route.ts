@@ -6,10 +6,9 @@ export async function POST(req: NextRequest) {
   if (!svc) return NextResponse.json({ error: 'Server misconfigured' }, { status: 503 })
   const auth = getUserFromAuthHeader(req.headers.get('authorization'))
   if (!auth.userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const role = await getProfileRole(auth.userId)
-  if (!role || (role !== 'TEACHER' && role !== 'ADMIN' && role !== 'DEVELOPER')) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
+  const rawRole = await getProfileRole(auth.userId)
+  const role = (rawRole || 'TEACHER') as 'TEACHER' | 'ADMIN' | 'DEVELOPER' | 'STUDENT'
+  if (role === 'STUDENT') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await req.json()
   const { id } = body as { id?: string }

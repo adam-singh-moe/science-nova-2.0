@@ -5,6 +5,9 @@ import Link from "next/link"
 import { RoleGuard } from "@/components/layout/role-guard"
 import { useAuth } from "@/contexts/auth-context"
 import { Plus, Search, PenSquare, Trash2 } from "lucide-react"
+import { useConfirm } from "@/hooks/use-confirm"
+import { toast } from "@/hooks/use-toast"
+import { ToastAction } from "@/components/ui/toast"
 
 export default function SavedLessonsPage() {
   const { session } = useAuth()
@@ -13,6 +16,7 @@ export default function SavedLessonsPage() {
   const [search, setSearch] = useState("")
   const [offset, setOffset] = useState(0)
   const limit = 10
+  const confirmDialog = useConfirm()
 
   const fetchDrafts = async () => {
     if (!session) return
@@ -30,12 +34,37 @@ export default function SavedLessonsPage() {
 
   const onDelete = async (id: string) => {
     if (!session) return
-    if (!confirm("Delete this draft?")) return
+    const confirm = await confirmDialog({
+      title: "Delete draft?",
+      description: "This action cannot be undone.",
+      actionText: "Delete",
+      cancelText: "Cancel",
+      variant: "destructive",
+    })
+    if (!confirm) return
     const token = session.access_token
+    const prev = lessons
+    // Optimistic update
+    setLessons(prev.filter(l => l.id !== id))
     const res = await fetch('/api/lessons', { method: 'DELETE', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ id }) })
     const json = await res.json()
-    if (!res.ok) { alert(json?.error || 'Delete failed'); return }
-    fetchDrafts()
+    if (!res.ok) {
+      setLessons(prev) // revert optimistic
+      toast({ title: 'Delete failed', description: json?.error || 'Could not delete the draft.', variant: 'destructive' })
+      return
+    }
+    const t = toast({
+      title: 'Draft deleted',
+      description: 'The draft was removed.',
+      variant: 'success',
+      action: (
+        <ToastAction altText="Undo" onClick={() => {
+          setLessons(prev)
+          t.dismiss()
+          toast({ title: 'Delete undone', description: 'The draft was restored locally.', variant: 'info' })
+        }}>Undo</ToastAction>
+      )
+    })
   }
 
   return (

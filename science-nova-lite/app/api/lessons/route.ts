@@ -33,7 +33,15 @@ export async function GET(req: NextRequest) {
   const limit = Math.min(parseInt(searchParams.get('limit') || '20', 10) || 20, 100)
   const offset = parseInt(searchParams.get('offset') || '0', 10) || 0
   const auth = getUserFromAuthHeader(req.headers.get('authorization'))
-  const role = auth.userId ? await getProfileRole(auth.userId) : null
+  const rawRole = auth.userId ? await getProfileRole(auth.userId) : null
+  const role = (auth.userId ? (rawRole || 'TEACHER') : null) as 'TEACHER' | 'ADMIN' | 'DEVELOPER' | 'STUDENT' | null
+
+  // If STUDENT, fetch their profile grade to enforce server-side filtering
+  let studentGrade: number | null = null
+  if (role === 'STUDENT' && auth.userId) {
+    const { data: prof } = await svc.from('profiles').select('grade_level').eq('id', auth.userId).single()
+    if (prof && typeof prof.grade_level === 'number') studentGrade = prof.grade_level
+  }
 
   let query = svc.from('lessons').select('*').order('updated_at', { ascending: false })
   if (id) {
@@ -48,7 +56,12 @@ export async function GET(req: NextRequest) {
     query = query.eq('status', 'published')
   }
   if (status) query = query.eq('status', status)
-  if (grade && !id) {
+  // Students are always filtered by their own grade if available
+  if (role === 'STUDENT' && !id) {
+    if (typeof studentGrade === 'number') {
+      query = query.eq('grade_level', studentGrade)
+    }
+  } else if (grade && !id) {
     const g = Number(grade)
     if (!Number.isNaN(g)) query = query.eq('grade_level', g)
   }
@@ -85,8 +98,9 @@ export async function POST(req: NextRequest) {
   if (!svc) return NextResponse.json({ error: 'Server misconfigured' }, { status: 503 })
   const auth = getUserFromAuthHeader(req.headers.get('authorization'))
   if (!auth.userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const role = await getProfileRole(auth.userId)
-  if (!role || (role !== 'TEACHER' && role !== 'ADMIN' && role !== 'DEVELOPER')) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const rawRole = await getProfileRole(auth.userId)
+  const role = (rawRole || 'TEACHER') as 'TEACHER' | 'ADMIN' | 'DEVELOPER' | 'STUDENT'
+  if (role === 'STUDENT') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await req.json()
   const { id, title, topic, grade_level, vanta_effect, layout_json, status } = body
@@ -126,8 +140,9 @@ export async function DELETE(req: NextRequest) {
   if (!svc) return NextResponse.json({ error: 'Server misconfigured' }, { status: 503 })
   const auth = getUserFromAuthHeader(req.headers.get('authorization'))
   if (!auth.userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const role = await getProfileRole(auth.userId)
-  if (!role || (role !== 'TEACHER' && role !== 'ADMIN' && role !== 'DEVELOPER')) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const rawRole = await getProfileRole(auth.userId)
+  const role = (rawRole || 'TEACHER') as 'TEACHER' | 'ADMIN' | 'DEVELOPER' | 'STUDENT'
+  if (role === 'STUDENT') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await req.json().catch(()=>({})) as { id?: string }
   const { searchParams } = new URL(req.url)
