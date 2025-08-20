@@ -1,11 +1,15 @@
 import { VantaBackground } from "@/components/vanta-background"
 import { StudentToolCard } from "@/components/student-tool-card"
 import { headers } from "next/headers"
-import { QuizViewer, type QuizItem as ViewerQuizItem } from "@/components/quiz-viewer"
-import { CrosswordViewer } from "@/components/crossword-viewer"
+import QuizViewer from "@/components/quiz-viewer.client"
+import CrosswordViewer from "@/components/crossword-viewer.client"
+import type { QuizItem as ViewerQuizItem } from "@/components/quiz-viewer"
 import { FlashcardsViewer } from "@/components/flashcards-viewer"
+import ImageViewer from "@/components/image-viewer"
 
 import { DESIGN_SIZE, sortByLayer } from "@/lib/layout"
+import LessonActivityClient from "@/components/lesson-activity-client"
+import { Panel } from "@/components/ui/panel"
 async function fetchLesson(id: string) {
   const h = await headers()
   const host = h.get('x-forwarded-host') || h.get('host') || 'localhost:3000'
@@ -32,17 +36,21 @@ export default async function LessonView(props: any) {
 
   return (
     <VantaBackground effect={vanta}>
-      <main className="min-h-screen py-10">
+  <main className="min-h-screen py-10">
+  {/* Telemetry: lesson view + heartbeat */}
+  <LessonActivityClient lessonId={lesson.id} />
         <div className="mx-auto max-w-screen-xl px-4">
-          <div className="relative mb-6">
-            <div className="absolute -inset-0.5 rounded-3xl bg-gradient-to-r from-sky-400/60 via-emerald-400/60 to-indigo-400/60 blur" />
-            <div className="relative bg-white/75 backdrop-blur-md border rounded-3xl p-6">
+          <div className="relative mb-6 mx-auto w-[1280px]">
+            <div className="absolute -inset-0.5 rounded-3xl bg-gradient-to-r from-sky-400/50 via-emerald-400/50 to-indigo-400/50 blur" />
+            <Panel className="relative p-6">
               <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-sky-600 to-indigo-600 bg-clip-text text-transparent mb-1">{lesson.title}</h1>
               {lesson.topic && <div className="text-sm text-gray-600">{lesson.topic}</div>}
-            </div>
+            </Panel>
           </div>
           <div className="hidden md:block">
-            <div className="relative rounded-xl border overflow-hidden bg-black/5" style={{ width: 1280, minHeight: canvasH }}>
+            <div className="mx-auto w-[1280px]">
+              <Panel className="relative rounded-2xl p-0 bg-white/60 border-white/20">
+                <div className="relative overflow-hidden" style={{ width: 1280, minHeight: canvasH }}>
               {items.map((it: any) => (
                 <div
                   key={it.id}
@@ -51,7 +59,7 @@ export default async function LessonView(props: any) {
                 >
                 {it.kind === 'TEXT' && (
                   <StudentToolCard variant="text">
-                    <div className="prose max-w-none prose-h1:mt-0 prose-h1:mb-2 prose-h2:mt-3 prose-h2:mb-2 prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-li:my-1 prose-a:text-blue-600 hover:prose-a:underline prose-code:bg-gray-100 prose-code:px-1 prose-code:py-0.5 prose-code:rounded">
+                    <div className="richtext">
                       {it.data?.html ? (
                         <div dangerouslySetInnerHTML={{ __html: it.data.html }} />
                       ) : (
@@ -63,10 +71,9 @@ export default async function LessonView(props: any) {
                 {it.kind === 'FLASHCARDS' && (()=>{
                   const cards: Array<{q:string;a:string}> = Array.isArray(it.data?.cards) ? it.data.cards : (it.data?.q || it.data?.a ? [{ q: it.data.q || '', a: it.data.a || '' }] : [])
                   const storageKey = `sn-flash:${lesson.id}:${it.id}`
-                  const spMode = typeof searchParams?.flash === 'string' && (searchParams?.flash === 'flip' || searchParams?.flash === 'quiz') ? searchParams.flash : undefined
                   return (
                     <StudentToolCard variant="flashcards">
-                      <FlashcardsViewer cards={cards} storageKey={storageKey} initialMode={spMode as any} />
+                      <FlashcardsViewer cards={cards} storageKey={storageKey} />
                     </StudentToolCard>
                   )
                 })()}
@@ -89,16 +96,7 @@ export default async function LessonView(props: any) {
                   const caption = it.data?.caption as string | undefined
                   return (
                     <StudentToolCard variant="image">
-                      <figure className="w-full h-full">
-                        {gradient ? (
-                          <div className="w-full h-[calc(100%-1.5rem)] rounded border border-gray-200" style={{ backgroundImage: gradient, backgroundSize: 'cover', backgroundPosition: 'center' }} />
-                        ) : url ? (
-                          <img src={url} alt={alt} className="w-full h-[calc(100%-1.5rem)] rounded border border-gray-200 object-center" style={{ objectFit: fit }} />
-                        ) : (
-                          <div className="w-full h-[calc(100%-1.5rem)] rounded border border-dashed border-gray-300 grid place-items-center text-gray-500 text-sm">No image</div>
-                        )}
-                        {caption && <figcaption className="text-xs text-gray-600 mt-1">{caption}</figcaption>}
-                      </figure>
+                      <ImageViewer url={url} gradient={gradient} fit={fit} alt={alt} caption={caption} variant="canvas" />
                     </StudentToolCard>
                   )
                 })()}
@@ -116,6 +114,8 @@ export default async function LessonView(props: any) {
                 })()}
                 </div>
               ))}
+                </div>
+              </Panel>
             </div>
           </div>
         </div>
@@ -124,7 +124,7 @@ export default async function LessonView(props: any) {
             <div key={it.id} className="rounded-3xl p-2 mb-4">
               {it.kind === 'TEXT' && (
                 <StudentToolCard variant="text">
-                  <div className="prose max-w-none prose-h1:mt-0 prose-h1:mb-2 prose-h2:mt-3 prose-h2:mb-2 prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-li:my-1 prose-a:text-blue-600 hover:prose-a:underline prose-code:bg-gray-100 prose-code:px-1 prose-code:py-0.5 prose-code:rounded">
+                  <div className="richtext">
                     {it.data?.html ? (
                       <div dangerouslySetInnerHTML={{ __html: it.data.html }} />
                     ) : (
@@ -136,10 +136,9 @@ export default async function LessonView(props: any) {
               {it.kind === 'FLASHCARDS' && (()=> {
                 const cards: Array<{q:string;a:string}> = Array.isArray(it.data?.cards) ? it.data.cards : (it.data?.q || it.data?.a ? [{ q: it.data.q || '', a: it.data.a || '' }] : [])
                 const storageKey = `sn-flash:${lesson.id}:${it.id}`
-                const spMode = typeof searchParams?.flash === 'string' && (searchParams?.flash === 'flip' || searchParams?.flash === 'quiz') ? searchParams.flash : undefined
                 return (
                   <StudentToolCard variant="flashcards">
-                    <FlashcardsViewer cards={cards} storageKey={storageKey} initialMode={spMode as any} />
+                    <FlashcardsViewer cards={cards} storageKey={storageKey} />
                   </StudentToolCard>
                 )
               })()}
@@ -174,16 +173,7 @@ export default async function LessonView(props: any) {
                 const caption = it.data?.caption as string | undefined
                 return (
                   <StudentToolCard variant="image">
-                    <figure>
-                      {gradient ? (
-                        <div className="w-full h-48 rounded border border-gray-200" style={{ backgroundImage: gradient, backgroundSize: 'cover', backgroundPosition: 'center' }} />
-                      ) : url ? (
-                        <img src={url} alt={alt} className="w-full rounded border border-gray-200" style={{ objectFit: fit }} />
-                      ) : (
-                        <div className="w-full h-48 rounded border border-dashed border-gray-300 grid place-items-center text-gray-500 text-sm">No image</div>
-                      )}
-                      {caption && <figcaption className="text-xs text-gray-600 mt-1">{caption}</figcaption>}
-                    </figure>
+                    <ImageViewer url={url} gradient={gradient} fit={fit} alt={alt} caption={caption} variant="stacked" />
                   </StudentToolCard>
                 )
               })()}

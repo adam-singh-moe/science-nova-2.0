@@ -1,14 +1,18 @@
 "use client"
 
 import { useEffect, useState, Suspense } from "react"
+import dynamic from "next/dynamic"
 import { Navbar } from "@/components/layout/navbar"
 import { VantaBackground } from "@/components/vanta-background"
 import { useSearchParams } from "next/navigation"
 import { FlashcardsViewer } from "@/components/flashcards-viewer"
-import { QuizViewer, type QuizItem as ViewerQuizItem } from "@/components/quiz-viewer"
-import { CrosswordViewer } from "@/components/crossword-viewer"
+import ImageViewer from "@/components/image-viewer"
+const QuizViewer = dynamic(() => import("@/components/quiz-viewer").then(m => m.QuizViewer), { ssr: false, loading: () => <div className="text-sm text-gray-500">Loading quiz…</div> })
+const CrosswordViewer = dynamic(() => import("@/components/crossword-viewer").then(m => m.CrosswordViewer), { ssr: false, loading: () => <div className="text-sm text-gray-500">Loading crossword…</div> })
+import type { QuizItem as ViewerQuizItem } from "@/components/quiz-viewer"
 import { DESIGN_SIZE, sortByLayer } from "@/lib/layout"
 import { StudentToolCard } from "@/components/student-tool-card"
+import { Panel } from "@/components/ui/panel"
 
 export default function LessonPreview() {
   return (
@@ -43,24 +47,26 @@ function LessonPreviewInner() {
   return (
     <VantaBackground effect={hydrated ? (parsed?.meta?.vanta || 'globe') : 'globe'}>
       <Navbar />
-      <main className="px-4">
-        <div className="relative mb-6">
-          <div className="absolute -inset-0.5 rounded-3xl bg-gradient-to-r from-sky-400/60 via-emerald-400/60 to-indigo-400/60 blur" />
-          <div className="relative bg-white/75 backdrop-blur-md border rounded-3xl p-6">
+      <main className="px-4 py-6">
+        <div className="relative mb-6 mx-auto w-[1280px]">
+      <div className="absolute -inset-0.5 rounded-3xl bg-gradient-to-r from-sky-400/50 via-emerald-400/50 to-indigo-400/50 blur" />
+      <Panel className="relative p-6">
             <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-sky-600 to-indigo-600 bg-clip-text text-transparent mb-1">{hydrated ? (parsed?.meta?.title || 'Lesson Preview') : 'Lesson Preview'}</h1>
             <p className="text-gray-600">{hydrated ? (
               <>Topic: {parsed?.meta?.topic || 'N/A'} • Grade {parsed?.meta?.grade ?? 'N/A'}</>
             ) : (
               <>Topic: N/A • Grade N/A</>
             )}</p>
-          </div>
+      </Panel>
         </div>
         {!hydrated ? (
           <div className="text-sm text-gray-500">Loading preview…</div>
         ) : (
           <>
             <div className="hidden md:block">
-              <div className="relative mx-auto my-6 rounded-xl border overflow-hidden bg-black/5" style={{ width: 1280, minHeight: canvasH }}>
+        <div className="mx-auto w-[1280px]">
+                <Panel className="relative rounded-2xl p-0 bg-white/60 border-white/20">
+          <div className="relative overflow-hidden" style={{ width: 1280, minHeight: canvasH }}>
                 {parsed?.items?.map((it: any) => (
                   <div
                     key={it.id}
@@ -69,7 +75,7 @@ function LessonPreviewInner() {
                   >
                 {it.kind === 'TEXT' && (
                   <StudentToolCard variant="text">
-                    <div className="prose max-w-none prose-h1:mt-0 prose-h1:mb-2 prose-h2:mt-3 prose-h2:mb-2 prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-li:my-1 prose-a:text-blue-600 hover:prose-a:underline prose-code:bg-gray-100 prose-code:px-1 prose-code:py-0.5 prose-code:rounded">
+                    <div className="richtext">
                       {it.data?.html ? (
                         <div dangerouslySetInnerHTML={{ __html: it.data.html }} />
                       ) : (
@@ -83,11 +89,9 @@ function LessonPreviewInner() {
                     ? it.data.cards
                     : (it.data?.q || it.data?.a ? [{ q: it.data.q || '', a: it.data.a || '' }] : [])
                   const storageKey = `sn-preview-flash:${it.id}`
-                  const urlMode = sp.get('flash')
-                  const initialMode = urlMode === 'flip' || urlMode === 'quiz' ? (urlMode as any) : undefined
                   return (
                     <StudentToolCard variant="flashcards">
-                      <FlashcardsViewer cards={cards} storageKey={storageKey} initialMode={initialMode} />
+                      <FlashcardsViewer cards={cards} storageKey={storageKey} />
                     </StudentToolCard>
                   )
                 })()}
@@ -111,16 +115,7 @@ function LessonPreviewInner() {
                   const caption = it.data?.caption as string | undefined
                   return (
                     <StudentToolCard variant="image">
-                      <figure className="w-full h-full">
-                        {gradient ? (
-                          <div className="w-full h-[calc(100%-1.5rem)] rounded border border-gray-200" style={{ backgroundImage: gradient, backgroundSize: 'cover', backgroundPosition: 'center' }} />
-                        ) : url ? (
-                          <img src={url} alt={alt} className="w-full h-[calc(100%-1.5rem)] rounded border border-gray-200 object-center" style={{ objectFit: fit }} />
-                        ) : (
-                          <div className="w-full h-[calc(100%-1.5rem)] rounded border border-dashed border-gray-300 grid place-items-center text-gray-500 text-sm">No image</div>
-                        )}
-                        {caption && <figcaption className="text-xs text-gray-600 mt-1">{caption}</figcaption>}
-                      </figure>
+                      <ImageViewer url={url} gradient={gradient} fit={fit} alt={alt} caption={caption} variant="canvas" />
                     </StudentToolCard>
                   )
                 })()}
@@ -138,6 +133,8 @@ function LessonPreviewInner() {
                 })()}
                   </div>
                 ))}
+                  </div>
+                </Panel>
               </div>
             </div>
             <div className="md:hidden">
@@ -145,7 +142,7 @@ function LessonPreviewInner() {
                 <div key={it.id} className="rounded-3xl p-2 mb-4">
                   {it.kind === 'TEXT' && (
                     <StudentToolCard variant="text">
-                      <div className="prose max-w-none prose-h1:mt-0 prose-h1:mb-2 prose-h2:mt-3 prose-h2:mb-2 prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-li:my-1 prose-a:text-blue-600 hover:prose-a:underline prose-code:bg-gray-100 prose-code:px-1 prose-code:py-0.5 prose-code:rounded">
+                      <div className="richtext">
                         {it.data?.html ? (
                           <div dangerouslySetInnerHTML={{ __html: it.data.html }} />
                         ) : (
@@ -159,11 +156,9 @@ function LessonPreviewInner() {
                       ? it.data.cards
                       : (it.data?.q || it.data?.a ? [{ q: it.data.q || '', a: it.data.a || '' }] : [])
                     const storageKey = `sn-preview-flash:${it.id}`
-                    const urlMode = sp.get('flash')
-                    const initialMode = urlMode === 'flip' || urlMode === 'quiz' ? (urlMode as any) : undefined
                     return (
                       <StudentToolCard variant="flashcards">
-                        <FlashcardsViewer cards={cards} storageKey={storageKey} initialMode={initialMode} />
+                        <FlashcardsViewer cards={cards} storageKey={storageKey} />
                       </StudentToolCard>
                     )
                   })()}
@@ -199,16 +194,7 @@ function LessonPreviewInner() {
                     const caption = it.data?.caption as string | undefined
                     return (
                       <StudentToolCard variant="image">
-                        <figure>
-                          {gradient ? (
-                            <div className="w-full h-48 rounded border border-gray-200" style={{ backgroundImage: gradient, backgroundSize: 'cover', backgroundPosition: 'center' }} />
-                          ) : url ? (
-                            <img src={url} alt={alt} className="w-full rounded border border-gray-200" style={{ objectFit: fit }} />
-                          ) : (
-                            <div className="w-full h-48 rounded border border-dashed border-gray-300 grid place-items-center text-gray-500 text-sm">No image</div>
-                          )}
-                          {caption && <figcaption className="text-xs text-gray-600 mt-1">{caption}</figcaption>}
-                        </figure>
+                        <ImageViewer url={url} gradient={gradient} fit={fit} alt={alt} caption={caption} variant="stacked" />
                       </StudentToolCard>
                     )
                   })()}

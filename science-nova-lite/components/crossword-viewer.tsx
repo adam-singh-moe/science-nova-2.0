@@ -1,6 +1,7 @@
 "use client"
 
 import React from "react"
+import { postLessonEvent } from '@/lib/lessonTelemetry'
 
 export type CWWord = {
   id: string
@@ -158,6 +159,11 @@ export function CrosswordViewer({
       next[cellKey(r, c)] = ans[k]
     }
     setResponses(next)
+    // emit reveal
+    try {
+      const [_, lessonId, blockId] = (storageKey || '').split(':')
+      if (lessonId && blockId) postLessonEvent({ lessonId, blockId, toolKind: 'CROSSWORD', eventType: 'crossword_reveal', data: { wordId: w.id } })
+    } catch {}
   }
 
   function resetAll() {
@@ -193,12 +199,12 @@ export function CrosswordViewer({
   return (
     <div className={`grid gap-4 md:grid-cols-[auto_1fr] transition-all duration-500 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-1'}`}>
       <div>
-        <div className="inline-block">
+        <div className="inline-block" role="group" aria-label="Crossword grid">
           {grid.map((row, r) => (
             <div key={r} className="flex">
               {row.map((cell, c) => {
                 const val = responses[cellKey(r, c)] || ""
-                if (!cell) return <div key={c} className="w-8 h-8 border bg-gray-200" />
+                if (!cell) return <div key={c} className="w-8 h-8 border bg-gray-200" aria-hidden />
                 const isSel = selectedId && cell.words.includes(selectedId)
                 const showCorrect = submitted
                 const correct = showCorrect && isCorrectCell(r, c)
@@ -206,7 +212,7 @@ export function CrosswordViewer({
         return (
                   <input
                     key={c}
-          className={`w-8 h-8 border text-center uppercase outline-none transition-all ${cellClasses(r, c)} ${showCorrect ? (correct ? 'border-green-500' : 'border-red-500') : 'hover:bg-emerald-50 focus:border-emerald-400'} ${wrongClass} ${focused && focused.r===r && focused.c===c ? 'ring-2 ring-emerald-400 scale-[1.05]' : ''}`}
+          className={`w-9 h-9 md:w-8 md:h-8 border text-center uppercase outline-none transition-all ${cellClasses(r, c)} ${showCorrect ? (correct ? 'border-green-500' : 'border-red-500') : 'hover:bg-emerald-50 focus:border-emerald-400'} ${wrongClass} ${focused && focused.r===r && focused.c===c ? 'ring-2 ring-emerald-400 scale-[1.05]' : ''}`}
                     value={val}
                     maxLength={1}
                     readOnly={submitted && correct}
@@ -219,6 +225,7 @@ export function CrosswordViewer({
                       else if (e.key === 'ArrowUp') { e.preventDefault(); moveFocus(r, c, 'up') }
                       else if (e.key === 'ArrowDown') { e.preventDefault(); moveFocus(r, c, 'down') }
                     }}
+                    aria-label={`Cell ${r+1}, ${c+1}${isSel ? ' (in selected word)' : ''}`}
                   />
                 )
               })}
@@ -226,15 +233,25 @@ export function CrosswordViewer({
           ))}
         </div>
         <div className="mt-3 flex items-center gap-2">
-          <button className="px-3 py-1 rounded border bg-white hover:bg-emerald-50/60" onClick={() => setSubmitted(true)}>
+          <button className="px-3 py-1.5 rounded border bg-white hover:bg-emerald-50/60 focus:outline-none focus:ring-2 focus:ring-emerald-300" onClick={() => setSubmitted(true)}>
             Check all
           </button>
+          {submitted && (()=>{
+            try {
+              const [_, lessonId, blockId] = (storageKey || '').split(':')
+              if (lessonId && blockId) {
+                const wordsSolved = words.filter(isCompletedWord).length
+                postLessonEvent({ lessonId, blockId, toolKind: 'CROSSWORD', eventType: 'crossword_check', data: { completed: wordsSolved === words.length && words.length>0, wordsTotal: words.length, wordsSolved } })
+              }
+            } catch {}
+            return null
+          })()}
           {selected && (
             <>
-              <button className="px-3 py-1 rounded border bg-white hover:bg-emerald-50/60" onClick={() => revealWord(selected)}>Reveal word</button>
+              <button className="px-3 py-1.5 rounded border bg-white hover:bg-emerald-50/60 focus:outline-none focus:ring-2 focus:ring-emerald-300" onClick={() => revealWord(selected)}>Reveal word</button>
             </>
           )}
-          <button className="px-3 py-1 rounded border bg-white hover:bg-emerald-50/60" onClick={resetAll}>Reset</button>
+          <button className="px-3 py-1.5 rounded border bg-white hover:bg-emerald-50/60 focus:outline-none focus:ring-2 focus:ring-emerald-300" onClick={resetAll}>Reset</button>
         </div>
       </div>
       <div>
@@ -243,7 +260,7 @@ export function CrosswordViewer({
           {words.map((w, i) => {
             const completed = isCompletedWord(w)
             return (
-              <button key={w.id} className={`w-full text-left px-2 py-1 rounded border transition-colors ${selectedId===w.id ? 'bg-emerald-50 border-emerald-300' : 'bg-white hover:bg-emerald-50/40'} ${completed ? 'opacity-60' : ''}`} onClick={() => setSelectedId(w.id)}>
+              <button key={w.id} className={`w-full text-left px-3 py-2 rounded border transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-300 ${selectedId===w.id ? 'bg-emerald-50 border-emerald-300' : 'bg-white hover:bg-emerald-50/40'} ${completed ? 'opacity-60' : ''}`} onClick={() => setSelectedId(w.id)}>
                 <div className="text-sm">{i+1}. {w.clue || w.answer}</div>
                 <div className="text-xs text-gray-500">{w.dir} at ({w.row+1},{w.col+1}) • {w.answer.length} letters</div>
               </button>

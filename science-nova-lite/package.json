@@ -9,10 +9,14 @@
     "lint": "next lint",
     "clean": "node tools/clean-next.mjs",
     "dev:reset": "npm run clean && next dev",
-    "build:reset": "npm run clean && next build"
+    "build:reset": "npm run clean && next build",
+    "test:vertex": "node tools/test-vertex.mjs"
   },
   "dependencies": {
     "@ai-sdk/google": "latest",
+    "@google-cloud/vertexai": "^1.10.0",
+    "@google/generative-ai": "^0.21.0",
+    "@huggingface/inference": "^3.0.2",
     "@radix-ui/react-avatar": "^1.1.10",
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-dropdown-menu": "^2.1.16",

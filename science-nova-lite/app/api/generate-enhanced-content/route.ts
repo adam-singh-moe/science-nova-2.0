@@ -3,6 +3,7 @@ import { generateText } from "ai"
 import { google } from "@ai-sdk/google"
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
+export const runtime = 'nodejs'
 let svcClient: SupabaseClient | null = null
 function getSupabase(): SupabaseClient | null {
   // Prefer service role for broader access; fall back to anon for read-only.
@@ -41,7 +42,7 @@ export async function POST(request: NextRequest) {
   const startTime = Date.now()
   try {
     const { topicId } = await request.json()
-    if (!topicId) return NextResponse.json({ error: "Topic ID is required" }, { status: 400 })
+  if (!topicId) { const r = NextResponse.json({ error: "Topic ID is required" }, { status: 400 }); r.headers.set('Cache-Control','no-store'); r.headers.set('Vary','Authorization'); return r }
 
     try {
       const supa = getSupabase()
@@ -72,25 +73,27 @@ export async function POST(request: NextRequest) {
           const response = NextResponse.json(finalCachedContent)
           response.headers.set('X-Cache', 'HIT-PROMPTS')
           response.headers.set('X-Response-Time', `${Date.now() - startTime}ms`)
+          response.headers.set('Cache-Control','no-store')
+          response.headers.set('Vary','Authorization')
           return response
         } else {
           const response = NextResponse.json({ ...parsed, fromCache: true, cacheTimestamp: cachedContent.created_at })
           response.headers.set('X-Cache', 'HIT-LEGACY')
           response.headers.set('X-Response-Time', `${Date.now() - startTime}ms`)
+          response.headers.set('Cache-Control','no-store')
+          response.headers.set('Vary','Authorization')
           return response
         }
       }
     } catch {}
 
     const supa = getSupabase()
-    if (!supa) {
-      return NextResponse.json({ error: "Server misconfigured: Supabase env vars missing" }, { status: 503 })
-    }
+  if (!supa) { const r = NextResponse.json({ error: "Server misconfigured: Supabase env vars missing" }, { status: 503 }); r.headers.set('Cache-Control','no-store'); r.headers.set('Vary','Authorization'); return r }
 
     const { data: topicData, error: topicError } = await supa
       .from("topics")
       .select(`title, grade_level, admin_prompt, study_areas (name, vanta_effect)`).eq("id", topicId).single()
-    if (topicError || !topicData) return NextResponse.json({ error: "Topic not found" }, { status: 404 })
+  if (topicError || !topicData) { const r = NextResponse.json({ error: "Topic not found" }, { status: 404 }); r.headers.set('Cache-Control','no-store'); r.headers.set('Vary','Authorization'); return r }
 
     const studyAreaName = (topicData.study_areas as any)?.name || 'Science'
     const gradeLevel = topicData.grade_level
@@ -148,7 +151,7 @@ ${topicData.admin_prompt ? `Additional Instructions: ${topicData.admin_prompt}` 
         const first = cleaned.indexOf('{'); const last = cleaned.lastIndexOf('}')
         parsedContent = JSON.parse(cleaned.substring(first, last+1))
       } catch {
-        return NextResponse.json({ error: "Failed to generate valid content" }, { status: 500 })
+        const r = NextResponse.json({ error: "Failed to generate valid content" }, { status: 500 }); r.headers.set('Cache-Control','no-store'); r.headers.set('Vary','Authorization'); return r
       }
     }
 
@@ -200,15 +203,19 @@ ${topicData.admin_prompt ? `Additional Instructions: ${topicData.admin_prompt}` 
       }
     } catch {}
 
-    const response = NextResponse.json(finalContent)
+  const response = NextResponse.json(finalContent)
     response.headers.set('X-Response-Time', `${Date.now() - startTime}ms`)
     response.headers.set('X-Textbook-Refs', String(relevantTextbookContent.length))
+  response.headers.set('Cache-Control','no-store')
+  response.headers.set('Vary','Authorization')
     return response
   } catch (error) {
-    const errorResponse = NextResponse.json({ error: "Failed to generate content" }, { status: 500 })
+  const errorResponse = NextResponse.json({ error: "Failed to generate content" }, { status: 500 })
     errorResponse.headers.set('X-Response-Time', `${Date.now() - startTime}ms`)
+  errorResponse.headers.set('Cache-Control','no-store')
+  errorResponse.headers.set('Vary','Authorization')
     return errorResponse
   }
 }
 
-export async function GET() { return NextResponse.json({ status: 'healthy', endpoint: 'generate-enhanced-content', timestamp: new Date().toISOString() }) }
+export async function GET() { const r = NextResponse.json({ status: 'healthy', endpoint: 'generate-enhanced-content', timestamp: new Date().toISOString() }); r.headers.set('Cache-Control','no-store'); r.headers.set('Vary','Authorization'); return r }

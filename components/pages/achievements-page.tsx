@@ -158,76 +158,33 @@ export function AchievementsPage() {
 
       setLoadingData(true)
       try {
-        // Fetch user progress data
-        const { data: progressData, error: progressError } = await supabase
-          .from('user_progress')
-          .select(`
-            *,
-            topics (
-              id,
-              title,
-              grade_level,
-              study_areas (
-                name
-              )
-            )
-          `)
-          .eq('user_id', user.id)
+        // Use unified server endpoint for stats and achievements
+        const res = await fetch('/api/achievements', { cache: 'no-store' })
+        if (!res.ok) throw new Error(`Failed to load achievements: ${res.status}`)
+        const payload = await res.json()
 
-        if (progressError) {
-          console.error('Error fetching user progress:', progressError)
-        } else if (progressData) {
-          // Get adventure completions
-          let adventureCompletions = []
-          try {
-            const { data: adventureData, error: adventureError } = await supabase
-              .from('adventure_completions')
-              .select('*')
-              .eq('user_id', user.id)
+        const s = payload.stats
+  const ach = payload.achievements
 
-            if (!adventureError && adventureData) {
-              adventureCompletions = adventureData
-            }
-          } catch (error) {
-            console.log('Adventure completions table not found, using default values')
-          }
-
-          // Calculate user progress metrics
-          const completedTopics = progressData.filter(p => p.completed).length
-          const accessedTopics = progressData.length
-          const studyAreas = new Set(progressData.map(p => {
-            const topic = Array.isArray(p.topics) ? p.topics[0] : p.topics
-            const studyArea = Array.isArray(topic?.study_areas) ? topic.study_areas[0] : topic?.study_areas
-            return studyArea?.name
-          }).filter(Boolean)).size
-
-          // Calculate XP (10 XP per topic accessed, 50 XP per topic completed)
-          const totalXP = (accessedTopics * 10) + (completedTopics * 50)
-          const level = Math.floor(totalXP / 500) + 1
-          const currentLevelXP = (level - 1) * 500
-          const nextLevelXP = level * 500
-
-          // Calculate streak (simplified)
-          const streak = calculateStreak(progressData)
-
-          const progress: UserProgress = {
-            level,
-            totalXP,
-            nextLevelXP,
-            currentLevelXP,
-            streak,
-            topicsCompleted: completedTopics,
-            studyAreasExplored: studyAreas,
-            totalTimeSpent: adventureCompletions.length * 30, // 30 minutes per adventure
-            lastActiveDate: progressData[0]?.last_accessed || new Date().toISOString()
-          }
-
-          // Calculate achievements based on progress
-          const updatedAchievements = calculateAchievements(progress, studyAreas, adventureCompletions.length)
-
-          setUserProgress(progress)
-          setAchievements(updatedAchievements)
+        const progress: UserProgress = {
+          level: s.level,
+          totalXP: s.totalXP,
+          nextLevelXP: s.nextLevelXP,
+          currentLevelXP: s.currentLevelXP,
+          streak: s.currentStreak,
+          topicsCompleted: s.topicsCompleted,
+          studyAreasExplored: s.studyAreasExplored,
+          totalTimeSpent: s.totalTimeSpent,
+          lastActiveDate: s.lastAccessDate,
         }
+
+        setUserProgress(progress)
+        // Normalize dates from server payload
+        const normalized = (ach || []).map((a: any) => ({
+          ...a,
+          earnedDate: a.earnedDate ? new Date(a.earnedDate) : undefined,
+        }))
+        setAchievements(normalized)
       } catch (error) {
         console.error('Error fetching user data:', error)
       } finally {
@@ -238,144 +195,7 @@ export function AchievementsPage() {
     fetchUserData()
   }, [user])
 
-  // Calculate learning streak
-  const calculateStreak = (progressData: any[]): number => {
-    if (!progressData.length) return 0
-    
-    const today = new Date()
-    const dates = progressData
-      .map(p => new Date(p.last_accessed))
-      .sort((a, b) => b.getTime() - a.getTime())
-    
-    let streak = 0
-    let currentDate = new Date(today)
-    
-    for (const date of dates) {
-      const daysDiff = Math.floor((currentDate.getTime() - date.getTime()) / (1000 * 60 * 60 * 24))
-      if (daysDiff <= 1) {
-        streak++
-        currentDate = date
-      } else {
-        break
-      }
-    }
-    
-    return streak
-  }
-
-  // Calculate achievements based on user progress
-  const calculateAchievements = (progress: UserProgress, studyAreasCount: number, adventureCompletionsCount: number = 0): Achievement[] => {
-    return [
-      {
-        id: "1",
-        title: "First Steps",
-        description: "Complete your first science topic",
-        icon: "🎯",
-        category: "learning",
-        earned: progress.topicsCompleted > 0,
-        earnedDate: progress.topicsCompleted > 0 ? new Date() : undefined,
-      },
-      {
-        id: "2",
-        title: "Explorer",
-        description: "Explore 3 different study areas",
-        icon: "🗺️",
-        category: "exploration",
-        earned: studyAreasCount >= 3,
-        earnedDate: studyAreasCount >= 3 ? new Date() : undefined,
-        progress: studyAreasCount,
-        maxProgress: 3,
-      },
-      {
-        id: "3",
-        title: "Consistent Learner",
-        description: "Learn for 5 days in a row",
-        icon: "🔥",
-        category: "consistency",
-        earned: progress.streak >= 5,
-        earnedDate: progress.streak >= 5 ? new Date() : undefined,
-        progress: progress.streak,
-        maxProgress: 5,
-      },
-      {
-        id: "4",
-        title: "Topic Master",
-        description: "Complete 10 topics",
-        icon: "📚",
-        category: "mastery",
-        earned: progress.topicsCompleted >= 10,
-        earnedDate: progress.topicsCompleted >= 10 ? new Date() : undefined,
-        progress: progress.topicsCompleted,
-        maxProgress: 10,
-      },
-      {
-        id: "5",
-        title: "Science Enthusiast",
-        description: "Complete 25 topics",
-        icon: "🧪",
-        category: "mastery",
-        earned: progress.topicsCompleted >= 25,
-        earnedDate: progress.topicsCompleted >= 25 ? new Date() : undefined,
-        progress: progress.topicsCompleted,
-        maxProgress: 25,
-      },
-      {
-        id: "6",
-        title: "All-Rounder",
-        description: "Explore all 7 study areas",
-        icon: "🌟",
-        category: "exploration",
-        earned: studyAreasCount >= 7,
-        earnedDate: studyAreasCount >= 7 ? new Date() : undefined,
-        progress: studyAreasCount,
-        maxProgress: 7,
-      },
-      {
-        id: "7",
-        title: "Streak Master",
-        description: "Maintain a 10-day learning streak",
-        icon: "⚡",
-        category: "consistency",
-        earned: progress.streak >= 10,
-        earnedDate: progress.streak >= 10 ? new Date() : undefined,
-        progress: progress.streak,
-        maxProgress: 10,
-      },
-      {
-        id: "8",
-        title: "Adventure Seeker",
-        description: "Complete 5 learning adventures",
-        icon: "🚀",
-        category: "learning",
-        earned: adventureCompletionsCount >= 5,
-        earnedDate: adventureCompletionsCount >= 5 ? new Date() : undefined,
-        progress: adventureCompletionsCount,
-        maxProgress: 5,
-      },
-      {
-        id: "9",
-        title: "Time Traveler",
-        description: "Spend 2+ hours learning",
-        icon: "⏰",
-        category: "consistency",
-        earned: progress.totalTimeSpent >= 120,
-        earnedDate: progress.totalTimeSpent >= 120 ? new Date() : undefined,
-        progress: Math.floor(progress.totalTimeSpent / 60),
-        maxProgress: 2,
-      },
-      {
-        id: "10",
-        title: "Level Up",
-        description: "Reach level 5",
-        icon: "⭐",
-        category: "mastery",
-        earned: progress.level >= 5,
-        earnedDate: progress.level >= 5 ? new Date() : undefined,
-        progress: progress.level,
-        maxProgress: 5,
-      },
-    ]
-  }
+  // Achievements and streak are computed on the server; no local calculation needed
 
   const getCategoryGlowColor = (category: string) => {
     const colors = {

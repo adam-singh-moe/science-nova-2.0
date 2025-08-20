@@ -166,102 +166,35 @@ export function HomePage() {
 
       setLoadingData(true)
       try {
-        // Fetch user progress statistics
-        const { data: progressData, error: progressError } = await supabase
-          .from('user_progress')
-          .select(`
-            topic_id,
-            completed,
-            last_accessed,
-            topics (
-              id,
-              title,
-              grade_level,
-              study_areas (
-                name
-              )
-            )
-          `)
-          .eq('user_id', user.id)
-          .order('last_accessed', { ascending: false })
+        // Use unified server endpoint for stats/activity
+        const res = await fetch('/api/achievements', { cache: 'no-store' })
+        if (!res.ok) throw new Error(`Failed to load stats: ${res.status}`)
+        const payload = await res.json()
 
-        if (progressError) {
-          console.error('Error fetching user progress:', progressError)
-        } else if (progressData) {
-          // Get total topics available for user's grade level
-          const { data: gradeTopics, error: gradeError } = await supabase
-            .from('topics')
-            .select('id')
-            .eq('grade_level', userGradeLevel)
+        const stats = payload.stats as any
+        const activity = payload.recentActivity as RecentActivity[]
 
-          if (!gradeError && gradeTopics) {
-            setTotalTopicsForGrade(gradeTopics.length)
-          }
+        setUserStats({
+          topicsAccessed: stats.topicsAccessed || 0,
+          topicsCompleted: stats.topicsCompleted || 0,
+          studyAreasExplored: stats.studyAreasExplored || 0,
+          totalTimeSpent: stats.totalTimeSpent || 0,
+          adventuresCompleted: stats.adventuresCompleted || 0,
+          currentStreak: stats.currentStreak || 0,
+          lastAccessDate: stats.lastAccessDate || new Date().toISOString(),
+        })
+        setRecentActivity(activity || [])
+        if (typeof stats.totalTopicsForGrade === 'number') setTotalTopicsForGrade(stats.totalTopicsForGrade)
 
-          // Get adventure completions
-          let adventureCompletions = []
-          try {
-            const { data: adventureData, error: adventureError } = await supabase
-              .from('adventure_completions')
-              .select('*')
-              .eq('user_id', user.id)
-
-            if (!adventureError && adventureData) {
-              adventureCompletions = adventureData
-            }
-          } catch (error) {
-            console.log('Adventure completions table not found, using default values')
-          }
-
-          // Calculate stats from progress data
-          const stats: UserStats = {
-            topicsAccessed: progressData.length,
-            topicsCompleted: progressData.filter(p => p.completed).length,
-            studyAreasExplored: new Set(progressData.map(p => {
-              const topic = Array.isArray(p.topics) ? p.topics[0] : p.topics
-              const studyArea = Array.isArray(topic?.study_areas) ? topic.study_areas[0] : topic?.study_areas
-              return studyArea?.name
-            }).filter(Boolean)).size,
-            totalTimeSpent: adventureCompletions.length * 30, // 30 minutes per adventure
-            adventuresCompleted: adventureCompletions.length,
-            currentStreak: calculateStreak(progressData),
-            lastAccessDate: progressData[0]?.last_accessed || new Date().toISOString()
-          }
-
-          // Calculate study area frequency for featured adventures
-          const studyAreaFreq: { [key: string]: number } = {}
-          progressData.forEach(p => {
-            const topic = Array.isArray(p.topics) ? p.topics[0] : p.topics
-            const studyArea = Array.isArray(topic?.study_areas) ? topic.study_areas[0] : topic?.study_areas
-            if (studyArea?.name) {
-              studyAreaFreq[studyArea.name] = (studyAreaFreq[studyArea.name] || 0) + 1
-            }
-          })
-
-          const sortedFrequency = Object.entries(studyAreaFreq)
-            .map(([study_area, frequency]) => ({ study_area, frequency }))
-            .sort((a, b) => b.frequency - a.frequency)
-
-          setMostFrequentedTopics(sortedFrequency)
-
-          // Format recent activity
-          const activity: RecentActivity[] = progressData
-            .slice(0, 5)
-            .map(p => {
-              const topic = Array.isArray(p.topics) ? p.topics[0] : p.topics
-              const studyArea = Array.isArray(topic?.study_areas) ? topic.study_areas[0] : topic?.study_areas
-              return {
-                id: p.topic_id || '',
-                title: topic?.title || 'Unknown Topic',
-                study_area: studyArea?.name || 'Science',
-                accessed_at: p.last_accessed || '',
-                completed: p.completed || false
-              }
-            })
-
-          setUserStats(stats)
-          setRecentActivity(activity)
+        // Derive study area frequency from recent activity
+        const freq: { [key: string]: number } = {}
+        for (const a of activity || []) {
+          if (a.study_area) freq[a.study_area] = (freq[a.study_area] || 0) + 1
         }
+        const sortedFrequency = Object.entries(freq)
+          .map(([study_area, frequency]) => ({ study_area, frequency }))
+          .sort((a, b) => b.frequency - a.frequency)
+        setMostFrequentedTopics(sortedFrequency)
 
         // Generate daily quest based on user's learning preference
         generateDailyQuest(profile?.learning_preference || 'VISUAL', userGradeLevel)
@@ -380,30 +313,7 @@ export function HomePage() {
     setDailyQuest(randomQuest)
   }
 
-  // Calculate learning streak from progress data
-  const calculateStreak = (progressData: any[]): number => {
-    if (!progressData.length) return 0
-    
-    const today = new Date()
-    const dates = progressData
-      .map(p => new Date(p.last_accessed))
-      .sort((a, b) => b.getTime() - a.getTime())
-    
-    let streak = 0
-    let currentDate = new Date(today)
-    
-    for (const date of dates) {
-      const daysDiff = Math.floor((currentDate.getTime() - date.getTime()) / (1000 * 60 * 60 * 24))
-      if (daysDiff <= 1) {
-        streak++
-        currentDate = date
-      } else {
-        break
-      }
-    }
-    
-    return streak
-  }
+  // Streak is computed on the server; keep client helper only if needed elsewhere
 
   // Get featured adventures based on most frequented topics
   const getFeaturedAdventures = () => {

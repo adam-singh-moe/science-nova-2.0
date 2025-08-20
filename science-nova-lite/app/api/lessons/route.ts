@@ -34,7 +34,8 @@ export async function GET(req: NextRequest) {
   const offset = parseInt(searchParams.get('offset') || '0', 10) || 0
   const auth = getUserFromAuthHeader(req.headers.get('authorization'))
   const rawRole = auth.userId ? await getProfileRole(auth.userId) : null
-  const role = (auth.userId ? (rawRole || 'TEACHER') : null) as 'TEACHER' | 'ADMIN' | 'DEVELOPER' | 'STUDENT' | null
+  // Safer default: if a logged-in user has no role set yet, treat as non-privileged (STUDENT)
+  const role = (auth.userId ? ((rawRole as any) || 'STUDENT') : null) as 'TEACHER' | 'ADMIN' | 'DEVELOPER' | 'STUDENT' | null
 
   // If STUDENT, fetch their profile grade to enforce server-side filtering
   let studentGrade: number | null = null
@@ -60,6 +61,10 @@ export async function GET(req: NextRequest) {
   if (role === 'STUDENT' && !id) {
     if (typeof studentGrade === 'number') {
       query = query.eq('grade_level', studentGrade)
+    } else if (grade) {
+      // Fallback to requested grade if profile grade is not set
+      const g = Number(grade)
+      if (!Number.isNaN(g)) query = query.eq('grade_level', g)
     }
   } else if (grade && !id) {
     const g = Number(grade)

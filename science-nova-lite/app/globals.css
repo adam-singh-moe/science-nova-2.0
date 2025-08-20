@@ -32,3 +32,14 @@
 }
 
 body { color: hsl(var(--foreground)); min-height: 100vh; }
+
+/* Minimal rich text defaults for lesson TEXT blocks (Phase 2) */
+.richtext { font-size: 17px; line-height: 1.75; color: #111827; }
+.richtext h1 { font-size: 1.5rem; line-height: 1.25; margin: 0 0 0.5rem 0; font-weight: 800; color: #1f2937; }
+.richtext h2 { font-size: 1.25rem; line-height: 1.35; margin: 0.75rem 0 0.5rem 0; font-weight: 700; color: #1f2937; }
+.richtext p { margin: 0.5rem 0; }
+.richtext ul, .richtext ol { margin: 0.5rem 1.25rem; padding-left: 1rem; }
+.richtext li { margin: 0.25rem 0; }
+.richtext a { color: #2563eb; text-decoration: underline transparent; transition: text-decoration-color 150ms; }
+.richtext a:hover, .richtext a:focus { text-decoration-color: currentColor; outline: none; }
+.richtext code { background: #f3f4f6; padding: 0.1rem 0.25rem; border-radius: 0.25rem; }

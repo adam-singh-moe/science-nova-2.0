@@ -1,6 +1,8 @@
 "use client"
 
 import React, { useMemo, useState } from "react"
+import { postLessonEvent } from '@/lib/lessonTelemetry'
+import { CheckCircle2, XCircle } from "lucide-react"
 
 export type QuizItem = {
   type: "MCQ" | "TF" | "FIB"
@@ -84,6 +86,11 @@ export function QuizViewer({ items, storageKey, initialMode }: { items: QuizItem
     if (storageKey) {
       try { window.localStorage.removeItem(storageKey) } catch {}
     }
+    // try to emit reset event
+    try {
+      const [_, lessonId, blockId] = (storageKey || '').split(':')
+      if (lessonId && blockId) postLessonEvent({ lessonId, blockId, toolKind: 'QUIZ', eventType: 'quiz_reset' })
+    } catch {}
   }
 
   function submitReview() {
@@ -91,7 +98,17 @@ export function QuizViewer({ items, storageKey, initialMode }: { items: QuizItem
     for (let i = 0; i < items.length; i++) next[i] = true
     setChecked(next)
     setSubmitted(true)
+    // emit submit with score
+    try {
+      const [_, lessonId, blockId] = (storageKey || '').split(':')
+      if (lessonId && blockId) {
+        const pct = Math.round((results.correct / Math.max(1, results.total)) * 100)
+        postLessonEvent({ lessonId, blockId, toolKind: 'QUIZ', eventType: 'quiz_submit', data: { correct: results.correct, checked: results.totalChecked, total: results.total, pct } })
+      }
+    } catch {}
   }
+
+  const percentChecked = Math.round((results.totalChecked / Math.max(1, results.total)) * 100)
 
   return (
     <div className={`space-y-4 transition-all duration-500 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-1'}`}>
@@ -99,8 +116,8 @@ export function QuizViewer({ items, storageKey, initialMode }: { items: QuizItem
         <div className="flex items-center gap-2">
           <span className="text-xs text-gray-500">Mode</span>
           <div className="inline-flex rounded-lg border bg-white/80 overflow-hidden">
-            <button type="button" className={`px-3 py-1.5 text-sm transition-colors ${mode==='practice' ? 'bg-amber-600 text-white' : 'hover:bg-amber-50/40'}`} onClick={() => { setMode('practice') }}>Practice</button>
-            <button type="button" className={`px-3 py-1.5 text-sm transition-colors ${mode==='review' ? 'bg-amber-600 text-white' : 'hover:bg-amber-50/40'}`} onClick={() => { setMode('review'); setSubmitted(false); setChecked({}) }}>Review</button>
+            <button type="button" aria-pressed={mode==='practice'} className={`px-3 py-1.5 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-amber-300 ${mode==='practice' ? 'bg-amber-600 text-white' : 'hover:bg-amber-50/40'}`} onClick={() => { setMode('practice') }}>Practice</button>
+            <button type="button" aria-pressed={mode==='review'} className={`px-3 py-1.5 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-amber-300 ${mode==='review' ? 'bg-amber-600 text-white' : 'hover:bg-amber-50/40'}`} onClick={() => { setMode('review'); setSubmitted(false); setChecked({}) }}>Review</button>
           </div>
         </div>
         <div className="text-sm text-gray-700 whitespace-nowrap">
@@ -111,14 +128,19 @@ export function QuizViewer({ items, storageKey, initialMode }: { items: QuizItem
         </div>
         <div className="flex items-center gap-2">
           {mode==='practice' ? (
-            <button type="button" className="px-3 py-1.5 rounded border bg-white hover:bg-amber-50/60" onClick={reviewAll}>Review all</button>
+            <button type="button" className="px-3 py-1.5 rounded border bg-white hover:bg-amber-50/60 focus:outline-none focus:ring-2 focus:ring-amber-300" onClick={reviewAll}>Review all</button>
           ) : (
-            <button type="button" className="px-3 py-1.5 rounded border bg-white hover:bg-amber-50/60 disabled:opacity-50" onClick={submitReview} disabled={submitted}>
+            <button type="button" className="px-3 py-1.5 rounded border bg-white hover:bg-amber-50/60 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-amber-300" onClick={submitReview} disabled={submitted}>
               {submitted ? 'Submitted' : 'Submit review'}
             </button>
           )}
-          <button type="button" className="px-3 py-1.5 rounded border bg-white hover:bg-amber-50/60" onClick={resetAll}>Reset</button>
+          <button type="button" className="px-3 py-1.5 rounded border bg-white hover:bg-amber-50/60 focus:outline-none focus:ring-2 focus:ring-amber-300" onClick={resetAll}>Reset</button>
         </div>
+      </div>
+
+      {/* small progress bar for answered */}
+      <div className="h-1.5 w-full rounded-full bg-gray-200 overflow-hidden">
+        <div className="h-full bg-amber-500" style={{ width: `${percentChecked}%` }} />
       </div>
 
       {items.map((q, idx) => {
@@ -134,7 +156,7 @@ export function QuizViewer({ items, storageKey, initialMode }: { items: QuizItem
         }
 
         return (
-      <div key={idx} className="rounded-xl border p-4 bg-white/95 shadow-sm transition-shadow duration-200 hover:shadow-md">
+  <div key={idx} className="rounded-xl border p-4 bg-white/95 shadow-sm transition-shadow duration-200 hover:shadow-md">
             <div className="mb-3 flex items-start gap-2">
         <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-600 text-white text-xs mt-0.5">{idx + 1}</span>
               <span className="font-medium">{q.question || "Question"}</span>
@@ -146,8 +168,8 @@ export function QuizViewer({ items, storageKey, initialMode }: { items: QuizItem
                   const selected = String(r ?? "") === opt
                   const correct = isChecked && normalize(opt) === normalize(String(q.answer ?? ""))
                   const wrong = isChecked && selected && !correct
-                  return (
-          <label key={oi} className={`flex items-center gap-2 rounded px-2 py-1 cursor-pointer transition-all border ${selected ? 'border-amber-300 bg-amber-50/40 scale-[1.01] shadow-sm' : 'border-transparent'} ${correct ? "bg-green-50" : ""} ${wrong ? "bg-red-50" : "hover:bg-gray-50"}`}>
+      return (
+    <label key={oi} className={`flex items-center gap-2 rounded px-2 py-1 cursor-pointer transition-all border focus-within:ring-2 focus-within:ring-amber-300 ${selected ? 'border-amber-300 bg-amber-50/40 scale-[1.01] shadow-sm' : 'border-transparent'} ${correct ? "bg-green-50" : ""} ${wrong ? "bg-red-50" : "hover:bg-gray-50"}`}>
                       <input
                         type="radio"
                         name={`q-${idx}`}
@@ -188,6 +210,7 @@ export function QuizViewer({ items, storageKey, initialMode }: { items: QuizItem
                 <input
                   type="text"
                   className={`flex-1 rounded border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-200 ${isChecked ? (isCorrect ? "border-green-500" : "border-red-500") : "border-gray-300"}`}
+                  aria-invalid={isChecked ? (!isCorrect) : undefined}
                   placeholder="Your answer"
                   value={typeof r === "string" ? r : ""}
                   onChange={(e) => setResponses((prev) => ({ ...prev, [idx]: e.target.value }))}
@@ -199,7 +222,7 @@ export function QuizViewer({ items, storageKey, initialMode }: { items: QuizItem
               {mode==='practice' ? (
                 <button
                   type="button"
-                  className="px-3 py-1.5 rounded border bg-white hover:bg-amber-50/60"
+                  className="px-3 py-1.5 rounded border bg-white hover:bg-amber-50/60 focus:outline-none focus:ring-2 focus:ring-amber-300"
                   onClick={() => setChecked((prev) => ({ ...prev, [idx]: true }))}
                 >
                   Check
@@ -208,7 +231,8 @@ export function QuizViewer({ items, storageKey, initialMode }: { items: QuizItem
               {(mode==='practice' || submitted) && (
                 <>
                   {isChecked && (
-                    <span className={`text-sm ${isCorrect ? "text-green-700" : "text-red-700"}`}>
+                    <span className={`inline-flex items-center gap-1.5 text-sm ${isCorrect ? "text-green-700" : "text-red-700"}`} role="status" aria-live="polite">
+                      {isCorrect ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
                       {isCorrect ? "Correct" : "Incorrect"}
                     </span>
                   )}

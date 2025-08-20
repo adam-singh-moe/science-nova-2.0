@@ -97,7 +97,7 @@ export default function ProfilePage() {
                       <SelectValue placeholder="Select grade" />
                     </SelectTrigger>
                     <SelectContent>
-                      {Array.from({ length: 12 }, (_, i) => String(i + 1)).map((g) => (
+                      {Array.from({ length: 6 }, (_, i) => String(i + 1)).map((g) => (
                         <SelectItem key={g} value={g}>
                           Grade {g}
                         </SelectItem>

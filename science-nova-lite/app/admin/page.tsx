@@ -29,39 +29,15 @@ export default function AdminHome() {
   const [recent, setRecent] = useState<Lesson[]>([])
   const [loading, setLoading] = useState(false)
 
-  // Mock analytics (can be replaced with API later)
-  const stats = useMemo(
-    () => ([
-      { label: "Active Students", value: 824, delta: +6.2, icon: Rocket },
-      { label: "Avg Quiz Score", value: 78, delta: +2.1, suffix: "%", icon: LineChart },
-      { label: "Lessons Viewed", value: 4212, delta: +8.3, icon: BookOpen },
-      { label: "Engagement", value: 38, delta: -1.4, suffix: "%", icon: BarChart2 },
-    ]),
-    []
-  )
-
-  const engagementData = useMemo(
-    () => [
-      { day: "Mon", views: 420, quizzes: 90 },
-      { day: "Tue", views: 520, quizzes: 110 },
-      { day: "Wed", views: 480, quizzes: 100 },
-      { day: "Thu", views: 610, quizzes: 140 },
-      { day: "Fri", views: 560, quizzes: 120 },
-      { day: "Sat", views: 390, quizzes: 70 },
-      { day: "Sun", views: 430, quizzes: 85 },
-    ],
-    []
-  )
-
-  const topicData = useMemo(
-    () => [
-      { name: "Biology", value: 32, color: "#60a5fa" },
-      { name: "Physics", value: 26, color: "#a78bfa" },
-      { name: "Chemistry", value: 22, color: "#34d399" },
-      { name: "Earth Sci.", value: 20, color: "#f59e0b" },
-    ],
-    []
-  )
+  // Live analytics state
+  const [stats, setStats] = useState<Array<{ label: string; value: number; delta: number; suffix?: string; icon?: any }>>([
+    { label: "Active Students", value: 0, delta: 0, icon: Rocket },
+    { label: "Avg Quiz Score", value: 0, delta: 0, suffix: "%", icon: LineChart },
+    { label: "Lessons Viewed", value: 0, delta: 0, icon: BookOpen },
+    { label: "Engagement", value: 0, delta: 0, suffix: "%", icon: BarChart2 },
+  ])
+  const [engagementData, setEngagementData] = useState<Array<{ day: string; views: number; quizzes: number }>>([])
+  const [topicData, setTopicData] = useState<Array<{ name: string; value: number; color: string }>>([])
 
   useEffect(() => {
     if (!session) return
@@ -69,6 +45,20 @@ export default function AdminHome() {
       try {
         setLoading(true)
         const token = session.access_token
+        // Load dashboard metrics
+        const m = await fetch(`/api/admin-metrics`, { headers: { Authorization: `Bearer ${token}` } })
+        if (m.ok) {
+          const js = await m.json()
+          const st = js?.stats || {}
+          setStats([
+            { label: 'Active Students', value: Number(st?.activeStudents?.value || 0), delta: Number(st?.activeStudents?.delta || 0), icon: Rocket },
+            { label: 'Avg Quiz Score', value: Number(st?.avgQuizScore?.value || 0), delta: Number(st?.avgQuizScore?.delta || 0), suffix: '%', icon: LineChart },
+            { label: 'Lessons Viewed', value: Number(st?.lessonsViewed?.value || 0), delta: Number(st?.lessonsViewed?.delta || 0), icon: BookOpen },
+            { label: 'Engagement', value: Number(st?.engagement?.value || 0), delta: Number(st?.engagement?.delta || 0), suffix: '%', icon: BarChart2 },
+          ])
+          setEngagementData(Array.isArray(js?.engagementData) ? js.engagementData : [])
+          setTopicData(Array.isArray(js?.topicData) ? js.topicData : [])
+        }
         const res = await fetch(`/api/lessons?limit=5&offset=0&status=published`, {
           headers: { Authorization: `Bearer ${token}` },
         })

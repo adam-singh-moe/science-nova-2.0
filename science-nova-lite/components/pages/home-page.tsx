@@ -13,14 +13,15 @@ import { theme } from "@/lib/theme"
 import { useAuth } from "@/contexts/auth-context"
 import { supabase } from "@/lib/supabase"
 
-interface RecentActivity { id: string; title: string; study_area: string; accessed_at: string; completed: boolean }
-interface UserStats { topicsAccessed: number; topicsCompleted: number; studyAreasExplored: number; totalTimeSpent: number; adventuresCompleted?: number; currentStreak?: number; lastAccessDate?: string }
+interface RecentLesson { id: string; title: string; topic: string; grade_level: number; updated_at?: string }
+interface HomeMission { completed: number; total: number; pct: number }
+interface UserStats { topicsAccessed: number; topicsCompleted: number; studyAreasExplored: number; totalTimeSpent: number; currentStreak?: number; lastAccessDate?: string }
 
-const mockStats: UserStats = { topicsAccessed: 12, topicsCompleted: 8, studyAreasExplored: 5, totalTimeSpent: 240, adventuresCompleted: 3, currentStreak: 5, lastAccessDate: new Date().toISOString() }
-const mockRecentActivity: RecentActivity[] = [
-  { id: "1", title: "The Solar System", study_area: "Astronomy", accessed_at: "2024-01-15T10:30:00Z", completed: true },
-  { id: "2", title: "Chemical Reactions", study_area: "Chemistry", accessed_at: "2024-01-14T15:45:00Z", completed: false },
-  { id: "3", title: "Photosynthesis", study_area: "Biology", accessed_at: "2024-01-13T09:20:00Z", completed: true },
+const mockStats: UserStats = { topicsAccessed: 12, topicsCompleted: 8, studyAreasExplored: 5, totalTimeSpent: 240, currentStreak: 5, lastAccessDate: new Date().toISOString() }
+const mockRecentLessons: RecentLesson[] = [
+  { id: "1", title: "The Solar System", topic: "Astronomy", grade_level: 5 },
+  { id: "2", title: "Chemical Reactions", topic: "Chemistry", grade_level: 5 },
+  { id: "3", title: "Photosynthesis", topic: "Biology", grade_level: 5 },
 ]
 
 interface DailyQuest { id: string; title: string; description: string; icon: string; reward: string; type: 'visual' | 'story' | 'facts' }
@@ -45,13 +46,13 @@ const getStreakMessage = (streak: number): string => {
 }
 
 export function HomePage() {
-  const { user, profile, loading } = useAuth()
+  const { user, profile, loading, session } = useAuth()
   const [userStats, setUserStats] = useState<UserStats>(mockStats)
-  const [recentActivity, setRecentActivity] = useState<RecentActivity[]>(mockRecentActivity)
+  const [recentLessons, setRecentLessons] = useState<RecentLesson[]>(mockRecentLessons)
   const [loadingData, setLoadingData] = useState(false)
   const [dailyQuest, setDailyQuest] = useState<DailyQuest | null>(null)
-  const [mostFrequentedTopics, setMostFrequentedTopics] = useState<StudyAreaFrequency[]>([])
-  const [totalTopicsForGrade, setTotalTopicsForGrade] = useState<number>(12)
+  const [badges, setBadges] = useState<string[]>([])
+  const [mission, setMission] = useState<HomeMission>({ completed: 0, total: 0, pct: 0 })
   const [showStreakCelebration, setShowStreakCelebration] = useState(false)
   const [confettiActive, setConfettiActive] = useState(false)
 
@@ -63,62 +64,43 @@ export function HomePage() {
     const fetchUserData = async () => {
       if (!user) {
         setUserStats(mockStats)
-        setRecentActivity(mockRecentActivity)
-        generateDailyQuest(profile?.learning_preference || 'VISUAL', userGradeLevel)
+        setRecentLessons(mockRecentLessons)
+        fallbackDailyQuest(profile?.learning_preference || 'VISUAL', userGradeLevel)
         return
       }
       setLoadingData(true)
       try {
-        const { data: progressData } = await supabase
-          .from('user_progress')
-          .select(`topic_id, completed, last_accessed, topics ( id, title, grade_level, study_areas ( name ) )`)
-          .eq('user_id', user.id)
-          .order('last_accessed', { ascending: false })
-
-        if (progressData) {
-          const { data: gradeTopics } = await supabase.from('topics').select('id').eq('grade_level', userGradeLevel)
-          if (gradeTopics) setTotalTopicsForGrade(gradeTopics.length)
-
-          let adventureCompletions: any[] = []
-          try {
-            const { data: adventureData } = await supabase.from('adventure_completions').select('*').eq('user_id', user.id)
-            if (adventureData) adventureCompletions = adventureData
-          } catch {}
-
-          const stats: UserStats = {
-            topicsAccessed: progressData.length,
-            topicsCompleted: progressData.filter(p => p.completed).length,
-            studyAreasExplored: new Set(progressData.map(p => {
-              const topic: any = Array.isArray(p.topics) ? p.topics[0] : p.topics
-              const studyArea: any = Array.isArray(topic?.study_areas) ? topic.study_areas[0] : topic?.study_areas
-              return studyArea?.name
-            }).filter(Boolean)).size,
-            totalTimeSpent: adventureCompletions.length * 30,
-            adventuresCompleted: adventureCompletions.length,
-            currentStreak: calculateStreak(progressData as any[]),
-            lastAccessDate: (progressData as any[])[0]?.last_accessed || new Date().toISOString()
-          }
-          const studyAreaFreq: { [key: string]: number } = {}
-          ;(progressData as any[]).forEach(p => {
-            const topic: any = Array.isArray(p.topics) ? p.topics[0] : p.topics
-            const studyArea: any = Array.isArray(topic?.study_areas) ? topic.study_areas[0] : topic?.study_areas
-            if (studyArea?.name) studyAreaFreq[studyArea.name] = (studyAreaFreq[studyArea.name] || 0) + 1
-          })
-          const sortedFrequency = Object.entries(studyAreaFreq).map(([study_area, frequency]) => ({ study_area, frequency })).sort((a, b) => b.frequency - a.frequency)
-          setMostFrequentedTopics(sortedFrequency)
-
-          const activity: RecentActivity[] = (progressData as any[]).slice(0, 5).map(p => {
-            const topic: any = Array.isArray(p.topics) ? p.topics[0] : p.topics
-            const studyArea: any = Array.isArray(topic?.study_areas) ? topic.study_areas[0] : topic?.study_areas
-            return { id: p.topic_id || '', title: topic?.title || 'Unknown Topic', study_area: studyArea?.name || 'Science', accessed_at: p.last_accessed || '', completed: p.completed || false }
-          })
-
-          setUserStats(stats)
-          setRecentActivity(activity)
+        const headers: HeadersInit = session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}
+        const homeRes = await fetch('/api/home', { cache: 'no-store', headers })
+        if (!homeRes.ok) throw new Error(`Failed to load home: ${homeRes.status}`)
+        const home = await homeRes.json()
+        setRecentLessons(home.recentLessons || [])
+        setMission(home.mission || { completed: 0, total: 0, pct: 0 })
+        setBadges(home.badges || [])
+        const rec = home.recommendation
+        if (rec) {
+          setDailyQuest({ id: rec.id, title: rec.title, description: `Learn about ${rec.topic} today.`, icon: '📘', reward: '+XP • Lesson', type: 'facts' })
+        } else {
+          // Fallback if no recommendation is available
+          fallbackDailyQuest(profile?.learning_preference || 'VISUAL', userGradeLevel)
         }
-        generateDailyQuest(profile?.learning_preference || 'VISUAL', userGradeLevel)
+
+        // For streak/time, still use achievements stats (telemetry-driven)
+  const statsRes = await fetch('/api/achievements', { cache: 'no-store', headers })
+        const payload = await statsRes.json()
+        const stats = payload.stats as any
+        setUserStats({
+          topicsAccessed: stats.topicsAccessed || 0,
+          topicsCompleted: stats.topicsCompleted || 0,
+          studyAreasExplored: stats.studyAreasExplored || 0,
+          totalTimeSpent: stats.lessonMinutes || 0,
+          currentStreak: stats.currentStreak || 0,
+          lastAccessDate: stats.lastAccessDate || new Date().toISOString(),
+        })
+  // no-op: dailyQuest already set from recommendation or fallback above
       } catch {
-        generateDailyQuest(profile?.learning_preference || 'VISUAL', userGradeLevel)
+  // On failure, show a simple, fun fallback quest
+  fallbackDailyQuest(profile?.learning_preference || 'VISUAL', userGradeLevel)
       } finally {
         setLoadingData(false)
       }
@@ -140,7 +122,7 @@ export function HomePage() {
     if (userStats && !loadingData) checkAndCelebrateStreak()
   }, [userStats, loadingData])
 
-  const generateDailyQuest = (learningPreference: string, gradeLevel: number) => {
+  const fallbackDailyQuest = (learningPreference: string, gradeLevel: number) => {
     const quests = {
       VISUAL: [
         { id: 'visual-clouds', title: 'Cloud Detective', description: '🌤️ Identify cloud types outside today!', icon: '🌤️', reward: '+50 XP • Weather Badge', type: 'visual' as const },
@@ -170,16 +152,7 @@ export function HomePage() {
     return streak
   }
 
-  const getFeaturedAdventures = () => {
-    const topStudyArea = mostFrequentedTopics[0]?.study_area || 'Astronomy'
-    const adventures = {
-      Astronomy: { title: 'Explore the Galaxy!', description: 'Journey through planets, stars, and cosmic mysteries.', icon: '🚀', badge: 'Space Adventure' },
-      Biology: { title: "Nature's Secrets!", description: 'Discover how plants grow and how animals live.', icon: '🌱', badge: 'Biology Adventure' },
-      Chemistry: { title: 'Chemistry Lab Magic!', description: 'Create colorful reactions and watch science happen.', icon: '🧪', badge: 'Lab Experiments' },
-      Physics: { title: 'Forces & Motion!', description: 'Explore how things move and the forces around us.', icon: '⚛️', badge: 'Physics Adventure' },
-    } as const
-    return (adventures as any)[topStudyArea] || (adventures as any).Astronomy
-  }
+  const getTopicEmoji = (studyArea: string): string => ({ Astronomy: "🪐", Biology: "🌿", Chemistry: "🧪", Physics: "⚛️", "Earth Science": "🌍", Meteorology: "🌤️", default: "🔬" } as any)[studyArea] || "🔬"
 
   if (loading || loadingData) return <ScienceLoading message="Loading your science journey..." type="atom" />
 
@@ -210,7 +183,7 @@ export function HomePage() {
             Welcome back, {displayName}!
           </h1>
           <p className={`text-lg ${theme.text.secondary} max-w-2xl`}>
-            Ready to explore the wonders of science? {isAuthenticated ? "Continue your learning journey" : "Check out what Science Nova has to offer"} with interactive lessons and exciting adventures.
+            Ready to explore the wonders of science? {isAuthenticated ? "Continue your learning journey" : "Check out what Science Nova has to offer"} with interactive lessons.
           </p>
         </div>
 
@@ -223,11 +196,11 @@ export function HomePage() {
                 </div>
                 <div>
                   <h3 className="text-lg font-bold text-blue-900">Mission Progress</h3>
-                  <p className="text-sm text-blue-700">{userStats.topicsCompleted} of {totalTopicsForGrade} Missions Complete!</p>
+                  <p className="text-sm text-blue-700">{mission.completed} of {mission.total} Lessons Complete!</p>
                 </div>
               </div>
-              <Progress value={(userStats.topicsCompleted / totalTopicsForGrade) * 100} className="h-6 mb-2" />
-              <p className="text-xs text-blue-600 font-medium">{Math.round((userStats.topicsCompleted / totalTopicsForGrade) * 100)}% Complete</p>
+              <Progress value={mission.pct} className="h-6 mb-2" />
+              <p className="text-xs text-blue-600 font-medium">{mission.pct}% Complete</p>
             </CardContent>
           </Card>
 
@@ -239,15 +212,18 @@ export function HomePage() {
                 </div>
                 <div>
                   <h3 className="text-lg font-bold text-green-900">Study Badges</h3>
-                  <p className="text-sm text-green-700">Areas Explored</p>
+                  <p className="text-sm text-green-700">Your Recent Study Areas</p>
                 </div>
               </div>
               <div className="flex flex-wrap gap-2 mb-2">
-                {["⚛️", "🪐", "🌿", "🔬", "🌍"].slice(0, userStats.studyAreasExplored).map((badge, index) => (
-                  <div key={index} className="p-3 bg-white/20 rounded-full shadow-lg text-3xl border-2 border-green-200">{badge}</div>
+                {badges.map((name, index) => (
+                  <div key={index} className="px-3 py-2 bg-white/80 rounded-full shadow-sm text-sm border-2 border-green-200 flex items-center gap-2">
+                    <span className="text-xl">{getTopicEmoji(name)}</span>
+                    <span className="text-green-800 font-medium">{name}</span>
+                  </div>
                 ))}
               </div>
-              <p className="text-xs text-green-600 font-medium">{userStats.studyAreasExplored}/5 Science Areas Discovered</p>
+              <p className="text-xs text-green-600 font-medium">Based on your recent lessons</p>
             </CardContent>
           </Card>
 
@@ -262,9 +238,8 @@ export function HomePage() {
                   <p className="text-sm text-orange-700">Time spent exploring science!</p>
                 </div>
               </div>
-              <div className="text-center">
-                <div className="text-4xl font-bold font-heading text-orange-600 mb-1">{Math.floor(userStats.totalTimeSpent / 60)}h {userStats.totalTimeSpent % 60}m</div>
-                <div className="text-sm text-orange-700 mb-2">{userStats.adventuresCompleted} adventures completed</div>
+                <div className="text-center">
+                <div className="text-4xl font-bold font-heading text-orange-600 mb-1">{Math.floor((userStats.totalTimeSpent || 0) / 60)}h {(userStats.totalTimeSpent || 0) % 60}m</div>
                 {userStats.currentStreak && userStats.currentStreak > 0 && (
                   <div className="mt-2 bg-red-100/50 border-2 border-red-300 rounded-full px-3 py-1 text-xs text-red-700 font-bold">🔥 {userStats.currentStreak} Day Streak!</div>
                 )}
@@ -276,40 +251,25 @@ export function HomePage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
           <Card className="bg-white/95 border-gray-300 border-2">
             <CardHeader>
-              <CardTitle className={`${theme.text.primary} flex items-center gap-2`}><Star className="h-5 w-5" /> Featured Adventures</CardTitle>
-              <CardDescription className={theme.text.secondary}>Exciting new worlds to explore</CardDescription>
+              <CardTitle className={`${theme.text.primary} flex items-center gap-2`}><Star className="h-5 w-5" /> Explorer's Journal</CardTitle>
+              <CardDescription className={theme.text.secondary}>Your latest lessons</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="group relative p-4 bg-white/10 rounded-2xl border border-white/10 hover:border-accent hover:scale-105 transition-all duration-300 cursor-pointer backdrop-blur-sm">
-                  <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
-                  <div className="relative">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="p-2 bg-blue-100/50 rounded-full"><span className="text-2xl">{getFeaturedAdventures().icon}</span></div>
-                      <div>
-                        <h4 className={`font-bold ${theme.text.primary}`}>{getFeaturedAdventures().title}</h4>
-                        <Badge variant="outline" className="text-xs bg-blue-100/50 text-blue-700 border-blue-200">{getFeaturedAdventures().badge}</Badge>
+              <div className="space-y-3">
+                {recentLessons.map((l) => (
+                  <Link key={l.id} href={`/lessons/${l.id}`} className="block">
+                    <div className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors border border-gray-100 hover:border-accent cursor-pointer group">
+                      <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full flex items-center justify-center border-2 border-blue-200"><span className="text-2xl">{getTopicEmoji(l.topic)}</span></div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-1">
+                          <h4 className={`font-medium ${theme.text.primary} truncate group-hover:text-accent transition-colors`}>{l.title}</h4>
+                        </div>
+                        <p className={`text-sm ${theme.text.secondary}`}>{l.topic}</p>
                       </div>
+                      <div className="text-xs text-gray-400 flex-shrink-0">{l.updated_at ? new Date(l.updated_at).toLocaleDateString() : ''}</div>
                     </div>
-                    <p className={`text-sm ${theme.text.secondary} mb-3`}>{getFeaturedAdventures().description}</p>
-                    <div className="flex items-center justify-between"><Badge variant="secondary" className="text-xs">Your favorite topic!</Badge><ArrowRight className="h-4 w-4 text-blue-500 group-hover:translate-x-1 transition-transform" /></div>
-                  </div>
-                </div>
-
-                <div className="group relative p-4 bg-white/10 rounded-2xl border border-white/10 hover:border-accent hover:scale-105 transition-all duration-300 cursor-pointer backdrop-blur-sm">
-                  <div className="absolute inset-0 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
-                  <div className="relative">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="p-2 bg-green-100/50 rounded-full"><span className="text-2xl">🌊</span></div>
-                      <div>
-                        <h4 className={`font-bold ${theme.text.primary}`}>Dive into the Ocean!</h4>
-                        <Badge variant="outline" className="text-xs bg-green-100/50 text-green-700 border-green-200">Marine Discovery</Badge>
-                      </div>
-                    </div>
-                    <p className={`text-sm ${theme.text.secondary} mb-3`}>Explore coral reefs, meet amazing sea creatures, and discover the mysteries of the deep blue sea.</p>
-                    <div className="flex items-center justify-between"><Badge variant="secondary" className="text-xs">New creatures await!</Badge><ArrowRight className="h-4 w-4 text-green-500 group-hover:translate-x-1 transition-transform" /></div>
-                  </div>
-                </div>
+                  </Link>
+                ))}
               </div>
             </CardContent>
           </Card>
@@ -317,7 +277,7 @@ export function HomePage() {
           <Card className="bg-white/95 border-gray-300 border-2">
             <CardHeader>
               <CardTitle className="text-yellow-900 flex items-center gap-2"><Target className="h-5 w-5" /> Today's Quest</CardTitle>
-              <CardDescription className="text-yellow-700">Complete your daily science challenge!</CardDescription>
+              <CardDescription className="text-yellow-700">Recommended lesson for you</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -327,13 +287,13 @@ export function HomePage() {
                       <div className="p-2 bg-yellow-100/50 rounded-full"><Lightbulb className="h-5 w-5 text-yellow-600" /></div>
                       <div>
                         <h4 className="font-bold text-yellow-900">{dailyQuest.title}</h4>
-                        <p className="text-sm text-yellow-700">Perfect for {profile?.learning_preference?.toLowerCase() || 'visual'} learners!</p>
+                        <p className="text-sm text-yellow-700">A great pick for your grade</p>
                       </div>
                     </div>
                     <div className="bg-yellow-50/50 rounded-md p-3 mb-3"><p className="text-sm text-yellow-800 font-medium">{dailyQuest.description}</p></div>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2"><span className="text-xs text-yellow-700">Reward:</span><Badge variant="secondary" className="text-xs bg-yellow-100/50 text-yellow-700">{dailyQuest.reward}</Badge></div>
-                      <Button size="sm" className="bg-yellow-500 hover:bg-yellow-600 text-white">Start Quest</Button>
+                      <Link href={`/lessons/${dailyQuest.id}`}><Button size="sm" className="bg-yellow-500 hover:bg-yellow-600 text-white">Start Lesson</Button></Link>
                     </div>
                   </div>
                 )}
@@ -343,36 +303,6 @@ export function HomePage() {
           </Card>
         </div>
 
-        <Card className="bg-white/95 border-gray-300 border-2">
-          <CardHeader>
-            <CardTitle className={`${theme.text.primary} flex items-center gap-2`}><BookOpen className="h-5 w-5" /> Explorer's Journal</CardTitle>
-            <CardDescription className={theme.text.secondary}>Your latest science discoveries</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {recentActivity.map((a) => (
-                <Link key={a.id} href={`/topics?area=${encodeURIComponent(a.study_area)}`} className="block">
-                  <div className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors border border-gray-100 hover:border-accent cursor-pointer group">
-                    <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full flex items-center justify-center border-2 border-blue-200"><span className="text-4xl">{getTopicEmoji(a.study_area)}</span></div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-1">
-                        <h4 className={`font-medium ${theme.text.primary} truncate group-hover:text-accent transition-colors`}>{a.title}</h4>
-                        {a.completed ? (
-                          <Badge variant="secondary" className="text-xs bg-green-100 text-green-700 border-green-200">✅ Complete</Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-xs bg-orange-100 text-orange-700 border-orange-200">🔄 In Progress</Badge>
-                        )}
-                      </div>
-                      <p className={`text-sm ${theme.text.secondary} mb-2`}>{a.study_area}</p>
-                      <div className="bg-blue-50 rounded-md p-2 text-xs text-blue-700"><span className="font-medium">Fun Fact:</span> {getFunFact(a.title)}</div>
-                    </div>
-                    <div className="text-xs text-gray-400 flex-shrink-0">{new Date(a.accessed_at).toLocaleDateString()}</div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
       <Dialog open={showStreakCelebration} onOpenChange={setShowStreakCelebration}>

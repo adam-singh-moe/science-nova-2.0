@@ -70,6 +70,7 @@ function LeftPalette({ onAdd, onOpenSettings }: { onAdd: (k: ToolKind) => void; 
 }
 
 function AiHelperPanel({ sel, meta, onUpdateSelected }: { sel: PlacedTool; meta: { title: string; topic: string; grade: number; vanta: string; difficulty?: 1|2|3 }; onUpdateSelected: (patch: any) => void }) {
+  const { session } = useAuth()
   const [desc, setDesc] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -233,16 +234,38 @@ function AiHelperPanel({ sel, meta, onUpdateSelected }: { sel: PlacedTool; meta:
     return clue.replace(re, '_'.repeat(Math.min(6, answer.length)))
   }
 
+  // Build headers with Authorization when available
+  const authHeaders = useMemo(() => {
+    const h: Record<string, string> = { 'Content-Type': 'application/json' }
+    if (session?.access_token) h.Authorization = `Bearer ${session.access_token}`
+    return h
+  }, [session])
+
+  // Read response safely as JSON; if it fails, return raw text as fallback
+  const readSafe = async (res: Response) => {
+    let raw = ''
+    try { raw = await res.text() } catch {}
+    let json: any = null
+    if (raw && raw.trim().length) {
+      try { json = JSON.parse(raw) } catch {}
+    }
+    return { ok: res.ok, status: res.status, json, raw }
+  }
+
   const doText = async () => {
     setLoading(true)
     try {
       const res = await fetch('/api/ai-helper', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders,
         body: JSON.stringify({ tool: 'TEXT', prompt: desc, topic: meta.topic, grade: meta.grade, difficulty: meta.difficulty })
       })
-      const j = await res.json()
-      if (j?.text) onUpdateSelected({ data: { ...(sel.data || {}), html: `<p>${String(j.text).replace(/\n/g, '<br/>')}</p>`, text: j.text } })
+      const { ok, status, json: j, raw } = await readSafe(res)
+      if (!ok) {
+        toast({ title: 'AI text error', description: `Status ${status}. Using fallback if available.`, variant: 'warning' })
+      }
+      const text = (j && typeof j.text === 'string') ? j.text : (typeof j === 'string' ? j : (raw || ''))
+      if (text) onUpdateSelected({ data: { ...(sel.data || {}), html: `<p>${String(text).replace(/\n/g, '<br/>')}</p>`, text } })
     } finally { setLoading(false) }
   }
 
@@ -251,25 +274,27 @@ function AiHelperPanel({ sel, meta, onUpdateSelected }: { sel: PlacedTool; meta:
     try {
       const res = await fetch('/api/ai-helper', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders,
         body: JSON.stringify({
           tool: 'FLASHCARDS',
           // Encourage structured, fence-free output; still parse defensively
-          prompt: desc || `Create 6 concise flashcards about ${meta.topic} for Grade ${meta.grade} (difficulty ${meta.difficulty}).
-Return JSON with a 'cards' array like [{"q":"question","a":"answer"}].
-Do NOT include markdown fences or code blocks.`,
+          prompt: desc || `Create 6 concise flashcards about ${meta.topic} for Grade ${meta.grade} (difficulty ${meta.difficulty}).\nReturn JSON with a 'cards' array like [{"q":"question","a":"answer"}].\nDo NOT include markdown fences or code blocks.`,
           topic: meta.topic,
           grade: meta.grade,
           difficulty: meta.difficulty,
           limit: 6
         })
       })
-      const j = await res.json()
+      const { ok, status, json: j, raw } = await readSafe(res)
+      if (!ok) {
+        toast({ title: 'AI flashcards error', description: `Status ${status}. Attempting to parse fallback text.`, variant: 'warning' })
+      }
       let cardsArr: any[] = []
       if (Array.isArray(j?.cards)) cardsArr = j.cards
       else if (Array.isArray(j?.items)) cardsArr = j.items
       else if (typeof j?.text === 'string') cardsArr = parseFlashcardsFromText(j.text)
       else if (typeof j === 'string') cardsArr = parseFlashcardsFromText(j)
+      else if (raw) cardsArr = parseFlashcardsFromText(raw)
       if (cardsArr.length) {
         onUpdateSelected({
           data: {
@@ -289,10 +314,13 @@ Do NOT include markdown fences or code blocks.`,
     try {
       const res = await fetch('/api/ai-helper', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders,
         body: JSON.stringify({ tool: 'QUIZ', prompt: desc, topic: meta.topic, grade: meta.grade, difficulty: meta.difficulty, counts: { MCQ: mcq, TF: tf, FIB: fib } })
       })
-      const j = await res.json()
+      const { ok, status, json: j } = await readSafe(res)
+      if (!ok) {
+        toast({ title: 'AI quiz error', description: `Status ${status}. Using simple fallback questions.`, variant: 'warning' })
+      }
       let items = Array.isArray(j?.items) ? j.items : []
       // Fallback: if no items provided (e.g., no API key), synthesize simple questions
       if (!items.length) {
@@ -322,19 +350,20 @@ Do NOT include markdown fences or code blocks.`,
     try {
       const res = await fetch('/api/ai-helper', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders,
         body: JSON.stringify({
           tool: 'CROSSWORD',
-          prompt: desc || `Generate ${Math.min(12, Math.max(4, cwCount))} themed crossword entries about ${meta.topic} for Grade ${meta.grade} (difficulty ${meta.difficulty}).
-Provide JSON with items: [{"answer":"UPPERCASE","clue":"indirect clue without the word"}].
-Avoid giving away the answer in the clue. Mix word lengths (3–10).`,
+          prompt: desc || `Generate ${Math.min(12, Math.max(4, cwCount))} crossword entries about ${meta.topic} for Grade ${meta.grade} (difficulty ${meta.difficulty}).\nFor EACH word, provide a UNIQUE, definition-style clue that describes what the word is or means in this topic. Do NOT include the word.\nRespond ONLY as JSON: {"items":[{"answer":"UPPERCASE","clue":"short definition"}, ...]}. Mix word lengths (3–10).`,
           topic: meta.topic,
           grade: meta.grade,
           difficulty: meta.difficulty,
           limit: Math.min(12, Math.max(1, cwCount))
         })
       })
-      const j = await res.json()
+      const { ok, status, json: j } = await readSafe(res)
+      if (!ok) {
+        toast({ title: 'AI crossword error', description: `Status ${status}.`, variant: 'warning' })
+      }
       const rows = Number(sel.data?.rows || 12)
       const cols = Number(sel.data?.cols || 12)
       let placedOut: Array<{ id: string; row: number; col: number; dir: 'across'|'down'; answer: string; clue?: string }> = []
@@ -372,11 +401,27 @@ Avoid giving away the answer in the clue. Mix word lengths (3–10).`,
     setLoading(true)
     try {
       const prompt = `${desc || ''} — Lesson: ${meta.title || ''}, Topic: ${meta.topic || ''}, Grade ${meta.grade}, Difficulty ${meta.difficulty || 2}`
-      const res = await fetch('/api/generate-image-enhanced', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt, aspectRatio: '16:9', gradeLevel: meta.grade }) })
+      const res = await fetch('/api/generate-image-enhanced', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt,
+          aspectRatio: '16:9',
+          gradeLevel: meta.grade,
+          // Force a fresh attempt and request debug info to help diagnose fallbacks
+          skipCache: true,
+          includeDebug: true,
+        })
+      })
       const j = await res.json()
       if (j?.success) {
         if (j.type === 'gradient') {
           onUpdateSelected({ data: { ...(sel.data || {}), gradient: j.imageUrl, url: '', alt: (sel.data?.alt || ''), caption: (sel.data?.caption || ''), fit: 'cover' } })
+          // Surface fallback reason if available
+          const reason = j?.debugInfo?.reason || j?.debug?.reason || j?.reason || (j?.errors ? String(j.errors) : '')
+          if (reason) {
+            toast({ title: 'Used placeholder image', description: String(reason).slice(0, 300), variant: 'warning' })
+          }
         } else if (j.imageUrl) {
           onUpdateSelected({ data: { ...(sel.data || {}), url: j.imageUrl, gradient: '', fit: 'cover' } })
         }
@@ -940,6 +985,30 @@ export default function LessonBuilder() {
     try { document.documentElement.setAttribute('data-canvas-scale', String(zoom)) } catch {}
     return () => { try { document.documentElement.removeAttribute('data-canvas-scale') } catch {} }
   }, [zoom])
+  // Non-passive wheel handler for zooming to avoid passive event error
+  useEffect(()=>{
+    const el = viewportRef.current
+    if (!el) return
+    const onWheel = (e: WheelEvent) => {
+      // zoom with wheel; keep point under cursor stable
+      e.preventDefault()
+      const rect = el.getBoundingClientRect()
+      const mouseX = e.clientX - rect.left
+      const mouseY = e.clientY - rect.top
+      const z0 = zoom
+      const factor = e.deltaY > 0 ? 0.9 : 1.1
+      const z1 = Math.max(0.5, Math.min(1.5, Number((z0 * factor).toFixed(2))))
+      if (z1 === z0) return
+      userZoomedRef.current = true
+      const cx = (mouseX - pan.x) / z0
+      const cy = (mouseY - pan.y) / z0
+      const newPan = { x: mouseX - cx * z1, y: mouseY - cy * z1 }
+      setZoom(z1)
+      setPan(prev => clampPan(z1, newPan))
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => { el.removeEventListener('wheel', onWheel as any) }
+  }, [zoom, pan.x, pan.y])
   const autoSaveRef = useRef<NodeJS.Timeout | null>(null)
   const firstLoadRef = useRef(true)
   const { session } = useAuth()
@@ -1139,25 +1208,6 @@ export default function LessonBuilder() {
           ref={viewportRef}
           className="relative flex items-center justify-center p-4 bg-transparent"
           data-canvas-scale={zoom}
-          onWheel={(e)=>{
-            // zoom with wheel; keep point under cursor stable
-            e.preventDefault()
-            const rect = viewportRef.current?.getBoundingClientRect()
-            if (!rect) return
-            const mouseX = e.clientX - rect.left
-            const mouseY = e.clientY - rect.top
-            const z0 = zoom
-            const factor = e.deltaY > 0 ? 0.9 : 1.1
-            const z1 = Math.max(0.5, Math.min(1.5, Number((z0 * factor).toFixed(2))))
-            if (z1 === z0) return
-            userZoomedRef.current = true
-            // content coord under cursor
-            const cx = (mouseX - pan.x) / z0
-            const cy = (mouseY - pan.y) / z0
-            const newPan = { x: mouseX - cx * z1, y: mouseY - cy * z1 }
-            setZoom(z1)
-            setPan(clampPan(z1, newPan))
-          }}
         >
                   {/* Unscaled wrapper matching design size for alignment box */}
                   <div

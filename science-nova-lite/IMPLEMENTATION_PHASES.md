@@ -10,6 +10,24 @@ Conventions:
 Last updated: 2025-08-16
 
 ---
+## Phase 16 — Student lesson UX polish (solid navbar, softer canvas border, tool-specific light backgrounds)
+Date: 2025-08-18
+Goal: Improve readability on student lesson pages by using a solid navbar background only on lesson content, softening the canvas border, and assigning light background colors per tool.
+
+Key edits:
+- `components/layout/navbar.tsx`:
+  - Detect `/lessons/[id]` route and switch navbar from translucent to `bg-white/95 shadow-md` only for those pages. Other routes remain unchanged.
+- `app/lessons/[id]/page.tsx`:
+  - Reduced the visibility of the desktop canvas border (`border-white/20`) while keeping layout constraints.
+- `components/student-tool-card.tsx`:
+  - Added per-tool light backgrounds (Text, Flashcards, Quiz, Crossword, Image) to help visual scanning while preserving the existing gradient frame.
+
+Validation:
+- On `/lessons/[id]` the header appears solid, improving contrast over Vanta. On other pages it remains translucent.
+- The canvas border is subtler but still delineates the content area.
+- Each tool panel shows a distinct, light background tone without overpowering content.
+
+---
 
 ## Phase 1 — Fixed Navbar overlay and label rename (Global UX)
 Goal: Ensure content doesn’t sit under the fixed navbar; rename Topics → Lessons in the nav.

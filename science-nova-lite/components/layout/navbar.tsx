@@ -60,6 +60,13 @@ export function Navbar() {
 
   const navRef = useRef<HTMLElement | null>(null)
   const [navHeight, setNavHeight] = useState<number>(80)
+  // Solid navbar only on lesson content pages: /lessons/[id] and /lessons/preview
+  const isStudentLessonPage = (() => {
+    const p = pathname || ""
+    if (p === "/lessons" || p === "/lessons/mine") return false
+    if (p === "/lessons/preview") return true
+    return p.startsWith("/lessons/") && p.split("/").length === 3
+  })()
 
   useEffect(() => {
     const updateHeight = () => {
@@ -73,7 +80,10 @@ export function Navbar() {
   return (
     <>
       {/* Fixed header */}
-      <nav ref={navRef as any} className={`fixed top-0 left-0 right-0 z-50 backdrop-blur-xl ${theme.border.primary} border-b-2 border-white/10 ${theme.background.transparent}`}>
+      <nav
+        ref={navRef as any}
+  className={`fixed top-0 left-0 right-0 z-50 backdrop-blur-xl ${theme.border.primary} border-b-2 border-white/10 ${isStudentLessonPage ? "bg-slate-50/95 shadow-md" : theme.background.transparent}`}
+      >
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
           <div className="group">
