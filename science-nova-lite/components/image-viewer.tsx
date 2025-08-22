@@ -25,20 +25,20 @@ export function ImageViewer({
 
   const imgClasses =
     variant === 'canvas'
-      ? 'w-full h-[calc(100%-1.5rem)] rounded border border-gray-200 object-center'
-      : 'w-full rounded border border-gray-200 object-center'
+  ? 'w-full h-[calc(100%-2rem)] rounded-lg object-center'
+      : 'w-full rounded-lg object-center'
 
   const gradientClasses =
     variant === 'canvas'
-      ? 'w-full h-[calc(100%-1.5rem)] rounded border border-gray-200'
-      : 'w-full h-48 rounded border border-gray-200'
+  ? 'w-full h-[calc(100%-2rem)] rounded-lg'
+      : 'w-full h-48 rounded-lg'
 
   const EmptyState = (
     <div
       className={
         variant === 'canvas'
-          ? 'w-full h-[calc(100%-1.5rem)] rounded border border-dashed border-gray-300 grid place-items-center text-gray-500 text-sm'
-          : 'w-full h-48 rounded border border-dashed border-gray-300 grid place-items-center text-gray-500 text-sm'
+          ? 'w-full h-[calc(100%-2rem)] rounded-lg border border-dashed border-gray-300 grid place-items-center text-gray-500 text-sm'
+          : 'w-full h-48 rounded-lg border border-dashed border-gray-300 grid place-items-center text-gray-500 text-sm'
       }
     >
       No image
@@ -48,12 +48,10 @@ export function ImageViewer({
   const LoadingState = (
     <div
       aria-busy="true"
-      className={
-        (variant === 'canvas'
-          ? 'w-full h-[calc(100%-1.5rem)]'
-          : 'w-full h-48') +
-        ' rounded border border-gray-200 overflow-hidden'
-      }
+    className={
+  (variant === 'canvas' ? 'w-full h-[calc(100%-2rem)]' : 'w-full h-48') +
+  ' rounded-lg overflow-hidden'
+    }
     >
       <div className="w-full h-full animate-pulse bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 bg-[length:200%_100%]" />
     </div>
@@ -62,12 +60,10 @@ export function ImageViewer({
   const ErrorState = (
     <div
       role="alert"
-      className={
-        (variant === 'canvas'
-          ? 'w-full h-[calc(100%-1.5rem)]'
-          : 'w-full h-48') +
-        ' rounded border border-dashed border-red-300 grid place-items-center text-red-600 text-sm p-3 text-center'
-      }
+    className={
+  (variant === 'canvas' ? 'w-full h-[calc(100%-2rem)]' : 'w-full h-48') +
+  ' rounded-lg border border-dashed border-red-300 grid place-items-center text-red-600 text-sm p-3 text-center'
+    }
     >
       <div>
         <div className="font-medium">Image failed to load</div>
@@ -119,12 +115,14 @@ export function ImageViewer({
       ) : (
         EmptyState
       )}
-      {caption && <figcaption className="text-xs text-gray-600 mt-1">{caption}</figcaption>}
+  {caption && <figcaption className="text-sm font-medium mt-1 leading-snug">{caption}</figcaption>}
     </figure>
   )
 }
 
 function appendBust(url: string, key: number) {
+  // For data URLs or blob/object URLs, don't append query params
+  if (/^(data:|blob:|filesystem:)/i.test(url)) return url
   const sep = url.includes('?') ? '&' : '?'
   return `${url}${sep}t=${key}`
 }

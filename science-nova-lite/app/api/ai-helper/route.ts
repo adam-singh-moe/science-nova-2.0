@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
   // Safe body parse
   let body: any = {}
   try { body = await req.json() } catch {}
-  const { tool, grade, topic, prompt, limit, difficulty } = body || {}
+  const { tool, grade, topic, prompt, limit, difficulty, minWords, maxWords } = body || {}
   if (!tool || !grade) {
     const res = NextResponse.json({ error: 'tool and grade are required' }, { status: 400 })
     res.headers.set('Cache-Control', 'no-store')
@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
   if (tool === 'FLASHCARDS') {
     task += `\nProduce 3 short Q&A flashcards about the topic. Respond ONLY as compact JSON of the form: {"cards":[{"q":"...","a":"..."}, ...]}. ${prompt ? `Extra guidance: ${prompt}` : ''}`
   } else if (tool === 'CROSSWORD') {
-    const n = Math.max(4, Math.min(12, Number(limit) || 8))
+    const n = Math.max(4, Math.min(30, Number(limit) || 8))
     task += `\nSelect ${n} high-value vocabulary words for this topic and grade.
 For EACH word, write ONE short, student-friendly definition that describes what the word is or means in the context of the topic.
 Rules: Do NOT include the word itself or its direct forms; no letter-count or pattern hints; use only meaningful definitions tied to the lesson.
@@ -80,7 +80,10 @@ ${prompt ? `Extra guidance: ${prompt}` : ''}`
   } else if (tool === 'QUIZ') {
     task += `\nDraft a short mixed quiz (MCQ, True/False, Fill-in). Keep it age-appropriate. Respond ONLY as JSON: {"items":[{"type":"MCQ","question":"...","options":["A","B","C","D"],"answer":"A"},{"type":"TF","question":"...","answer":true},{"type":"FIB","question":"...","answer":"..."}]}. ${prompt ? `Extra guidance: ${prompt}` : ''}`
   } else {
-    task += `\nWrite a concise explanatory paragraph. ${prompt ? `Extra guidance: ${prompt}` : ''}`
+    const minW = Number.isFinite(Number(minWords)) ? Number(minWords) : undefined
+    const maxW = Number.isFinite(Number(maxWords)) ? Number(maxWords) : undefined
+    const range = minW && maxW ? `Aim for ${minW}-${maxW} words.` : minW ? `At least ${minW} words.` : maxW ? `No more than ${maxW} words.` : ''
+    task += `\nWrite a concise explanatory paragraph. ${range} ${prompt ? `Extra guidance: ${prompt}` : ''}`
   }
 
   let resText = ''

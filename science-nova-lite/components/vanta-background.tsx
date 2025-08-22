@@ -7,6 +7,8 @@ interface VantaBackgroundProps {
   className?: string
   children?: ReactNode
   scoped?: boolean
+  // Optional visual preset (no schema changes needed). If omitted, a preset is auto-picked per effect for good contrast.
+  preset?: "dark" | "ocean" | "nebula" | "forest" | "sunset"
 }
 
 declare global {
@@ -16,12 +18,25 @@ declare global {
   }
 }
 
-export function VantaBackground({ effect = "GLOBE", className = "", children, scoped = false }: VantaBackgroundProps) {
+export function VantaBackground({ effect = "GLOBE", className = "", children, scoped = false, preset }: VantaBackgroundProps) {
   const vantaRef = useRef<HTMLDivElement>(null)
   const vantaEffect = useRef<any>(null)
 
   useEffect(() => {
     if (!vantaRef.current) return
+
+    const applyHighlightTokens = (p?: VantaBackgroundProps["preset"]) => {
+      try {
+        const el = document.documentElement
+        const palette = getPalette(p)
+        // Light-on-dark default highlights tuned per palette
+        const bg = `rgba(${((palette.primary>>16)&255)}, ${((palette.primary>>8)&255)}, ${(palette.primary&255)}, 0.16)`
+        const stroke = `rgba(255,255,255,0.18)`
+        el.style.setProperty('--sn-highlight-bg', bg)
+        el.style.setProperty('--sn-highlight-stroke', stroke)
+        el.setAttribute('data-vanta-preset', String(p||'dark'))
+      } catch {}
+    }
 
     const loadVanta = async () => {
       try {
@@ -39,7 +54,7 @@ export function VantaBackground({ effect = "GLOBE", className = "", children, sc
           })
         }
 
-        const effectName = effect.toLowerCase()
+  const effectName = effect.toLowerCase()
         let scriptUrl = ""
 
         switch (effectName) {
@@ -99,7 +114,9 @@ export function VantaBackground({ effect = "GLOBE", className = "", children, sc
         await new Promise((resolve) => setTimeout(resolve, 200))
 
         if (window.VANTA && window.THREE && vantaRef.current) {
-          const effectConfig = getEffectConfig(effectName)
+          const chosenPreset = preset || choosePresetForEffect(effectName)
+          const effectConfig = getEffectConfig(effectName, chosenPreset)
+          applyHighlightTokens(chosenPreset)
           const VantaEffect = getVantaEffect(effectName)
 
           if (VantaEffect && typeof VantaEffect === "function") {
@@ -118,7 +135,7 @@ export function VantaBackground({ effect = "GLOBE", className = "", children, sc
         } else {
           applyFallbackBackground(effectName)
         }
-      } catch {
+  } catch {
         applyFallbackBackground(effect.toLowerCase())
       }
     }
@@ -126,15 +143,15 @@ export function VantaBackground({ effect = "GLOBE", className = "", children, sc
     const applyFallbackBackground = (effectName: string) => {
       if (vantaRef.current) {
         const gradients = {
-          birds: "linear-gradient(135deg, #ff6b6b 0%, #4ecdc4 100%)",
-          halo: "linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%)",
-          net: "linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)",
-          topology: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
-          clouds2: "linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)",
-          rings: "linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)",
-          cells: "linear-gradient(135deg, #ec4899 0%, #be185d 100%)",
-          waves: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
-          globe: "linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #1e40af 100%)",
+          birds: "linear-gradient(135deg, #0b1221 0%, #12243f 60%, #0b1221 100%)",
+          halo: "linear-gradient(135deg, #0b0f1a 0%, #1b1f3b 100%)",
+          net: "linear-gradient(135deg, #0b1221 0%, #0d1b2a 100%)",
+          topology: "linear-gradient(135deg, #1a1f2b 0%, #2a2f3b 100%)",
+          clouds2: "linear-gradient(135deg, #0c1a2a 0%, #102a43 100%)",
+          rings: "linear-gradient(135deg, #0b0f1a 0%, #1a1030 100%)",
+          cells: "linear-gradient(135deg, #101826 0%, #16324a 100%)",
+          waves: "linear-gradient(135deg, #081826 0%, #0b2a3d 100%)",
+          globe: "linear-gradient(135deg, #0b1221 0%, #12243f 50%, #0b1221 100%)",
         }
 
         const gradient = gradients[effectName as keyof typeof gradients] || gradients.globe
@@ -154,7 +171,7 @@ export function VantaBackground({ effect = "GLOBE", className = "", children, sc
         vantaEffect.current = null
       }
     }
-  }, [effect])
+  }, [effect, preset])
 
   const loadScript = (src: string): Promise<void> => {
     return new Promise((resolve, reject) => {
@@ -199,7 +216,46 @@ export function VantaBackground({ effect = "GLOBE", className = "", children, sc
     }
   }
 
-  const getEffectConfig = (effectType: string) => {
+  // High-contrast, dark-leaning palettes that keep white text readable over the background.
+  const getPalette = (presetName?: VantaBackgroundProps["preset"]) => {
+    const p = presetName
+    switch (p) {
+      case "ocean":
+        return { bg: 0x0b1221, primary: 0x52a7f9, secondary: 0x1ec8c8 }
+      case "nebula":
+        return { bg: 0x0b0f1a, primary: 0x9b5cff, secondary: 0xff5cf7 }
+      case "forest":
+        return { bg: 0x0c1612, primary: 0x52d49b, secondary: 0x93ff88 }
+      case "sunset":
+        return { bg: 0x1a1210, primary: 0xff9f6e, secondary: 0xff5e78 }
+      case "dark":
+      default:
+        return { bg: 0x0b1221, primary: 0x52a7f9, secondary: 0x7c90ff }
+    }
+  }
+
+  // Auto-pick a sensible preset if none is provided, based on effect.
+  const choosePresetForEffect = (effectType: string): VantaBackgroundProps["preset"] => {
+    switch (effectType) {
+      case "clouds2":
+      case "waves":
+        return "ocean"
+      case "rings":
+      case "halo":
+        return "nebula"
+      case "birds":
+      case "cells":
+        return "forest"
+      case "topology":
+        return "sunset"
+      case "net":
+      case "globe":
+      default:
+        return "dark"
+    }
+  }
+
+  const getEffectConfig = (effectType: string, explicitPreset?: VantaBackgroundProps["preset"]) => {
     const baseConfig = {
       mouseControls: true,
       touchControls: true,
@@ -210,28 +266,29 @@ export function VantaBackground({ effect = "GLOBE", className = "", children, sc
       scaleMobile: 1.0,
     }
 
+    const palette = getPalette(explicitPreset || choosePresetForEffect(effectType))
+
     switch (effectType) {
       case "birds":
         return {
           ...baseConfig,
-          backgroundColor: 0xe2edc9,
-          color1: 0x397203,
-          color2: 0x6cff,
-          colorMode: "varianceGradient",
-          birdSize: 1.5,
+          backgroundColor: palette.bg,
+          color1: palette.primary,
+          color2: palette.secondary,
+          birdSize: 1.2,
           wingSpan: 25.0,
-          speedLimit: 4.0,
+          speedLimit: 3.5,
           separation: 18.0,
           alignment: 18.0,
           cohesion: 18.0,
-          quantity: 5.0,
+          quantity: 3.0,
         }
       case "halo":
         return {
           ...baseConfig,
-          backgroundColor: 0x0,
-          color: 0x1a59,
-          size: 1.5,
+          backgroundColor: palette.bg,
+          color: palette.primary,
+          size: 1.2,
           amplitudeFactor: 1.0,
           xOffset: 0.1,
           yOffset: 0.1,
@@ -239,66 +296,68 @@ export function VantaBackground({ effect = "GLOBE", className = "", children, sc
       case "net":
         return {
           ...baseConfig,
-          backgroundColor: 0xf0f0f,
-          color: 0x486141,
-          points: 15.0,
-          maxDistance: 25.0,
-          spacing: 18.0,
+          backgroundColor: palette.bg,
+          color: palette.primary,
+          points: 12.0,
+          maxDistance: 22.0,
+          spacing: 16.0,
         }
       case "topology":
         return {
           ...baseConfig,
-          backgroundColor: 0x2222,
-          color: 0x89964e,
+          backgroundColor: palette.bg,
+          color: palette.primary,
         }
       case "clouds2":
         return {
           ...baseConfig,
-          backgroundColor: 0x0,
-          skyColor: 0x5ca6ca,
-          cloudColor: 0x4d4d4d,
+          backgroundColor: palette.bg,
+          skyColor: palette.primary,
+          cloudColor: 0x2a3f55,
           lightColor: 0xffffff,
-          speed: 0.8,
+          speed: 0.6,
         }
       case "rings":
         return {
           ...baseConfig,
-          backgroundColor: 0x202428,
-          color: 0x88ff00,
+          backgroundColor: palette.bg,
+          color: palette.primary,
         }
       case "cells":
         return {
           ...baseConfig,
-          color1: 0x8c8c,
-          color2: 0x33ca28,
-          size: 1.5,
-          speed: 1.0,
+          backgroundColor: palette.bg,
+          color1: palette.primary,
+          color2: palette.secondary,
+          size: 1.3,
+          speed: 0.9,
         }
       case "globe":
         return {
           ...baseConfig,
-          backgroundColor: 0xcbe6e6,
-          color: 0x870c,
-          color2: 0x39bbfa,
-          size: 1.5,
+          backgroundColor: palette.bg,
+          color: palette.primary,
+          color2: palette.secondary,
+          size: 1.2,
           scale: 1.0,
         }
       case "waves":
         return {
           ...baseConfig,
-          color: 0xd3b84,
+          backgroundColor: palette.bg,
+          color: palette.primary,
           shininess: 30.0,
           waveHeight: 15.0,
-          waveSpeed: 1.0,
+          waveSpeed: 0.8,
           zoom: 1.0,
         }
       default:
         return {
           ...baseConfig,
-          backgroundColor: 0xcbe6e6,
-          color: 0x870c,
-          color2: 0x39bbfa,
-          size: 1.5,
+          backgroundColor: palette.bg,
+          color: palette.primary,
+          color2: palette.secondary,
+          size: 1.2,
           scale: 1.0,
         }
     }

@@ -4,6 +4,7 @@
 
 /* Keep styles minimal here; we'll rely on the original project's variables. */
 :root {
+  --kids-font-scale: 1; /* app-wide base scaling; adjust via UI controls per tool */
   --background: 210 40% 98%;
   --foreground: 222 84% 4%;
   --card: 220 20% 100%;
@@ -34,12 +35,27 @@
 body { color: hsl(var(--foreground)); min-height: 100vh; }
 
 /* Minimal rich text defaults for lesson TEXT blocks (Phase 2) */
-.richtext { font-size: 17px; line-height: 1.75; color: #111827; }
-.richtext h1 { font-size: 1.5rem; line-height: 1.25; margin: 0 0 0.5rem 0; font-weight: 800; color: #1f2937; }
-.richtext h2 { font-size: 1.25rem; line-height: 1.35; margin: 0.75rem 0 0.5rem 0; font-weight: 700; color: #1f2937; }
+.richtext { font-size: calc(17px * var(--kids-font-scale)); line-height: 1.8; color: #111827; }
+.richtext h1 { font-size: calc(1.5rem * var(--kids-font-scale)); line-height: 1.25; margin: 0 0 0.5rem 0; font-weight: 800; color: #1f2937; }
+.richtext h2 { font-size: calc(1.25rem * var(--kids-font-scale)); line-height: 1.35; margin: 0.75rem 0 0.5rem 0; font-weight: 700; color: #1f2937; }
 .richtext p { margin: 0.5rem 0; }
 .richtext ul, .richtext ol { margin: 0.5rem 1.25rem; padding-left: 1rem; }
 .richtext li { margin: 0.25rem 0; }
 .richtext a { color: #2563eb; text-decoration: underline transparent; transition: text-decoration-color 150ms; }
 .richtext a:hover, .richtext a:focus { text-decoration-color: currentColor; outline: none; }
 .richtext code { background: #f3f4f6; padding: 0.1rem 0.25rem; border-radius: 0.25rem; }
+
+/* Read-aloud highlight */
+.sn-reading {
+  background: var(--sn-highlight-bg, rgba(255,255,255,0.12));
+  box-shadow: inset 0 0 0 1px var(--sn-highlight-stroke, rgba(255,255,255,0.18));
+  border-radius: 0.3rem;
+  padding: 0.05rem 0.15rem;
+}
+
+/* Dyslexic font support if present */
+.font-dyslexic { font-family: 'OpenDyslexic', 'Atkinson Hyperlegible', system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+
+/* Headline helpers (used in header) */
+.kid-h1 { font-size: calc(28px * var(--kids-font-scale)); line-height: 1.2; }
+.kid-h2 { font-size: calc(22px * var(--kids-font-scale)); line-height: 1.25; }

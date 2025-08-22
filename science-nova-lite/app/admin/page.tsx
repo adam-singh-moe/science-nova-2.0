@@ -20,7 +20,7 @@ import {
   XAxis,
   Cell,
 } from "recharts"
-import { BarChart2, BookOpen, CircleDollarSign, LineChart, Plus, Rocket } from "lucide-react"
+import { BarChart2, BookOpen, CircleDollarSign, LineChart, Plus, Rocket, Eye } from "lucide-react"
 
 type Lesson = { id: string; title: string; status: "draft" | "published"; updated_at: string; grade_level: number | null }
 
@@ -135,6 +135,12 @@ export default function AdminHome() {
                 className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-gray-700 ring-1 ring-inset ring-gray-200 hover:bg-gray-50"
               >
                 <BookOpen className="h-4 w-4" /> Published Lessons
+              </Link>
+              <Link
+                href="/lessons"
+                className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-gray-700 ring-1 ring-inset ring-gray-200 hover:bg-gray-50"
+              >
+                <Eye className="h-4 w-4" /> Return to Student View
               </Link>
             </div>
           </div>

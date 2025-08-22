@@ -142,6 +142,14 @@ export default function ProfilePage() {
                   <span className="font-medium">{fullName || "—"}</span>
                 </div>
                 <div className="flex justify-between">
+                  <span className="text-gray-600">Email</span>
+                  <span className="font-medium">{user?.email || "—"}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Role</span>
+                  <span className="font-medium capitalize">{profile?.role?.toLowerCase() || "—"}</span>
+                </div>
+                <div className="flex justify-between">
                   <span className="text-gray-600">Grade</span>
                   <span className="font-medium">{gradeLevel ? `Grade ${gradeLevel}` : "—"}</span>
                 </div>

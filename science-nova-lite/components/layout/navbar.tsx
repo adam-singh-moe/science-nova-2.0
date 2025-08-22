@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import { Sparkles, LogOut, User, Settings, Home, BookOpen, Trophy, LogIn, Crown, Star } from "lucide-react"
+import { Sparkles, LogOut, User, Settings, Home, BookOpen, Trophy, LogIn, Crown, Star, Shield } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
@@ -34,6 +34,9 @@ export function Navbar() {
   const displayUser = user && profile ? { full_name: profile.full_name || user.email?.split('@')[0] || "User", email: user.email || "user@example.com" } : mockUser
   const isAuthenticated = !!user
   const isDemoMode = !isAuthenticated
+  
+  // Check if user has admin access (ADMIN, TEACHER, or DEVELOPER roles)
+  const hasAdminAccess = profile?.role && ['ADMIN', 'TEACHER', 'DEVELOPER'].includes(profile.role)
 
   useEffect(() => {
     const fetchUserProgress = async () => {
@@ -82,7 +85,7 @@ export function Navbar() {
       {/* Fixed header */}
       <nav
         ref={navRef as any}
-  className={`fixed top-0 left-0 right-0 z-50 backdrop-blur-xl ${theme.border.primary} border-b-2 border-white/10 ${isStudentLessonPage ? "bg-slate-50/95 shadow-md" : theme.background.transparent}`}
+  className={`fixed top-0 left-0 right-0 z-50 backdrop-blur-xl ${theme.border.primary} border-b-2 border-white/10 ${isStudentLessonPage ? "bg-white/20" : theme.background.transparent}`}
       >
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
@@ -167,6 +170,14 @@ export function Navbar() {
                     <User className="mr-2 h-4 w-4" /> Profile Settings
                   </Link>
                 </DropdownMenuItem>
+
+                {hasAdminAccess && (
+                  <DropdownMenuItem asChild>
+                    <Link href="/admin" className={`${theme.text.secondary} hover:bg-accent/20 rounded-lg cursor-pointer`}>
+                      <Shield className="mr-2 h-4 w-4" /> Admin Dashboard
+                    </Link>
+                  </DropdownMenuItem>
+                )}
 
                 <DropdownMenuSeparator className="bg-gray-400" />
                 {isAuthenticated ? (

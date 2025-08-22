@@ -2,6 +2,7 @@
 
 import React from "react"
 import { postLessonEvent } from '@/lib/lessonTelemetry'
+import { setBlockDone } from '@/lib/progress'
 
 export type Card = { q: string; a: string }
 
@@ -10,6 +11,7 @@ export function FlashcardsViewer({ cards, storageKey }: { cards: Card[]; storage
   const [flipped, setFlipped] = React.useState(false)
   const [mounted, setMounted] = React.useState(false)
   const containerRef = React.useRef<HTMLDivElement>(null)
+  const accent = 'var(--sn-accent, #c026d3)'
 
   React.useEffect(() => {
     if (!storageKey) return
@@ -70,6 +72,8 @@ export function FlashcardsViewer({ cards, storageKey }: { cards: Card[]; storage
         postLessonEvent({ lessonId, blockId, toolKind: 'FLASHCARDS', eventType: 'flash_flip', data: { index } })
         if (progressPct === 100 && total > 0) {
           postLessonEvent({ lessonId, blockId, toolKind: 'FLASHCARDS', eventType: 'flash_cycle', data: { cards: total } })
+          // Mark block as completed when user reaches the last card
+          setBlockDone({ lessonId, blockId }, true)
         }
       }
     } catch {}
@@ -87,7 +91,7 @@ export function FlashcardsViewer({ cards, storageKey }: { cards: Card[]; storage
         </div>
         {total > 0 && (
           <div className="mt-2 h-1.5 w-full rounded-full bg-gray-200 overflow-hidden">
-            <div className="h-full bg-fuchsia-500" style={{ width: `${progressPct}%` }} />
+            <div className="h-full" style={{ width: `${progressPct}%`, backgroundColor: accent }} />
           </div>
         )}
       </div>
@@ -135,9 +139,9 @@ export function FlashcardsViewer({ cards, storageKey }: { cards: Card[]; storage
               <div className="mt-2 text-xs text-gray-500">Click or press “F” to flip • Use [ / ] or Arrow keys to navigate</div>
             </div>
           <div className="mt-3 flex items-center gap-2">
-            <button className="px-3 py-1.5 rounded border bg-white hover:bg-fuchsia-50/60 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-fuchsia-400" onClick={prev} disabled={index===0}>Prev</button>
-            <button className="px-3 py-1.5 rounded border bg-white hover:bg-fuchsia-50/60 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-fuchsia-400" onClick={next} disabled={index===total-1}>Next</button>
-            <button className="ml-auto px-3 py-1.5 rounded border bg-white hover:bg-fuchsia-50/60" onClick={reset}>Restart</button>
+            <button className="px-3 py-1.5 rounded border bg-white text-gray-700 hover:bg-fuchsia-50/60 hover:text-gray-800 disabled:opacity-50 disabled:text-gray-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2" style={{ outlineColor: accent }} onClick={prev} disabled={index===0}>Prev</button>
+            <button className="px-3 py-1.5 rounded border bg-white text-gray-700 hover:bg-fuchsia-50/60 hover:text-gray-800 disabled:opacity-50 disabled:text-gray-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2" style={{ outlineColor: accent }} onClick={next} disabled={index===total-1}>Next</button>
+            <button className="ml-auto px-3 py-1.5 rounded border bg-white text-gray-700 hover:bg-fuchsia-50/60 hover:text-gray-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2" style={{ outlineColor: accent }} onClick={reset}>Restart</button>
           </div>
         </div>
       ) : (

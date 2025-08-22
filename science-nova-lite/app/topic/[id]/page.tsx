@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from "react"
 import { useParams } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import { VantaBackground } from "@/components/vanta-background"
+import { getVantaForStudyArea } from "@/lib/vanta-presets"
 import { ScienceLoading } from "@/components/ui/science-loading"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -31,14 +32,11 @@ interface Content { lessonContent: string; flashcards: Flashcard[]; quiz: QuizQu
 type PageStatus = "loading" | "generating" | "success" | "error"
 interface PageState { status: PageStatus; topic: Topic | null; content: Content | null; error: string | null }
 
-const getVantaEffectForStudyArea = (studyArea: string): string => {
-  const effectMap: Record<string, string> = { Biology: "birds", Physics: "halo", Chemistry: "net", Geology: "topology", Meteorology: "clouds2", Astronomy: "rings", Anatomy: "cells" }
-  return effectMap[studyArea] || "birds"
-}
+// Replaced by shared lib/vanta-presets.ts
 
 const TopicLoading = () => (
   <>
-    <VantaBackground />
+  <VantaBackground />
   <ScienceLoading message="🌟 Loading your amazing topic..." type="orbit" />
   </>
 )
@@ -190,7 +188,7 @@ const TopicView = ({ topic, content, status, onRetry }: { topic: Topic; content:
 
   return (
     <>
-      <VantaBackground effect={getVantaEffectForStudyArea(topic.study_areas?.name || "Biology")} />
+  {(() => { const { effect, preset } = getVantaForStudyArea(topic.study_areas?.name || ""); return <VantaBackground effect={effect} preset={preset} /> })()}
       <ExplorerHUD topicTitle={topic.title} studyAreaName={topic.study_areas?.name || "Science"} gradeLevel={topic.grade_level} />
       <div className="min-h-screen pt-24 p-6">
         <div className="max-w-7xl mx-auto">

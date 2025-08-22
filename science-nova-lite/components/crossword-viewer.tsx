@@ -2,6 +2,7 @@
 
 import React from "react"
 import { postLessonEvent } from '@/lib/lessonTelemetry'
+import { setBlockDone } from '@/lib/progress'
 
 export type CWWord = {
   id: string
@@ -13,16 +14,17 @@ export type CWWord = {
 }
 
 export function CrosswordViewer({
-  rows,
-  cols,
   words,
   storageKey,
 }: {
-  rows: number
-  cols: number
   words: CWWord[]
   storageKey?: string
 }) {
+  // Auto-determine grid size based on word count
+  const isLarge = words.length > 15
+  const rows = isLarge ? 24 : 15
+  const cols = isLarge ? 24 : 15
+  
   const [responses, setResponses] = React.useState<Record<string, string>>({})
   const [selectedId, setSelectedId] = React.useState<string | null>(null)
   const [submitted, setSubmitted] = React.useState(false)
@@ -94,6 +96,7 @@ export function CrosswordViewer({
   }, [])
 
   const inputRef = React.useRef<HTMLInputElement>(null)
+  const accent = 'var(--sn-accent, #10b981)'
 
   function cellKey(r: number, c: number) {
     return `r${r}c${c}`
@@ -120,9 +123,9 @@ export function CrosswordViewer({
 
   function cellClasses(r: number, c: number) {
     const v = cells.get(`${r},${c}`)
-    if (!v) return "bg-gray-200" // blocked/empty
+    if (!v) return "bg-transparent" // blocked/empty
     const inSelected = selectedId ? v.words.includes(selectedId) : false
-    return inSelected ? "bg-yellow-50" : "bg-white"
+    return inSelected ? "bg-white shadow-md" : "bg-white"
   }
 
   function moveFocus(r: number, c: number, dir: "left" | "right" | "up" | "down") {
@@ -196,44 +199,51 @@ export function CrosswordViewer({
 
   const selected = currentWord()
 
+  // Fixed cell size for consistent appearance - adjusted for better fit
+  const cellSize = isLarge ? 'w-5 h-5 text-xs' : 'w-7 h-7 text-sm'
+
   return (
-    <div className={`grid gap-4 md:grid-cols-[auto_1fr] transition-all duration-500 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-1'}`}>
-      <div>
-        <div className="inline-block" role="group" aria-label="Crossword grid">
-          {grid.map((row, r) => (
-            <div key={r} className="flex">
-              {row.map((cell, c) => {
-                const val = responses[cellKey(r, c)] || ""
-                if (!cell) return <div key={c} className="w-8 h-8 border bg-gray-200" aria-hidden />
-                const isSel = selectedId && cell.words.includes(selectedId)
-                const showCorrect = submitted
-                const correct = showCorrect && isCorrectCell(r, c)
-                const wrongClass = showCorrect && !correct && (responses[cellKey(r,c)] || "").length > 0 ? 'line-through text-red-600' : ''
-        return (
-                  <input
-                    key={c}
-          className={`w-9 h-9 md:w-8 md:h-8 border text-center uppercase outline-none transition-all ${cellClasses(r, c)} ${showCorrect ? (correct ? 'border-green-500' : 'border-red-500') : 'hover:bg-emerald-50 focus:border-emerald-400'} ${wrongClass} ${focused && focused.r===r && focused.c===c ? 'ring-2 ring-emerald-400 scale-[1.05]' : ''}`}
-                    value={val}
-                    maxLength={1}
-                    readOnly={submitted && correct}
-          onChange={(e) => onInput(r, c, e.target.value)}
-          onFocus={() => { selectByCell(r, c); setFocused({ r, c }) }}
-          onBlur={() => setFocused(null)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'ArrowLeft') { e.preventDefault(); moveFocus(r, c, 'left') }
-                      else if (e.key === 'ArrowRight') { e.preventDefault(); moveFocus(r, c, 'right') }
-                      else if (e.key === 'ArrowUp') { e.preventDefault(); moveFocus(r, c, 'up') }
-                      else if (e.key === 'ArrowDown') { e.preventDefault(); moveFocus(r, c, 'down') }
-                    }}
-                    aria-label={`Cell ${r+1}, ${c+1}${isSel ? ' (in selected word)' : ''}`}
-                  />
-                )
-              })}
-            </div>
-          ))}
+    <div className={`grid gap-4 md:grid-cols-[1fr_280px] transition-all duration-500 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-1'}`}>
+      <div className="flex flex-col items-center min-w-0 overflow-auto">
+        <div className="bg-gray-700 rounded-lg p-4 inline-block" role="group" aria-label="Crossword grid">
+          <div className="grid gap-0" style={{ gridTemplateColumns: `repeat(${cols}, 1fr)`, gridTemplateRows: `repeat(${rows}, 1fr)` }}>
+            {Array.from({ length: rows * cols }, (_, index) => {
+              const r = Math.floor(index / cols)
+              const c = index % cols
+              const cell = grid[r]?.[c]
+              const val = responses[cellKey(r, c)] || ""
+              
+              if (!cell) return <div key={index} className={`${cellSize} bg-transparent`} aria-hidden />
+              
+              const isSel = selectedId && cell.words.includes(selectedId)
+              const showCorrect = submitted
+              const correct = showCorrect && isCorrectCell(r, c)
+              const wrongClass = showCorrect && !correct && (responses[cellKey(r,c)] || "").length > 0 ? 'line-through text-red-600' : ''
+              
+              return (
+                <input
+                  key={index}
+                  className={`${cellSize} border-0 text-center uppercase outline-none transition-all text-gray-800 font-medium ${cellClasses(r, c)} ${wrongClass}`}
+                  value={val}
+                  maxLength={1}
+                  readOnly={submitted && correct}
+                  onChange={(e) => onInput(r, c, e.target.value)}
+                  onFocus={() => { selectByCell(r, c); setFocused({ r, c }) }}
+                  onBlur={() => setFocused(null)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'ArrowLeft') { e.preventDefault(); moveFocus(r, c, 'left') }
+                    else if (e.key === 'ArrowRight') { e.preventDefault(); moveFocus(r, c, 'right') }
+                    else if (e.key === 'ArrowUp') { e.preventDefault(); moveFocus(r, c, 'up') }
+                    else if (e.key === 'ArrowDown') { e.preventDefault(); moveFocus(r, c, 'down') }
+                  }}
+                  aria-label={`Cell ${r+1}, ${c+1}${isSel ? ' (in selected word)' : ''}`}
+                />
+              )
+            })}
+          </div>
         </div>
-        <div className="mt-3 flex items-center gap-2">
-          <button className="px-3 py-1.5 rounded border bg-white hover:bg-emerald-50/60 focus:outline-none focus:ring-2 focus:ring-emerald-300" onClick={() => setSubmitted(true)}>
+        <div className="mt-2 flex items-center gap-2 flex-wrap">
+          <button className="px-2 py-1 text-sm rounded border bg-white text-gray-700 hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2" style={{ outlineColor: accent }} onClick={() => setSubmitted(true)}>
             Check all
           </button>
           {submitted && (()=>{
@@ -241,28 +251,33 @@ export function CrosswordViewer({
               const [_, lessonId, blockId] = (storageKey || '').split(':')
               if (lessonId && blockId) {
                 const wordsSolved = words.filter(isCompletedWord).length
-                postLessonEvent({ lessonId, blockId, toolKind: 'CROSSWORD', eventType: 'crossword_check', data: { completed: wordsSolved === words.length && words.length>0, wordsTotal: words.length, wordsSolved } })
+                const completed = wordsSolved === words.length && words.length > 0
+                postLessonEvent({ lessonId, blockId, toolKind: 'CROSSWORD', eventType: 'crossword_check', data: { completed, wordsTotal: words.length, wordsSolved } })
+                // Mark block as completed when all words are solved
+                if (completed) {
+                  setBlockDone({ lessonId, blockId }, true)
+                }
               }
             } catch {}
             return null
           })()}
           {selected && (
             <>
-              <button className="px-3 py-1.5 rounded border bg-white hover:bg-emerald-50/60 focus:outline-none focus:ring-2 focus:ring-emerald-300" onClick={() => revealWord(selected)}>Reveal word</button>
+              <button className="px-2 py-1 text-sm rounded border bg-white text-gray-700 hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2" style={{ outlineColor: accent }} onClick={() => revealWord(selected)}>Reveal word</button>
             </>
           )}
-          <button className="px-3 py-1.5 rounded border bg-white hover:bg-emerald-50/60 focus:outline-none focus:ring-2 focus:ring-emerald-300" onClick={resetAll}>Reset</button>
+          <button className="px-2 py-1 text-sm rounded border bg-white text-gray-700 hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2" style={{ outlineColor: accent }} onClick={resetAll}>Reset</button>
         </div>
       </div>
-      <div>
-        <div className="font-medium mb-2">Clues</div>
-        <div className="space-y-2">
+      <div className="min-w-0">
+        <div className="font-medium mb-2 text-gray-800">Clues</div>
+        <div className="space-y-1 max-h-80 overflow-y-auto">
           {words.map((w, i) => {
             const completed = isCompletedWord(w)
             return (
-              <button key={w.id} className={`w-full text-left px-3 py-2 rounded border transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-300 ${selectedId===w.id ? 'bg-emerald-50 border-emerald-300' : 'bg-white hover:bg-emerald-50/40'} ${completed ? 'opacity-60' : ''}`} onClick={() => setSelectedId(w.id)}>
-                <div className="text-sm">{i+1}. {w.clue || w.answer}</div>
-                <div className="text-xs text-gray-500">{w.dir} at ({w.row+1},{w.col+1}) • {w.answer.length} letters</div>
+              <button key={w.id} className={`w-full text-left px-3 py-2 rounded border transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${selectedId===w.id ? 'bg-gray-100 border-gray-400' : 'bg-white hover:bg-gray-50'} ${completed ? 'opacity-60' : ''}`} style={{ outlineColor: accent }} onClick={() => setSelectedId(w.id)}>
+                <div className="text-sm text-gray-800 leading-relaxed">{i+1}. {w.clue || w.answer}</div>
+                <div className="text-xs text-gray-500 mt-1">{w.dir} at ({w.row+1},{w.col+1}) • {w.answer.length} letters</div>
               </button>
             )
           })}

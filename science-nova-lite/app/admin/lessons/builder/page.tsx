@@ -2,12 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type React from "react"
+import Link from "next/link"
 import { RoleGuard } from "@/components/layout/role-guard"
 // Vanta background is not shown in the builder; only in Preview/Student
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/contexts/auth-context"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { BookOpen, Boxes, Cog, FileText, Grid3X3, HelpCircle, Layers, Plus, Shuffle, Type, MonitorSmartphone, ZoomIn, ZoomOut } from "lucide-react"
+import { BookOpen, Boxes, Cog, FileText, Grid3X3, HelpCircle, Layers, Plus, Shuffle, Type, MonitorSmartphone, ZoomIn, ZoomOut, ArrowLeft } from "lucide-react"
 import { Image as ImageIcon } from "lucide-react"
 import { FlashcardsViewer } from "@/components/flashcards-viewer"
 import { QuizViewer } from "@/components/quiz-viewer"
@@ -15,6 +16,10 @@ import { CrosswordViewer } from "@/components/crossword-viewer"
 import { toast } from "@/hooks/use-toast"
 import { ToastAction } from "@/components/ui/toast"
 import { useConfirm } from "@/hooks/use-confirm"
+import { StudentToolCard } from "@/components/student-tool-card"
+import { Panel } from "@/components/ui/panel"
+import ImageViewer from "@/components/image-viewer"
+import { VantaBackground } from "@/components/vanta-background"
 
 export type ToolKind = "TEXT" | "FLASHCARDS" | "QUIZ" | "CROSSWORD" | "IMAGE"
 
@@ -42,8 +47,10 @@ function LeftPalette({ onAdd, onOpenSettings }: { onAdd: (k: ToolKind) => void; 
   const iconWrap = "flex flex-col items-center gap-2"
   return (
     <aside className="w-16 shrink-0 p-3 bg-white/60 backdrop-blur border-r">
-      <div className="flex items-center justify-between mb-4">
-        <span className="sr-only">Tools</span>
+      <div className="flex flex-col items-center gap-2 mb-4">
+        <Link href="/admin" className="w-9 h-9 grid place-items-center rounded-lg border bg-white/80 hover:bg-white shadow-sm" title="Back to Admin">
+          <ArrowLeft className="h-4 w-4 text-gray-600" />
+        </Link>
         <button aria-label="Lesson settings" title="Lesson settings" onClick={onOpenSettings} className="w-9 h-9 grid place-items-center rounded-lg border bg-white/80 hover:bg-white shadow-sm">
           <Cog className="h-4 w-4 text-indigo-600" />
         </button>
@@ -127,104 +134,154 @@ function AiHelperPanel({ sel, meta, onUpdateSelected }: { sel: PlacedTool; meta:
   const placeCrossword = (rows: number, cols: number, words: CWWord[]): Placed[] => {
     const grid: (string | null)[][] = Array.from({ length: rows }, () => Array(cols).fill(null))
     const placed: Placed[] = []
-    const inside = (r: number, c: number) => r >= 0 && c >= 0 && r < rows && c < cols
-    const canPlace = (r: number, c: number, dir: CWDir, w: string): boolean => {
-      for (let i = 0; i < w.length; i++) {
-        const rr = r + (dir === 'down' ? i : 0)
-        const cc = c + (dir === 'across' ? i : 0)
-        if (!inside(rr, cc)) return false
-        const cur = grid[rr][cc]
-        if (cur && cur !== w[i]) return false
-        // adjacency rule: avoid touching on sides (except intersections)
-        if (!cur) {
-          const adj = [
-            [rr - 1, cc], [rr + 1, cc], [rr, cc - 1], [rr, cc + 1]
-          ]
-          for (const [ar, ac] of adj) {
-            if (!inside(ar, ac)) continue
-            const neighbor = grid[ar][ac]
-            if (neighbor) {
-              // if neighbor is part of a potential intersection different from letter cell, disallow
-              // allow when this cell will be letter-occupied (intersection allowed by cur check)
-              // we already know cur is null here, so side-touching not allowed
-              return false
-            }
-          }
+    
+    // Helper functions
+    const isValidPosition = (r: number, c: number) => r >= 0 && c >= 0 && r < rows && c < cols
+    
+    const canPlaceWord = (startRow: number, startCol: number, direction: CWDir, word: string): boolean => {
+      const length = word.length
+      
+      // Check if word fits within bounds
+      if (direction === 'across') {
+        if (startCol + length > cols) return false
+      } else {
+        if (startRow + length > rows) return false
+      }
+      
+      // Check each position of the word
+      for (let i = 0; i < length; i++) {
+        const r = direction === 'across' ? startRow : startRow + i
+        const c = direction === 'across' ? startCol + i : startCol
+        
+        const currentCell = grid[r][c]
+        const wordLetter = word[i]
+        
+        // If cell is occupied, it must match the word letter (intersection)
+        if (currentCell !== null && currentCell !== wordLetter) {
+          return false
         }
       }
+      
+      // Check that the word doesn't touch other words inappropriately
+      // (before start and after end should be empty)
+      const beforeR = direction === 'across' ? startRow : startRow - 1
+      const beforeC = direction === 'across' ? startCol - 1 : startCol
+      const afterR = direction === 'across' ? startRow : startRow + length
+      const afterC = direction === 'across' ? startCol + length : startCol
+      
+      if (isValidPosition(beforeR, beforeC) && grid[beforeR][beforeC] !== null) return false
+      if (isValidPosition(afterR, afterC) && grid[afterR][afterC] !== null) return false
+      
+      // Check parallel adjacency (words shouldn't run parallel next to each other)
+      for (let i = 0; i < length; i++) {
+        const r = direction === 'across' ? startRow : startRow + i
+        const c = direction === 'across' ? startCol + i : startCol
+        
+        // Check cells above and below (for across words) or left and right (for down words)
+        const adj1R = direction === 'across' ? r - 1 : r
+        const adj1C = direction === 'across' ? c : c - 1
+        const adj2R = direction === 'across' ? r + 1 : r
+        const adj2C = direction === 'across' ? c : c + 1
+        
+        // Only fail if adjacent cell is occupied AND this position isn't an intersection
+        if (grid[r][c] === null) { // This will be a new letter, not an intersection
+          if (isValidPosition(adj1R, adj1C) && grid[adj1R][adj1C] !== null) return false
+          if (isValidPosition(adj2R, adj2C) && grid[adj2R][adj2C] !== null) return false
+        }
+      }
+      
       return true
     }
-    const commit = (r: number, c: number, dir: CWDir, w: string) => {
-      for (let i = 0; i < w.length; i++) {
-        const rr = r + (dir === 'down' ? i : 0)
-        const cc = c + (dir === 'across' ? i : 0)
-        grid[rr][cc] = w[i]
-      }
-    }
-    // shuffle helper
-    const shuffle = <T,>(arr: T[]) => { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]] } return a }
-    const list = shuffle(words)
-    // seed: place first word near center, across
-    if (list.length) {
-      const first = list[0].answer.toUpperCase()
-      const r0 = Math.max(0, Math.floor(rows / 2) - 1)
-      const c0 = Math.max(0, Math.floor((cols - first.length) / 2))
-      if (canPlace(r0, c0, 'across', first)) { commit(r0, c0, 'across', first); placed.push({ id: crypto.randomUUID(), row: r0, col: c0, dir: 'across', answer: first, clue: list[0].clue }) }
-      else {
-        // fallback corners scan
-        outer: for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) { if (canPlace(r, c, 'across', first)) { commit(r, c, 'across', first); placed.push({ id: crypto.randomUUID(), row: r, col: c, dir: 'across', answer: first, clue: list[0].clue }); break outer } }
-      }
-    }
-    // place remaining with intersections where possible
-    for (let idx = 1; idx < list.length; idx++) {
-      const w = list[idx].answer.toUpperCase()
-      const chars = w.split('')
-      const candidates: Array<{ r: number; c: number; dir: CWDir }> = []
-      for (const p of placed) {
-        const pWord = p.answer
-        for (let i = 0; i < pWord.length; i++) {
-          const letter = pWord[i]
-          for (let j = 0; j < chars.length; j++) {
-            if (chars[j] !== letter) continue
-            if (p.dir === 'across') {
-              const r = p.row - j
-              const c = p.col + i
-              if (canPlace(r, c, 'down', w)) candidates.push({ r, c, dir: 'down' })
-            } else {
-              const r = p.row + i
-              const c = p.col - j
-              if (canPlace(r, c, 'across', w)) candidates.push({ r, c, dir: 'across' })
+    
+    const findIntersections = (word: string): Array<{ row: number; col: number; dir: CWDir; intersectionCount: number }> => {
+      const intersections: Array<{ row: number; col: number; dir: CWDir; intersectionCount: number }> = []
+      
+      // Try both directions
+      for (const direction of ['across', 'down'] as CWDir[]) {
+        // Try all possible starting positions
+        const maxRow = direction === 'across' ? rows : rows - word.length + 1
+        const maxCol = direction === 'across' ? cols - word.length + 1 : cols
+        
+        for (let startRow = 0; startRow < maxRow; startRow++) {
+          for (let startCol = 0; startCol < maxCol; startCol++) {
+            if (canPlaceWord(startRow, startCol, direction, word)) {
+              // Count intersections
+              let intersectionCount = 0
+              for (let i = 0; i < word.length; i++) {
+                const r = direction === 'across' ? startRow : startRow + i
+                const c = direction === 'across' ? startCol + i : startCol
+                if (grid[r][c] === word[i]) {
+                  intersectionCount++
+                }
+              }
+              
+              // For the first word, allow placement with 0 intersections
+              // For subsequent words, require at least 1 intersection
+              if (placed.length === 0 || intersectionCount > 0) {
+                intersections.push({ row: startRow, col: startCol, dir: direction, intersectionCount })
+              }
             }
           }
         }
       }
-      const shuffled = candidates.length ? candidates.sort(() => Math.random() - 0.5) : []
-      let placedOk = false
-      for (const cand of shuffled) {
-        if (canPlace(cand.r, cand.c, cand.dir, w)) {
-          commit(cand.r, cand.c, cand.dir, w)
-          placed.push({ id: crypto.randomUUID(), row: cand.r, col: cand.c, dir: cand.dir, answer: w, clue: list[idx].clue })
-          placedOk = true
-          break
+      
+      // Sort by intersection count (descending), then by centrality
+      const centerRow = rows / 2
+      const centerCol = cols / 2
+      
+      return intersections.sort((a, b) => {
+        if (b.intersectionCount !== a.intersectionCount) {
+          return b.intersectionCount - a.intersectionCount
         }
+        
+        // Calculate centrality (lower distance is better)
+        const distA = Math.abs(a.row - centerRow) + Math.abs(a.col - centerCol)
+        const distB = Math.abs(b.row - centerRow) + Math.abs(b.col - centerCol)
+        return distA - distB
+      })
+    }
+    
+    const placeWord = (row: number, col: number, direction: CWDir, word: string, clue?: string) => {
+      // Place letters on grid
+      for (let i = 0; i < word.length; i++) {
+        const r = direction === 'across' ? row : row + i
+        const c = direction === 'across' ? col + i : col
+        grid[r][c] = word[i]
       }
-      if (!placedOk) {
-        // try random scans
-        for (let tries = 0; tries < 200 && !placedOk; tries++) {
-          const dir: CWDir = Math.random() < 0.5 ? 'across' : 'down'
-          const rMax = dir === 'down' ? rows - w.length : rows - 1
-          const cMax = dir === 'across' ? cols - w.length : cols - 1
-          const r = Math.max(0, Math.floor(Math.random() * Math.max(1, rMax)))
-          const c = Math.max(0, Math.floor(Math.random() * Math.max(1, cMax)))
-          if (canPlace(r, c, dir, w)) {
-            commit(r, c, dir, w)
-            placed.push({ id: crypto.randomUUID(), row: r, col: c, dir, answer: w, clue: list[idx].clue })
-            placedOk = true
-            break
-          }
-        }
+      
+      // Add to placed words
+      placed.push({
+        id: crypto.randomUUID(),
+        row,
+        col,
+        dir: direction,
+        answer: word,
+        clue: clue || ''
+      })
+    }
+    
+    // Main algorithm
+    
+    // 1. Sort words by length (descending)
+    const sortedWords = words
+      .map(w => ({ ...w, answer: w.answer.toUpperCase().replace(/[^A-Z]/g, '') }))
+      .filter(w => w.answer.length > 0)
+      .sort((a, b) => b.answer.length - a.answer.length)
+    
+    if (!sortedWords.length) return []
+    
+    // 2. Place each word
+    for (const word of sortedWords) {
+      // 3. Find all possible intersections
+      const possiblePlacements = findIntersections(word.answer)
+      
+      if (possiblePlacements.length > 0) {
+        // 4. Take the best placement (highest intersection count, most central)
+        const bestPlacement = possiblePlacements[0]
+        placeWord(bestPlacement.row, bestPlacement.col, bestPlacement.dir, word.answer, word.clue)
       }
     }
+    
     return placed
   }
 
@@ -252,13 +309,15 @@ function AiHelperPanel({ sel, meta, onUpdateSelected }: { sel: PlacedTool; meta:
     return { ok: res.ok, status: res.status, json, raw }
   }
 
+  const [minWords, setMinWords] = useState<number | ''>('')
+  const [maxWords, setMaxWords] = useState<number | ''>('')
   const doText = async () => {
     setLoading(true)
     try {
       const res = await fetch('/api/ai-helper', {
         method: 'POST',
         headers: authHeaders,
-        body: JSON.stringify({ tool: 'TEXT', prompt: desc, topic: meta.topic, grade: meta.grade, difficulty: meta.difficulty })
+  body: JSON.stringify({ tool: 'TEXT', prompt: desc, topic: meta.topic, grade: meta.grade, difficulty: meta.difficulty, minWords: typeof minWords==='number'? minWords : undefined, maxWords: typeof maxWords==='number'? maxWords : undefined })
       })
       const { ok, status, json: j, raw } = await readSafe(res)
       if (!ok) {
@@ -353,20 +412,24 @@ function AiHelperPanel({ sel, meta, onUpdateSelected }: { sel: PlacedTool; meta:
         headers: authHeaders,
         body: JSON.stringify({
           tool: 'CROSSWORD',
-          prompt: desc || `Generate ${Math.min(12, Math.max(4, cwCount))} crossword entries about ${meta.topic} for Grade ${meta.grade} (difficulty ${meta.difficulty}).\nFor EACH word, provide a UNIQUE, definition-style clue that describes what the word is or means in this topic. Do NOT include the word.\nRespond ONLY as JSON: {"items":[{"answer":"UPPERCASE","clue":"short definition"}, ...]}. Mix word lengths (3–10).`,
+          prompt: desc || `Generate ${Math.min(30, Math.max(4, cwCount))} crossword entries about ${meta.topic} for Grade ${meta.grade} (difficulty ${meta.difficulty}).\nFor EACH word, provide a UNIQUE, definition-style clue that describes what the word is or means in this topic. Do NOT include the word.\nRespond ONLY as JSON: {"items":[{"answer":"UPPERCASE","clue":"short definition"}, ...]}. Mix word lengths (3–10).`,
           topic: meta.topic,
           grade: meta.grade,
           difficulty: meta.difficulty,
-          limit: Math.min(12, Math.max(1, cwCount))
+          limit: Math.min(30, Math.max(1, cwCount))
         })
       })
       const { ok, status, json: j } = await readSafe(res)
       if (!ok) {
         toast({ title: 'AI crossword error', description: `Status ${status}.`, variant: 'warning' })
       }
-      const rows = Number(sel.data?.rows || 12)
-      const cols = Number(sel.data?.cols || 12)
+  // Auto-determine grid size based on word count
+  const isLarge = Array.isArray(j?.items) && j.items.length > 15
+  const baseRows = isLarge ? 24 : 15
+  const baseCols = isLarge ? 24 : 15
       let placedOut: Array<{ id: string; row: number; col: number; dir: 'across'|'down'; answer: string; clue?: string }> = []
+      let bestRows = baseRows
+      let bestCols = baseCols
 
       if (Array.isArray(j?.items) && j.items.length) {
         // Normalize and obfuscate clues if they reveal the answer
@@ -380,7 +443,26 @@ function AiHelperPanel({ sel, meta, onUpdateSelected }: { sel: PlacedTool; meta:
         if (hasPos) {
           placedOut = j.items.map((w: any) => ({ id: crypto.randomUUID(), row: Number(w.row) || 0, col: Number(w.col) || 0, dir: (w.dir === 'down' ? 'down' : 'across'), answer: String(w.answer || w.word || '').toUpperCase(), clue: obfuscateClue(String(w.answer || w.word || '').toUpperCase(), w.clue || '') }))
         } else {
-          placedOut = placeCrossword(rows, cols, normalized)
+          // Try to place with adaptive grid growth to fit as many words as possible
+          const target = Math.min(Math.max(1, cwCount), 30)
+          let best: typeof placedOut = []
+          let bestR = baseRows
+          let bestC = baseCols
+          const maxDim = Math.min(30, Math.max(24, Math.max(baseRows, baseCols) + 12)) // larger cap to fit all with intersections
+          for (let r = baseRows; r <= maxDim; r += 1) {
+            for (let c = baseCols; c <= maxDim; c += 1) {
+              const attempt = placeCrossword(r, c, normalized)
+              if (attempt.length > best.length) { best = attempt; bestR = r; bestC = c }
+              if (attempt.length >= Math.min(target, normalized.length)) { best = attempt; bestR = r; bestC = c; break }
+            }
+            if (best.length >= Math.min(target, normalized.length)) break
+          }
+          placedOut = best
+          bestRows = bestR
+          bestCols = bestC
+          if (placedOut.length < Math.min(target, normalized.length)) {
+            toast({ title: 'Placed as many words as possible', description: `Fitted ${placedOut.length} of ${Math.min(target, normalized.length)}. You can increase rows/cols to fit more.`, variant: 'info' })
+          }
         }
       } else if (Array.isArray(j?.words) && j.words.length) {
         // Create indirect clues and auto-place with intersections
@@ -388,11 +470,26 @@ function AiHelperPanel({ sel, meta, onUpdateSelected }: { sel: PlacedTool; meta:
           .map((w: any) => String(w || '').toUpperCase())
           .filter((w: string) => w && /^[A-Z]+$/.test(w))
           .map((w: string) => ({ answer: w, clue: `Related to ${meta.topic.toLowerCase()}: ${'_'.repeat(Math.min(6, w.length))}` }))
-        placedOut = placeCrossword(rows, cols, normalized)
+        // Adaptive placement here as well
+        let best: typeof placedOut = []
+        let bestR = baseRows
+        let bestC = baseCols
+        const maxDim = Math.min(30, Math.max(24, Math.max(baseRows, baseCols) + 12))
+        for (let r = baseRows; r <= maxDim; r += 1) {
+          for (let c = baseCols; c <= maxDim; c += 1) {
+            const attempt = placeCrossword(r, c, normalized)
+            if (attempt.length > best.length) { best = attempt; bestR = r; bestC = c }
+            if (attempt.length >= Math.min(Math.max(1, cwCount), normalized.length)) { best = attempt; bestR = r; bestC = c; break }
+          }
+          if (best.length >= Math.min(Math.max(1, cwCount), normalized.length)) break
+        }
+        placedOut = best
+        bestRows = bestR
+        bestCols = bestC
       }
 
       if (placedOut.length) {
-        onUpdateSelected({ data: { ...(sel.data || {}), rows, cols, words: placedOut } })
+        onUpdateSelected({ data: { ...(sel.data || {}), rows: bestRows, cols: bestCols, words: placedOut } })
       }
     } finally { setLoading(false) }
   }
@@ -432,7 +529,15 @@ function AiHelperPanel({ sel, meta, onUpdateSelected }: { sel: PlacedTool; meta:
   return (
     <div className="space-y-2">
       <textarea className="w-full border rounded p-2 text-xs" placeholder="Optional description to guide AI" value={desc} onChange={(e) => setDesc(e.target.value)} />
-      {sel.kind === 'TEXT' && <Button size="sm" disabled={loading} onClick={doText}>Generate Text</Button>}
+      {sel.kind === 'TEXT' && (
+        <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <label>Min words<input className="w-full border rounded p-1" type="number" min={10} max={500} value={minWords} onChange={(e)=> setMinWords(e.target.value === '' ? '' : Number(e.target.value))} /></label>
+            <label>Max words<input className="w-full border rounded p-1" type="number" min={10} max={1000} value={maxWords} onChange={(e)=> setMaxWords(e.target.value === '' ? '' : Number(e.target.value))} /></label>
+          </div>
+          <Button size="sm" disabled={loading} onClick={doText}>Generate Text</Button>
+        </div>
+      )}
       {sel.kind === 'FLASHCARDS' && <Button size="sm" disabled={loading} onClick={doFlash}>Generate Flashcards</Button>}
       {sel.kind === 'QUIZ' && (
         <div className="space-y-2">
@@ -444,9 +549,9 @@ function AiHelperPanel({ sel, meta, onUpdateSelected }: { sel: PlacedTool; meta:
           <Button size="sm" disabled={loading} onClick={doQuiz}>Generate Quiz</Button>
         </div>
       )}
-      {sel.kind === 'CROSSWORD' && (
+    {sel.kind === 'CROSSWORD' && (
         <div className="space-y-2">
-          <label className="text-xs">Words <input className="w-full border rounded p-1" type="number" min={1} max={10} value={cwCount} onChange={e => setCwCount(Number(e.target.value))} /></label>
+      <label className="text-xs">Words <input className="w-full border rounded p-1" type="number" min={1} max={30} value={cwCount} onChange={(e) => setCwCount(Number(e.target.value))} /></label>
           <Button size="sm" disabled={loading} onClick={doCross}>Generate Words</Button>
         </div>
       )}
@@ -497,7 +602,32 @@ function RightInspector({ items, selectedId, onSelect, onSave, onPreview, onPubl
         <div className="text-xs font-semibold mb-2">Properties</div>
         {!sel && <div className="text-xs text-gray-500">Select a layer to edit its properties.</div>}
         {sel && (
-          <div className="text-[11px] text-gray-600">Most settings are edited directly on the tool on the canvas. Use AI Helper below to generate content.</div>
+          <div className="space-y-2">
+            <div className="text-[11px] text-gray-600">Most settings are edited directly on the tool on the canvas. Use AI Helper below to generate content.</div>
+            <div className="grid grid-cols-2 gap-2 items-center">
+              <label className="text-xs text-gray-700 col-span-2">Card color</label>
+              <input
+                type="color"
+                className="w-full h-8 border rounded"
+                value={(typeof sel.data?.bgColor === 'string' && /^#([0-9a-fA-F]{6})$/.test(sel.data.bgColor)) ? (sel.data.bgColor as string) : '#0ea5e9'}
+                onChange={(e)=> onUpdateSelected({ data: { ...(sel.data || {}), bgColor: e.target.value } })}
+                title="Pick a background color used behind this tool's content"
+              />
+              <button className="text-[11px] px-2 py-1 border rounded" onClick={()=> onUpdateSelected({ data: { ...(sel.data || {}), bgColor: '' } })}>Clear</button>
+            </div>
+            <div className="grid grid-cols-2 gap-2 items-center">
+              <label className="text-xs text-gray-700 col-span-2">Accent intensity</label>
+              <input
+                type="range"
+                min={0.6}
+                max={1.6}
+                step={0.1}
+                value={Number(sel.data?.accentIntensity ?? 1)}
+                onChange={(e)=> onUpdateSelected({ data: { ...(sel.data || {}), accentIntensity: Number(e.target.value) } })}
+              />
+              <div className="text-[11px] text-gray-600">{Number(sel.data?.accentIntensity ?? 1).toFixed(1)}×</div>
+            </div>
+          </div>
         )}
       </div>
 
@@ -683,7 +813,7 @@ function Draggable({ item, onChange, selected, onSelect, onConfigure, onDuplicat
               style={{ right: 0, top: '50%', transform: 'translate(50%, -50%)' }} onMouseDown={beginDrag} />
           </>
         )}
-        <div className="p-3 text-sm text-gray-700 h-[calc(100%-2rem)] overflow-auto sn-tool-content" onMouseDown={(e)=>{ e.stopPropagation(); onSelect(); onActivate(); }}>
+  <div className="p-3 text-sm text-gray-700 h-[calc(100%-2rem)] overflow-auto sn-tool-content rounded-lg" style={{ background: (item.data?.bgColor as string) || 'transparent' }} onMouseDown={(e)=>{ e.stopPropagation(); onSelect(); onActivate(); }}>
   {item.kind === "TEXT" && (
             <div className="h-full flex flex-col gap-2">
               <div className="flex items-center gap-1 text-xs">
@@ -880,9 +1010,16 @@ function Draggable({ item, onChange, selected, onSelect, onConfigure, onDuplicat
             const setData = (patch: any) => onChange({ data: { ...item.data, ...patch } })
             return (
               <div className="space-y-3">
-                <div className="grid grid-cols-3 gap-2 text-xs">
-                  <label>Rows <input type="number" min={5} max={20} className="w-full border rounded p-1" value={rows} onChange={(e) => setData({ rows: Number(e.target.value) })} /></label>
-                  <label>Cols <input type="number" min={5} max={20} className="w-full border rounded p-1" value={cols} onChange={(e) => setData({ cols: Number(e.target.value) })} /></label>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <label>Size 
+                    <select className="w-full border rounded p-1" value={words.length > 15 ? 'large' : 'small'} onChange={(e) => {
+                      // Size is now automatically determined by word count
+                      // This selector is for reference only
+                    }} disabled>
+                      <option value="small">Small (15x15) - ≤15 words</option>
+                      <option value="large">Large (24x24) - &gt;15 words</option>
+                    </select>
+                  </label>
                   <div className="flex items-end"><button className="px-2 py-1 border rounded w-full" onClick={() => setData({ words: [...words, { id: crypto.randomUUID(), row: 0, col: 0, dir: 'across', answer: '', clue: '' }] })}>+ Add word</button></div>
                 </div>
                 <div className="space-y-2 max-h-40 overflow-auto">
@@ -901,7 +1038,7 @@ function Draggable({ item, onChange, selected, onSelect, onConfigure, onDuplicat
                   {words.length === 0 && <div className="text-xs text-gray-500">No words yet. Use + Add above or the AI Helper in the inspector.</div>}
                 </div>
                 <div className="border-t pt-2">
-                  <CrosswordViewer rows={rows} cols={cols} words={words} />
+                  <CrosswordViewer words={words} />
                 </div>
               </div>
             )
@@ -1109,7 +1246,14 @@ export default function LessonBuilder() {
     autoSaveRef.current = setTimeout(() => { if (!showMetaDialog) saveDraft({ silent: true }) }, 1500)
     return () => { if (autoSaveRef.current) clearTimeout(autoSaveRef.current) }
   }, [items, meta.title, meta.topic, meta.grade, meta.vanta, showMetaDialog])
-  const preview = () => { sessionStorage.setItem('lessonPreview', JSON.stringify({ meta: { ...meta, designWidth: 1280, designHeight: 800, canvasWidth: 1280, canvasHeight: canvasSize.h }, items })); window.open('/lessons/preview','_blank'); toast({ title: 'Preview opened', description: 'A new tab was opened with your lesson preview.', variant: 'info' }) }
+  const [showPreview, setShowPreview] = useState(false)
+  const [previewDevice, setPreviewDevice] = useState<'desktop'|'tablet'|'phone'>('desktop')
+  const previewWidth = previewDevice==='desktop' ? 1280 : previewDevice==='tablet' ? 834 : 390
+  const previewScale = previewDevice==='desktop' ? 1 : previewDevice==='tablet' ? 1 : 1
+  const preview = () => {
+    // Open in-app non-navigable preview overlay (avoids storage quota and new tab)
+    setShowPreview(true)
+  }
   const publish = async () => {
     if (!session) { toast({ title: 'Sign in required', description: 'Please sign in to publish your lesson.', variant: 'warning' }); return }
     try {
@@ -1182,7 +1326,7 @@ export default function LessonBuilder() {
             if (!(e.target as HTMLElement).closest('.sn-tool-content')) setActiveId(null)
       }}>
             {/* Overlay toolbar: outside canvas, always on top */}
-      <div className="pointer-events-none absolute top-6 right-6 z-[60]">
+  <div className="pointer-events-none absolute top-6 right-6 z-[40]">
               <div className="pointer-events-auto flex items-center gap-2 rounded-full border bg-white/90 px-3 py-1 text-xs shadow-lg">
                 <label className="flex items-center gap-1"><input type="checkbox" checked={showGrid} onChange={(e)=>setShowGrid(e.target.checked)} /> Grid</label>
                 <span className="text-gray-300">|</span>
@@ -1191,6 +1335,106 @@ export default function LessonBuilder() {
                 <select className="border rounded px-1 py-0.5" value={gridSize} onChange={(e)=>setGridSize(Number(e.target.value))}>
                   {[10,20,40].map(gs => <option key={gs} value={gs}>{gs}px</option>)}
                 </select>
+
+        {/* Preview Overlay (non-navigable, scrollable, tools interactive) */}
+        <Dialog open={showPreview} onOpenChange={setShowPreview}>
+          <DialogContent className="max-w-[95vw] w-[95vw] max-h-[90vh] p-0 overflow-hidden">
+            {/* Accessibility title/description for Radix Dialog */}
+            <DialogHeader className="sr-only">
+              <DialogTitle>Lesson Preview</DialogTitle>
+              <DialogDescription>Non-navigable preview of the lesson layout</DialogDescription>
+            </DialogHeader>
+            <div className="h-[85vh] w-full flex flex-col">
+              {/* Header */}
+              <div className="px-5 py-4 border-b bg-gradient-to-r from-sky-50 to-indigo-50">
+                <h2 className="text-xl font-bold tracking-tight text-slate-800">{meta.title || 'Lesson Preview'}</h2>
+                <p className="text-xs text-slate-600">Topic: {meta.topic || 'N/A'} • Grade {meta.grade || 'N/A'} • Preview is non-navigable</p>
+                <div className="mt-2 inline-flex items-center gap-1 rounded-lg border bg-white/70 px-2 py-1 text-xs">
+                  <span className="text-gray-500">Device:</span>
+                  <button className={`px-2 py-0.5 rounded ${previewDevice==='desktop'?'bg-indigo-600 text-white':''}`} onClick={()=>setPreviewDevice('desktop')}>Desktop</button>
+                  <button className={`px-2 py-0.5 rounded ${previewDevice==='tablet'?'bg-indigo-600 text-white':''}`} onClick={()=>setPreviewDevice('tablet')}>Tablet</button>
+                  <button className={`px-2 py-0.5 rounded ${previewDevice==='phone'?'bg-indigo-600 text-white':''}`} onClick={()=>setPreviewDevice('phone')}>Phone</button>
+                </div>
+              </div>
+              {/* Scrollable body */}
+              <div className="flex-1 overflow-auto">
+                <VantaBackground effect={(meta.vanta || 'globe') as any}>
+                  <div className="px-4 py-5">
+                    <div className="relative mb-4 mx-auto rounded-3xl backdrop-blur-[2px] p-6" style={{ width: previewWidth }}>
+                      <h3 className="text-2xl font-semibold tracking-tight bg-gradient-to-r from-sky-400 to-indigo-400 bg-clip-text text-transparent mb-1">{meta.title || 'Lesson Preview'}</h3>
+                      <p className="text-slate-200/90">Topic: {meta.topic || 'N/A'} • Grade {meta.grade || 'N/A'}</p>
+                    </div>
+                    <div className="mx-auto rounded-2xl backdrop-blur-[2px]" style={{ width: previewWidth }}>
+                      <div className="relative overflow-hidden" style={{ width: previewWidth, minHeight: canvasSize.h, transform: `scale(${previewScale})`, transformOrigin: 'top left' }}>
+                          {items.map((it)=> (
+                        <div key={it.id} className="absolute p-2" style={{ left: it.x||0, top: it.y||0, width: Math.max(240, it.w||600), height: Math.max(160, it.h||220), overflow: 'auto', zIndex: it.z ?? 0 }}>
+                          {it.kind === 'TEXT' && (
+                            <StudentToolCard variant="text" bodyBgColor={it.data?.bgColor as string | undefined} accentIntensity={it.data?.accentIntensity}>
+                              <div className="richtext">
+                                {it.data?.html ? (
+                                  <div dangerouslySetInnerHTML={{ __html: it.data.html }} />
+                                ) : (
+                                  <div className="whitespace-pre-wrap">{it.data?.text || 'Text block'}</div>
+                                )}
+                              </div>
+                            </StudentToolCard>
+                          )}
+                          {it.kind === 'FLASHCARDS' && (()=>{
+                            const cards: Array<{q:string;a:string}> = Array.isArray(it.data?.cards)
+                              ? it.data.cards
+                              : (it.data?.q || it.data?.a ? [{ q: it.data.q || '', a: it.data.a || '' }] : [])
+                            const storageKey = `sn-preview-flash:${it.id}`
+                            return (
+                              <StudentToolCard variant="flashcards" bodyBgColor={it.data?.bgColor as string | undefined} accentIntensity={it.data?.accentIntensity}>
+                                <FlashcardsViewer cards={cards} storageKey={storageKey} />
+                              </StudentToolCard>
+                            )
+                          })()}
+                          {it.kind === 'QUIZ' && (()=>{
+                            const qItems = Array.isArray(it.data?.items) ? it.data.items : []
+                            if (!qItems.length) return <div className="text-gray-600">Quiz not available</div>
+                            const storageKey = `sn-preview-quiz:${it.id}`
+                            return (
+                              <StudentToolCard variant="quiz" bodyBgColor={it.data?.bgColor as string | undefined} accentIntensity={it.data?.accentIntensity}>
+                                <QuizViewer items={qItems} storageKey={storageKey} />
+                              </StudentToolCard>
+                            )
+                          })()}
+                          {it.kind === 'IMAGE' && (()=>{
+                            const url = it.data?.url as string | undefined
+                            const gradient = it.data?.gradient as string | undefined
+                            const fit = (it.data?.fit as 'contain'|'cover'|'fill') || 'contain'
+                            const alt = (it.data?.alt as string) || 'image'
+                            const caption = it.data?.caption as string | undefined
+                            return (
+                              <StudentToolCard variant="image" bodyBgColor={it.data?.bgColor as string | undefined} accentIntensity={it.data?.accentIntensity}>
+                                {/* Use ImageViewer in canvas mode; external navigation disabled by absence of Navbar */}
+                                <ImageViewer url={url} gradient={gradient} fit={fit} alt={alt} caption={caption} variant="canvas" />
+                              </StudentToolCard>
+                            )
+                          })()}
+                          {it.kind === 'CROSSWORD' && (()=>{
+                            const rows = Number(it.data?.rows || 10)
+                            const cols = Number(it.data?.cols || 10)
+                            const words = Array.isArray(it.data?.words) ? it.data.words : []
+                            if (!words.length) return <div className="text-gray-600">Crossword not available</div>
+                            const storageKey = `sn-preview-crossword:${it.id}`
+                            return (
+                              <StudentToolCard variant="crossword" bodyBgColor={it.data?.bgColor as string | undefined} accentIntensity={it.data?.accentIntensity}>
+                                <CrosswordViewer words={words} storageKey={storageKey} />
+                              </StudentToolCard>
+                            )
+                          })()}
+                        </div>
+                          ))}
+                      </div>
+                    </div>
+                  </div>
+                </VantaBackground>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
                 <span className="text-gray-300">|</span>
                 <button title="Zoom out" className="px-1 py-0.5 border rounded" onClick={()=>{ userZoomedRef.current = true; setZoom(z=>Math.max(0.5, Math.round((z-0.1)*10)/10)) }}><ZoomOut className="h-3.5 w-3.5"/></button>
                 <span className="px-1">{Math.round(zoom*100)}%</span>

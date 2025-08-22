@@ -74,7 +74,7 @@ function LessonPreviewInner() {
                     style={{ left: it.x||0, top: it.y||0, width: Math.max(240, it.w||600), height: Math.max(160, it.h||220), overflow: 'auto', zIndex: it.z ?? 0 }}
                   >
                 {it.kind === 'TEXT' && (
-                  <StudentToolCard variant="text">
+                  <StudentToolCard variant="text" bodyBgColor={it.data?.bgColor as string | undefined}>
                     <div className="richtext">
                       {it.data?.html ? (
                         <div dangerouslySetInnerHTML={{ __html: it.data.html }} />
@@ -90,7 +90,7 @@ function LessonPreviewInner() {
                     : (it.data?.q || it.data?.a ? [{ q: it.data.q || '', a: it.data.a || '' }] : [])
                   const storageKey = `sn-preview-flash:${it.id}`
                   return (
-                    <StudentToolCard variant="flashcards">
+                    <StudentToolCard variant="flashcards" bodyBgColor={it.data?.bgColor as string | undefined}>
                       <FlashcardsViewer cards={cards} storageKey={storageKey} />
                     </StudentToolCard>
                   )
@@ -102,7 +102,7 @@ function LessonPreviewInner() {
                   const urlMode = sp.get('mode')
                   const initialMode = urlMode === 'review' || urlMode === 'practice' ? (urlMode as any) : undefined
                   return (
-                    <StudentToolCard variant="quiz">
+                    <StudentToolCard variant="quiz" bodyBgColor={it.data?.bgColor as string | undefined}>
                       <QuizViewer items={items} storageKey={storageKey} initialMode={initialMode} />
                     </StudentToolCard>
                   )
@@ -114,7 +114,7 @@ function LessonPreviewInner() {
                   const alt = (it.data?.alt as string) || 'image'
                   const caption = it.data?.caption as string | undefined
                   return (
-                    <StudentToolCard variant="image">
+                    <StudentToolCard variant="image" bodyBgColor={it.data?.bgColor as string | undefined}>
                       <ImageViewer url={url} gradient={gradient} fit={fit} alt={alt} caption={caption} variant="canvas" />
                     </StudentToolCard>
                   )
@@ -126,8 +126,8 @@ function LessonPreviewInner() {
                   if (!words.length) return <div className="text-gray-600">Crossword not available</div>
                   const storageKey = `sn-preview-crossword:${it.id}`
                   return (
-                    <StudentToolCard variant="crossword">
-                      <CrosswordViewer rows={rows} cols={cols} words={words} storageKey={storageKey} />
+                    <StudentToolCard variant="crossword" bodyBgColor={it.data?.bgColor as string | undefined}>
+                      <CrosswordViewer words={words} storageKey={storageKey} />
                     </StudentToolCard>
                   )
                 })()}
@@ -141,7 +141,7 @@ function LessonPreviewInner() {
               {sortByLayer(parsed?.items || []).map((it: any) => (
                 <div key={it.id} className="rounded-3xl p-2 mb-4">
                   {it.kind === 'TEXT' && (
-                    <StudentToolCard variant="text">
+                    <StudentToolCard variant="text" bodyBgColor={it.data?.bgColor as string | undefined}>
                       <div className="richtext">
                         {it.data?.html ? (
                           <div dangerouslySetInnerHTML={{ __html: it.data.html }} />
@@ -157,7 +157,7 @@ function LessonPreviewInner() {
                       : (it.data?.q || it.data?.a ? [{ q: it.data.q || '', a: it.data.a || '' }] : [])
                     const storageKey = `sn-preview-flash:${it.id}`
                     return (
-                      <StudentToolCard variant="flashcards">
+                      <StudentToolCard variant="flashcards" bodyBgColor={it.data?.bgColor as string | undefined}>
                         <FlashcardsViewer cards={cards} storageKey={storageKey} />
                       </StudentToolCard>
                     )
@@ -169,7 +169,7 @@ function LessonPreviewInner() {
                     const urlMode = sp.get('mode')
                     const initialMode = urlMode === 'review' || urlMode === 'practice' ? (urlMode as any) : undefined
                     return (
-                      <StudentToolCard variant="quiz">
+                      <StudentToolCard variant="quiz" bodyBgColor={it.data?.bgColor as string | undefined}>
                         <QuizViewer items={items} storageKey={storageKey} initialMode={initialMode} />
                       </StudentToolCard>
                     )
@@ -181,8 +181,8 @@ function LessonPreviewInner() {
                     if (!words.length) return <div className="text-gray-600">Crossword not available</div>
                     const storageKey = `sn-preview-crossword:${it.id}`
                     return (
-                      <StudentToolCard variant="crossword">
-                        <CrosswordViewer rows={rows} cols={cols} words={words} storageKey={storageKey} />
+                      <StudentToolCard variant="crossword" bodyBgColor={it.data?.bgColor as string | undefined}>
+                        <CrosswordViewer words={words} storageKey={storageKey} />
                       </StudentToolCard>
                     )
                   })()}
@@ -193,7 +193,7 @@ function LessonPreviewInner() {
                     const alt = (it.data?.alt as string) || 'image'
                     const caption = it.data?.caption as string | undefined
                     return (
-                      <StudentToolCard variant="image">
+                      <StudentToolCard variant="image" bodyBgColor={it.data?.bgColor as string | undefined}>
                         <ImageViewer url={url} gradient={gradient} fit={fit} alt={alt} caption={caption} variant="stacked" />
                       </StudentToolCard>
                     )

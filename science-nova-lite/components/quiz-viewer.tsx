@@ -2,6 +2,7 @@
 
 import React, { useMemo, useState } from "react"
 import { postLessonEvent } from '@/lib/lessonTelemetry'
+import { setBlockDone } from '@/lib/progress'
 import { CheckCircle2, XCircle } from "lucide-react"
 
 export type QuizItem = {
@@ -21,6 +22,8 @@ export function QuizViewer({ items, storageKey, initialMode }: { items: QuizItem
   const [mode, setMode] = useState<'practice'|'review'>(initialMode || 'practice')
   const [submitted, setSubmitted] = useState(false)
   const [mounted, setMounted] = React.useState(false)
+  // Accent color from parent card; falls back to amber palette when not provided
+  const accent = 'var(--sn-accent, #f59e0b)'
 
   // Load persisted state
   React.useEffect(() => {
@@ -104,6 +107,8 @@ export function QuizViewer({ items, storageKey, initialMode }: { items: QuizItem
       if (lessonId && blockId) {
         const pct = Math.round((results.correct / Math.max(1, results.total)) * 100)
         postLessonEvent({ lessonId, blockId, toolKind: 'QUIZ', eventType: 'quiz_submit', data: { correct: results.correct, checked: results.totalChecked, total: results.total, pct } })
+        // Mark block as completed when quiz is submitted
+        setBlockDone({ lessonId, blockId }, true)
       }
     } catch {}
   }
@@ -116,8 +121,20 @@ export function QuizViewer({ items, storageKey, initialMode }: { items: QuizItem
         <div className="flex items-center gap-2">
           <span className="text-xs text-gray-500">Mode</span>
           <div className="inline-flex rounded-lg border bg-white/80 overflow-hidden">
-            <button type="button" aria-pressed={mode==='practice'} className={`px-3 py-1.5 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-amber-300 ${mode==='practice' ? 'bg-amber-600 text-white' : 'hover:bg-amber-50/40'}`} onClick={() => { setMode('practice') }}>Practice</button>
-            <button type="button" aria-pressed={mode==='review'} className={`px-3 py-1.5 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-amber-300 ${mode==='review' ? 'bg-amber-600 text-white' : 'hover:bg-amber-50/40'}`} onClick={() => { setMode('review'); setSubmitted(false); setChecked({}) }}>Review</button>
+            <button
+              type="button"
+              aria-pressed={mode==='practice'}
+              className={`px-3 py-1.5 text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${mode==='practice' ? 'text-white' : 'text-gray-700 hover:bg-amber-50/40'}`}
+              style={{ outlineColor: accent, backgroundColor: mode==='practice' ? ("var(--sn-accent, #d97706)") : undefined }}
+              onClick={() => { setMode('practice') }}
+            >Practice</button>
+            <button
+              type="button"
+              aria-pressed={mode==='review'}
+              className={`px-3 py-1.5 text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${mode==='review' ? 'text-white' : 'text-gray-700 hover:bg-amber-50/40'}`}
+              style={{ outlineColor: accent, backgroundColor: mode==='review' ? ("var(--sn-accent, #d97706)") : undefined }}
+              onClick={() => { setMode('review'); setSubmitted(false); setChecked({}) }}
+            >Review</button>
           </div>
         </div>
         <div className="text-sm text-gray-700 whitespace-nowrap">
@@ -128,19 +145,35 @@ export function QuizViewer({ items, storageKey, initialMode }: { items: QuizItem
         </div>
         <div className="flex items-center gap-2">
           {mode==='practice' ? (
-            <button type="button" className="px-3 py-1.5 rounded border bg-white hover:bg-amber-50/60 focus:outline-none focus:ring-2 focus:ring-amber-300" onClick={reviewAll}>Review all</button>
+            <button
+              type="button"
+              className="px-3 py-1.5 rounded border bg-white text-gray-700 hover:bg-amber-50/60 hover:text-gray-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+              style={{ outlineColor: accent }}
+              onClick={reviewAll}
+            >Review all</button>
           ) : (
-            <button type="button" className="px-3 py-1.5 rounded border bg-white hover:bg-amber-50/60 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-amber-300" onClick={submitReview} disabled={submitted}>
+            <button
+              type="button"
+              className="px-3 py-1.5 rounded border bg-white text-gray-700 hover:bg-amber-50/60 hover:text-gray-800 disabled:opacity-50 disabled:text-gray-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+              style={{ outlineColor: accent }}
+              onClick={submitReview}
+              disabled={submitted}
+            >
               {submitted ? 'Submitted' : 'Submit review'}
             </button>
           )}
-          <button type="button" className="px-3 py-1.5 rounded border bg-white hover:bg-amber-50/60 focus:outline-none focus:ring-2 focus:ring-amber-300" onClick={resetAll}>Reset</button>
+          <button
+            type="button"
+            className="px-3 py-1.5 rounded border bg-white text-gray-700 hover:bg-amber-50/60 hover:text-gray-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+            style={{ outlineColor: accent }}
+            onClick={resetAll}
+          >Reset</button>
         </div>
       </div>
 
       {/* small progress bar for answered */}
       <div className="h-1.5 w-full rounded-full bg-gray-200 overflow-hidden">
-        <div className="h-full bg-amber-500" style={{ width: `${percentChecked}%` }} />
+        <div className="h-full" style={{ width: `${percentChecked}%`, backgroundColor: accent }} />
       </div>
 
       {items.map((q, idx) => {
@@ -158,8 +191,8 @@ export function QuizViewer({ items, storageKey, initialMode }: { items: QuizItem
         return (
   <div key={idx} className="rounded-xl border p-4 bg-white/95 shadow-sm transition-shadow duration-200 hover:shadow-md">
             <div className="mb-3 flex items-start gap-2">
-        <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-600 text-white text-xs mt-0.5">{idx + 1}</span>
-              <span className="font-medium">{q.question || "Question"}</span>
+        <span className="inline-flex items-center justify-center w-6 h-6 rounded-full text-white text-xs mt-0.5" style={{ backgroundColor: 'var(--sn-accent, #d97706)' }}>{idx + 1}</span>
+              <span className="font-medium text-gray-800">{q.question || "Question"}</span>
             </div>
 
             {q.type === "MCQ" && (
@@ -169,16 +202,21 @@ export function QuizViewer({ items, storageKey, initialMode }: { items: QuizItem
                   const correct = isChecked && normalize(opt) === normalize(String(q.answer ?? ""))
                   const wrong = isChecked && selected && !correct
       return (
-    <label key={oi} className={`flex items-center gap-2 rounded px-2 py-1 cursor-pointer transition-all border focus-within:ring-2 focus-within:ring-amber-300 ${selected ? 'border-amber-300 bg-amber-50/40 scale-[1.01] shadow-sm' : 'border-transparent'} ${correct ? "bg-green-50" : ""} ${wrong ? "bg-red-50" : "hover:bg-gray-50"}`}>
+    <label
+      key={oi}
+      className={`flex items-center gap-2 rounded px-2 py-1 cursor-pointer transition-all border focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 ${selected ? 'bg-amber-50/40 scale-[1.01] shadow-sm' : 'border-transparent'} ${correct ? "bg-green-50" : ""} ${wrong ? "bg-red-50" : "hover:bg-gray-50"}`}
+      style={{ outlineColor: accent, borderColor: selected ? ("var(--sn-accent, #f59e0b)") : undefined }}
+    >
                       <input
                         type="radio"
                         name={`q-${idx}`}
-            className="accent-amber-600"
+            className=""
+                        style={{ accentColor: 'var(--sn-accent, #d97706)' }}
                         disabled={false}
                         checked={selected}
                         onChange={() => setResponses((prev) => ({ ...prev, [idx]: opt }))}
                       />
-                      <span>{opt}</span>
+                      <span className="text-gray-700">{opt}</span>
                     </label>
                   )
                 })}
@@ -195,7 +233,8 @@ export function QuizViewer({ items, storageKey, initialMode }: { items: QuizItem
                     <button
                       key={String(val)}
                       type="button"
-                      className={`px-3 py-1.5 rounded border transition-all ${selected ? "bg-amber-600 text-white border-amber-600 scale-[1.02] shadow-sm" : "bg-white hover:bg-gray-50"} ${correct ? "!bg-green-600 !text-white !border-green-600" : ""} ${wrong ? "!bg-red-600 !text-white !border-red-600" : ""}`}
+                      className={`px-3 py-1.5 rounded border transition-all ${selected ? "text-white scale-[1.02] shadow-sm" : "bg-white text-gray-700 hover:bg-gray-50"} ${correct ? "!bg-green-600 !text-white !border-green-600" : ""} ${wrong ? "!bg-red-600 !text-white !border-red-600" : ""}`}
+                      style={selected ? { backgroundColor: 'var(--sn-accent, #d97706)', borderColor: 'var(--sn-accent, #d97706)' } : undefined}
                       onClick={() => setResponses((prev) => ({ ...prev, [idx]: val }))}
                     >
                       {val ? "True" : "False"}
@@ -209,7 +248,8 @@ export function QuizViewer({ items, storageKey, initialMode }: { items: QuizItem
               <div className="flex items-center gap-2">
                 <input
                   type="text"
-                  className={`flex-1 rounded border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-200 ${isChecked ? (isCorrect ? "border-green-500" : "border-red-500") : "border-gray-300"}`}
+                  className={`flex-1 rounded border px-3 py-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${isChecked ? (isCorrect ? "border-green-500" : "border-red-500") : "border-gray-300"}`}
+                  style={{ outlineColor: accent }}
                   aria-invalid={isChecked ? (!isCorrect) : undefined}
                   placeholder="Your answer"
                   value={typeof r === "string" ? r : ""}
@@ -222,7 +262,7 @@ export function QuizViewer({ items, storageKey, initialMode }: { items: QuizItem
               {mode==='practice' ? (
                 <button
                   type="button"
-                  className="px-3 py-1.5 rounded border bg-white hover:bg-amber-50/60 focus:outline-none focus:ring-2 focus:ring-amber-300"
+                  className="px-3 py-1.5 rounded border bg-white text-gray-700 hover:bg-amber-50/60 hover:text-gray-800 focus:outline-none focus:ring-2 focus:ring-amber-300"
                   onClick={() => setChecked((prev) => ({ ...prev, [idx]: true }))}
                 >
                   Check
