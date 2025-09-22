@@ -265,12 +265,12 @@ export function AchievementsPage() {
         )}
 
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-8 animate-fade-up">
           <h1 className="font-heading text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-green-600 mb-2 flex items-center gap-3">
-            <Trophy className="h-10 w-10 text-yellow-500" />
+            <Trophy className="h-10 w-10 text-yellow-500 animate-subtle-glow" />
             Your Achievements
           </h1>
-          <p className="text-green-700 text-lg">
+          <p className="text-green-700 text-lg animate-stagger-fade" style={{ animationDelay: '0.2s' }}>
             {isAuthenticated 
               ? "Track your learning progress and celebrate your accomplishments!"
               : "See what achievements you can unlock on your science learning journey!"
@@ -280,20 +280,20 @@ export function AchievementsPage() {
 
         {/* Progress Overview */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Card className="bg-white/95 border-gray-300 border-2">
+          <Card className="bg-white/95 border-gray-300 border-2 animate-slide-in-right" style={{ animationDelay: '0.3s' }}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-blue-700">Level</CardTitle>
-              <Star className="h-4 w-4 text-yellow-500" />
+              <Star className="h-4 w-4 text-yellow-500 animate-gentle-bounce" />
             </CardHeader>
             <CardContent>
-              <div className="text-5xl font-bold bg-gradient-to-r from-purple-600 to-cyan-600 bg-clip-text text-transparent">{userProgress.level}</div>
+              <div className="text-5xl font-bold bg-gradient-to-r from-purple-600 to-cyan-600 bg-clip-text text-transparent animate-completion-celebration">{userProgress.level}</div>
               <Progress
                 value={
                   ((userProgress.totalXP - userProgress.currentLevelXP) /
                     (userProgress.nextLevelXP - userProgress.currentLevelXP)) *
                   100
                 }
-                className="mt-2 h-4 shadow-[0_0_10px_rgba(168,85,247,0.4)]"
+                className="mt-2 h-4 shadow-[0_0_10px_rgba(168,85,247,0.4)] animate-progress-fill"
               />
               <p className="text-xs text-green-700 mt-1">
                 {userProgress.totalXP - userProgress.currentLevelXP} /{" "}
@@ -302,24 +302,24 @@ export function AchievementsPage() {
             </CardContent>
           </Card>
 
-          <Card className="bg-white/95 border-gray-300 border-2">
+          <Card className="bg-white/95 border-gray-300 border-2 animate-slide-in-right" style={{ animationDelay: '0.4s' }}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-blue-700">Learning Streak</CardTitle>
-              <Zap className="h-4 w-4 text-orange-500" />
+              <Zap className="h-4 w-4 text-orange-500 animate-gentle-bounce" />
             </CardHeader>
             <CardContent>
               <div className="flex items-center gap-2">
                 <div className="text-2xl font-bold text-orange-600">{userProgress.streak} days</div>
-                <Flame className="h-6 w-6 text-red-500 animate-flicker" />
+                <Flame className="h-6 w-6 text-red-500 animate-soft-pulse" />
               </div>
               <p className="text-xs text-green-700">Keep it up!</p>
             </CardContent>
           </Card>
 
-          <Card className="bg-white/95 border-gray-300 border-2">
+          <Card className="bg-white/95 border-gray-300 border-2 animate-slide-in-right" style={{ animationDelay: '0.5s' }}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-blue-700">Topics Completed</CardTitle>
-              <BookOpen className="h-4 w-4 text-blue-600" />
+              <BookOpen className="h-4 w-4 text-blue-600 animate-gentle-bounce" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-orange-600">{userProgress.topicsCompleted}</div>
@@ -327,10 +327,10 @@ export function AchievementsPage() {
             </CardContent>
           </Card>
 
-          <Card className="bg-white/95 border-gray-300 border-2">
+          <Card className="bg-white/95 border-gray-300 border-2 animate-slide-in-right" style={{ animationDelay: '0.6s' }}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-blue-700">Study Areas</CardTitle>
-              <Target className="h-4 w-4 text-red-500" />
+              <Target className="h-4 w-4 text-red-500 animate-gentle-bounce" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-orange-600">{userProgress.studyAreasExplored}/7</div>
@@ -347,14 +347,18 @@ export function AchievementsPage() {
               Earned Achievements ({earnedAchievements.length})
             </h2>
             <div className="space-y-4">
-              {earnedAchievements.map((achievement) => {
+              {earnedAchievements.map((achievement, index) => {
                 const CategoryIcon = getCategoryIcon(achievement.category)
                 return (
-                  <Card key={achievement.id} className={`bg-white/95 border-2 ${getCategoryGlowColor(achievement.category)}`}>
+                  <Card 
+                    key={achievement.id} 
+                    className={`bg-white/95 border-2 ${getCategoryGlowColor(achievement.category)} animate-achievement-unlock transform hover:scale-[1.02] transition-all duration-300`}
+                    style={{ animationDelay: `${0.7 + index * 0.1}s` }}
+                  >
                     <CardContent className="p-4">
                       <div className="flex items-center gap-4">
                         <div
-                          className={`w-16 h-16 rounded-full bg-gradient-to-r ${getCategoryColor(achievement.category)} flex items-center justify-center text-4xl border-2 border-white shadow-lg`}
+                          className={`w-16 h-16 rounded-full bg-gradient-to-r ${getCategoryColor(achievement.category)} flex items-center justify-center text-4xl border-2 border-white shadow-lg animate-success-checkmark`}
                         >
                           {achievement.icon}
                         </div>
@@ -367,7 +371,7 @@ export function AchievementsPage() {
                             </p>
                           )}
                         </div>
-                        <Badge className="bg-yellow-500/80 text-white border border-gray-300">
+                        <Badge className="bg-yellow-500/80 text-white border border-gray-300 animate-subtle-glow">
                           <Trophy className="h-3 w-3 mr-1" />
                           Earned
                         </Badge>
@@ -386,7 +390,7 @@ export function AchievementsPage() {
               In Progress ({unlockedAchievements.length})
             </h2>
             <div className="space-y-4">
-              {unlockedAchievements.map((achievement) => {
+              {unlockedAchievements.map((achievement, index) => {
                 const CategoryIcon = getCategoryIcon(achievement.category)
                 const progressPercentage =
                   achievement.progress && achievement.maxProgress
@@ -394,11 +398,15 @@ export function AchievementsPage() {
                     : 0
 
                 return (
-                  <Card key={achievement.id} className="bg-white/95 border-gray-300 border-2">
+                  <Card 
+                    key={achievement.id} 
+                    className="bg-white/95 border-gray-300 border-2 animate-stagger-fade transform hover:scale-[1.02] transition-all duration-300"
+                    style={{ animationDelay: `${0.8 + index * 0.1}s` }}
+                  >
                     <CardContent className="p-4">
                       <div className="flex items-center gap-4">
                         <div
-                          className={`w-12 h-12 rounded-full bg-gradient-to-r ${getCategoryColor(achievement.category)} opacity-60 flex items-center justify-center text-2xl border border-gray-300`}
+                          className={`w-12 h-12 rounded-full bg-gradient-to-r ${getCategoryColor(achievement.category)} opacity-60 flex items-center justify-center text-2xl border border-gray-300 animate-soft-pulse`}
                         >
                           {achievement.icon}
                         </div>
@@ -414,9 +422,9 @@ export function AchievementsPage() {
                                 <span>{Math.round(progressPercentage)}%</span>
                               </div>
                               <div className="relative">
-                                <Progress value={progressPercentage} className="h-2" />
+                                <Progress value={progressPercentage} className="h-2 animate-progress-fill" />
                                 <div 
-                                  className="absolute top-0 left-0 h-2 rounded-full animate-charging opacity-80"
+                                  className="absolute top-0 left-0 h-2 rounded-full animate-skeleton-shimmer opacity-80"
                                   style={{ width: `${progressPercentage}%` }}
                                 ></div>
                               </div>

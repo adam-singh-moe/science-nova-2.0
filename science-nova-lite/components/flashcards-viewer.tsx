@@ -6,7 +6,7 @@ import { setBlockDone } from '@/lib/progress'
 
 export type Card = { q: string; a: string }
 
-export function FlashcardsViewer({ cards, storageKey }: { cards: Card[]; storageKey?: string }) {
+export function FlashcardsViewer({ cards, storageKey, contentMeta }: { cards: Card[]; storageKey?: string; contentMeta?: { entryId: string; topicId: string; category: string; subtype: string } }) {
   const [index, setIndex] = React.useState(0)
   const [flipped, setFlipped] = React.useState(false)
   const [mounted, setMounted] = React.useState(false)
@@ -77,6 +77,10 @@ export function FlashcardsViewer({ cards, storageKey }: { cards: Card[]; storage
         }
       }
     } catch {}
+    // content completion telemetry when reaching end
+    if (progressPct === 100 && total > 0 && contentMeta) {
+      // Content telemetry removed - was part of content management system
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [index])
 

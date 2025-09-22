@@ -402,11 +402,11 @@ export function HomePage() {
         )}
 
         {/* Welcome Header */}
-        <div className="mb-8">
+        <div className="mb-8 animate-fade-up">
           <h1 className={`text-5xl md:text-6xl font-bold font-heading text-transparent bg-clip-text ${theme.gradient.header} mb-4`}>
             Welcome back, {displayName}!
           </h1>
-          <p className={`text-lg ${theme.text.secondary} max-w-2xl`}>
+          <p className={`text-lg ${theme.text.secondary} max-w-2xl animate-stagger-fade`} style={{ animationDelay: '0.2s' }}>
             Ready to explore the wonders of science? {isAuthenticated ? "Continue your learning journey" : "Check out what Science Nova has to offer"} with interactive lessons, AI-powered assistance, and exciting adventures.
           </p>
         </div>
@@ -414,11 +414,11 @@ export function HomePage() {
         {/* Gamified Stats Overview */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           {/* Mission Progress */}
-          <Card className="bg-white/95 border-gray-300 border-2">
+          <Card className="bg-white/95 border-gray-300 border-2 animate-slide-in-right transform hover:scale-105 transition-all duration-300" style={{ animationDelay: '0.3s' }}>
             <CardContent className="p-6">
               <div className="flex items-center gap-3 mb-3">
                 <div className="p-2 bg-blue-100/50 rounded-full">
-                  <Rocket className="h-6 w-6 text-blue-600" />
+                  <Rocket className="h-6 w-6 text-blue-600 animate-gentle-bounce" />
                 </div>
                 <div>
                   <h3 className="text-lg font-bold text-blue-900">Mission Progress</h3>
@@ -427,7 +427,7 @@ export function HomePage() {
               </div>
               <Progress 
                 value={(userStats.topicsCompleted / totalTopicsForGrade) * 100}
-                className="h-6 mb-2"
+                className="h-6 mb-2 animate-progress-fill"
               />
               <p className="text-xs text-blue-600 font-medium">
                 {Math.round((userStats.topicsCompleted / totalTopicsForGrade) * 100)}% Complete
@@ -436,11 +436,11 @@ export function HomePage() {
           </Card>
 
           {/* Study Badges */}
-          <Card className="bg-white/95 border-gray-300 border-2">
+          <Card className="bg-white/95 border-gray-300 border-2 animate-slide-in-right transform hover:scale-105 transition-all duration-300" style={{ animationDelay: '0.4s' }}>
             <CardContent className="p-6">
               <div className="flex items-center gap-3 mb-3">
                 <div className="p-2 bg-green-100/50 rounded-full">
-                  <Trophy className="h-6 w-6 text-green-600" />
+                  <Trophy className="h-6 w-6 text-green-600 animate-subtle-glow" />
                 </div>
                 <div>
                   <h3 className="text-lg font-bold text-green-900">Study Badges</h3>
@@ -478,18 +478,24 @@ export function HomePage() {
                 </div>
               </div>
               <div className="text-center">
-                <div className="text-4xl font-bold font-heading text-orange-600 mb-1">
-                  {Math.floor(userStats.totalTimeSpent / 60)}h {userStats.totalTimeSpent % 60}m
-                </div>
-                <div className="text-sm text-orange-700 mb-2">
-                  {userStats.adventuresCompleted} adventures completed
-                </div>
+                {(userStats.totalTimeSpent || 0) > 0 ? (
+                  <div className="text-4xl font-bold font-heading text-orange-600 mb-1">
+                    {Math.floor((userStats.totalTimeSpent || 0) / 60)}h {(userStats.totalTimeSpent || 0) % 60}m
+                  </div>
+                ) : (
+                  <div className="text-2xl font-bold font-heading text-orange-600 mb-1">Ready to start!</div>
+                )}
+                {userStats.adventuresCompleted > 0 && (
+                  <div className="text-sm text-orange-700 mb-2">
+                    {userStats.adventuresCompleted} adventures completed
+                  </div>
+                )}
                 {userStats.totalTimeSpent >= 120 && (
                   <div className="bg-yellow-100/50 border-2 border-yellow-300 rounded-full px-3 py-1 text-xs text-yellow-700 font-bold">
                     🎉 2+ Hours Champion!
                   </div>
                 )}
-                {userStats.currentStreak && userStats.currentStreak > 0 && (
+                {userStats.currentStreak && userStats.currentStreak > 1 && (
                   <div className="mt-2 bg-red-100/50 border-2 border-red-300 rounded-full px-3 py-1 text-xs text-red-700 font-bold">
                     🔥 {userStats.currentStreak} Day Streak!
                   </div>

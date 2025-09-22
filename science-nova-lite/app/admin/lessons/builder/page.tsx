@@ -8,7 +8,7 @@ import { RoleGuard } from "@/components/layout/role-guard"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/contexts/auth-context"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { BookOpen, Boxes, Cog, FileText, Grid3X3, HelpCircle, Layers, Plus, Shuffle, Type, MonitorSmartphone, ZoomIn, ZoomOut, ArrowLeft } from "lucide-react"
+import { BookOpen, Boxes, Cog, FileText, Grid3X3, HelpCircle, Layers, Plus, Shuffle, Type, MonitorSmartphone, ZoomIn, ZoomOut, ArrowLeft, Play } from "lucide-react"
 import { Image as ImageIcon } from "lucide-react"
 import { FlashcardsViewer } from "@/components/flashcards-viewer"
 import { QuizViewer } from "@/components/quiz-viewer"
@@ -19,9 +19,15 @@ import { useConfirm } from "@/hooks/use-confirm"
 import { StudentToolCard } from "@/components/student-tool-card"
 import { Panel } from "@/components/ui/panel"
 import ImageViewer from "@/components/image-viewer"
+import YouTubeViewer from "@/components/youtube-viewer"
+import dynamic from "next/dynamic"
+
+// Import BlockNote CSS
+import "@blocknote/core/fonts/inter.css"
+import "@blocknote/mantine/style.css"
 import { VantaBackground } from "@/components/vanta-background"
 
-export type ToolKind = "TEXT" | "FLASHCARDS" | "QUIZ" | "CROSSWORD" | "IMAGE"
+export type ToolKind = "TEXT" | "FLASHCARDS" | "QUIZ" | "CROSSWORD" | "IMAGE" | "VIDEO"
 
 interface PlacedTool {
   id: string
@@ -40,6 +46,146 @@ const defaultSize: Record<ToolKind, { w: number; h: number }> = {
   QUIZ: { w: 600, h: 220 },
   CROSSWORD: { w: 600, h: 220 },
   IMAGE: { w: 480, h: 320 },
+  VIDEO: { w: 640, h: 360 },
+}
+
+// Modern Rich Text Editor using BlockNote - clean, reliable, and user-friendly
+function RichTextEditor({ 
+  initialHtml, 
+  onChange 
+}: { 
+  initialHtml: string
+  onChange: (html: string, text: string) => void 
+}) {
+  const [isClient, setIsClient] = useState(false)
+  const [EditorComponent, setEditorComponent] = useState<any>(null)
+  const onChangeRef = useRef(onChange)
+  
+  // Keep the onChange ref updated
+  useEffect(() => {
+    onChangeRef.current = onChange
+  }, [onChange])
+  
+  // Ensure we're on client side
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
+
+  // Initialize BlockNote editor component
+  useEffect(() => {
+    if (!isClient) return
+    
+    const initializeEditor = async () => {
+      try {
+        const { BlockNoteView } = await import('@blocknote/mantine')
+        const { useCreateBlockNote } = await import('@blocknote/react')
+        
+        // Create a wrapper component
+        const EditorWrapper = () => {
+          // Parse initial content
+          let initialContent = undefined
+          if (initialHtml && initialHtml.trim()) {
+            try {
+              // Try to parse as BlockNote JSON first
+              initialContent = JSON.parse(initialHtml)
+            } catch {
+              // If not JSON, convert to basic paragraph block
+              const textContent = initialHtml.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+              if (textContent) {
+                initialContent = [
+                  {
+                    id: crypto.randomUUID(),
+                    type: "paragraph",
+                    content: [{ type: "text", text: textContent, styles: {} }]
+                  }
+                ]
+              }
+            }
+          }
+          
+          const editor = useCreateBlockNote({
+            initialContent,
+            uploadFile: async (file) => {
+              // Basic file upload handler
+              const reader = new FileReader()
+              return new Promise((resolve) => {
+                reader.onload = () => resolve(reader.result as string)
+                reader.readAsDataURL(file)
+              })
+            }
+          })
+
+          // Handle content changes
+          const handleChange = () => {
+            try {
+              // Get the current document as JSON
+              const jsonContent = JSON.stringify(editor.document)
+              
+              // Extract plain text content
+              const textContent = editor.document
+                .map((block: any) => {
+                  if (block.content && Array.isArray(block.content)) {
+                    return block.content.map((item: any) => item.text || '').join('')
+                  } else if (block.content) {
+                    return String(block.content)
+                  }
+                  return ''
+                })
+                .filter(Boolean)
+                .join('\n')
+              
+              onChangeRef.current(jsonContent, textContent)
+            } catch (error) {
+              console.warn('Error handling editor change:', error)
+            }
+          }
+
+          return (
+            <div className="bg-white rounded-lg border-2 border-gray-200 shadow-sm overflow-hidden">
+              <div className="min-h-[400px]">
+                <BlockNoteView
+                  editor={editor}
+                  onChange={handleChange}
+                  theme="light"
+                />
+              </div>
+            </div>
+          )
+        }
+        
+        setEditorComponent(() => EditorWrapper)
+      } catch (error) {
+        console.warn('Failed to initialize BlockNote editor:', error)
+        // Fallback to a simple textarea
+        const FallbackEditor = () => (
+          <div className="bg-white rounded-lg border-2 border-gray-200 shadow-sm overflow-hidden">
+            <textarea
+              className="w-full min-h-[400px] p-4 border-none outline-none resize-none"
+              placeholder="Start typing your content here..."
+              defaultValue={initialHtml.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()}
+              onChange={(e) => onChangeRef.current(e.target.value, e.target.value)}
+            />
+          </div>
+        )
+        setEditorComponent(() => FallbackEditor)
+      }
+    }
+    
+    initializeEditor()
+  }, [isClient])
+
+  if (!isClient || !EditorComponent) {
+    return (
+      <div className="w-full min-h-[400px] bg-gray-50 rounded-lg border-2 border-gray-200 p-6 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-2">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+          <div className="text-gray-500">Loading rich text editor...</div>
+        </div>
+      </div>
+    )
+  }
+
+  return <EditorComponent />
 }
 
 function LeftPalette({ onAdd, onOpenSettings }: { onAdd: (k: ToolKind) => void; onOpenSettings: () => void }) {
@@ -71,13 +217,17 @@ function LeftPalette({ onAdd, onOpenSettings }: { onAdd: (k: ToolKind) => void; 
         <button className={iconBtn} title="Image" onClick={() => onAdd("IMAGE")}>
           <ImageIcon className="h-5 w-5 text-pink-600" />
         </button>
+        <button className={iconBtn} title="Video" onClick={() => onAdd("VIDEO")}>
+          <Play className="h-5 w-5 text-red-600" />
+        </button>
       </div>
     </aside>
   )
 }
 
-function AiHelperPanel({ sel, meta, onUpdateSelected }: { sel: PlacedTool; meta: { title: string; topic: string; grade: number; vanta: string; difficulty?: 1|2|3 }; onUpdateSelected: (patch: any) => void }) {
+function AiHelperPanel({ sel, meta, onUpdateSelected }: { sel: PlacedTool; meta: { title: string; topic: string; topicId: string; grade: number; vanta: string; difficulty?: 1|2|3 }; onUpdateSelected: (patch: any) => void }) {
   const { session } = useAuth()
+  const [systemPrompt, setSystemPrompt] = useState('')
   const [desc, setDesc] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -87,9 +237,31 @@ function AiHelperPanel({ sel, meta, onUpdateSelected }: { sel: PlacedTool; meta:
     .replace(/```[a-zA-Z]*\n?/g, '')
     .replace(/```/g, '')
     .replace(/^json\s*\n?/i, '')
+  const stripMarkdown = (s: string) => {
+    return s
+      // Remove headers
+      .replace(/^#{1,6}\s+/gm, '')
+      // Remove bold/italic
+      .replace(/\*\*([^*]+)\*\*/g, '$1')
+      .replace(/\*([^*]+)\*/g, '$1')
+      .replace(/__([^_]+)__/g, '$1')
+      .replace(/_([^_]+)_/g, '$1')
+      // Remove links
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+      // Remove inline code
+      .replace(/`([^`]+)`/g, '$1')
+      // Remove blockquotes
+      .replace(/^>\s+/gm, '')
+      // Remove list markers
+      .replace(/^[\s]*[-*+]\s+/gm, '')
+      .replace(/^[\s]*\d+\.\s+/gm, '')
+      // Clean up extra whitespace
+      .replace(/\n\s*\n/g, '\n')
+      .trim()
+  }
   const tidy = (v: any): string => {
     const s = String(v ?? '')
-    return stripHtml(stripFences(s)).replace(/[\r\n]+/g, '\n').replace(/\u00a0/g, ' ').trim()
+    return stripMarkdown(stripHtml(stripFences(s))).replace(/[\r\n]+/g, '\n').replace(/\u00a0/g, ' ').trim()
   }
   const tryParseJSON = (raw: string): any | null => {
     const s = stripFences(raw).trim()
@@ -314,34 +486,87 @@ function AiHelperPanel({ sel, meta, onUpdateSelected }: { sel: PlacedTool; meta:
   const doText = async () => {
     setLoading(true)
     try {
+      // Combine system prompt with description and lesson context for better AI guidance
+      const lessonContext = `Lesson: ${meta.title || ''}, Topic: ${meta.topic || ''}, Grade ${meta.grade}, Difficulty ${meta.difficulty || 2}`
+      const fullPrompt = systemPrompt 
+        ? `${systemPrompt}${desc ? `\n\nAdditional context: ${desc}` : ''}\n\n${lessonContext}`
+        : desc 
+        ? `${desc}\n\n${lessonContext}`
+        : lessonContext
+        
+      console.log('🚀 Starting AI text generation...', { fullPrompt, meta })
+      
       const res = await fetch('/api/ai-helper', {
         method: 'POST',
         headers: authHeaders,
-  body: JSON.stringify({ tool: 'TEXT', prompt: desc, topic: meta.topic, grade: meta.grade, difficulty: meta.difficulty, minWords: typeof minWords==='number'? minWords : undefined, maxWords: typeof maxWords==='number'? maxWords : undefined })
+        body: JSON.stringify({ 
+          tool: 'TEXT', 
+          prompt: fullPrompt, 
+          topic: meta.topic, 
+          topicId: meta.topicId,
+          grade: meta.grade, 
+          difficulty: meta.difficulty, 
+          minWords: typeof minWords==='number'? minWords : undefined, 
+          maxWords: typeof maxWords==='number'? maxWords : undefined 
+        })
       })
+      
+      console.log('📡 AI Helper response status:', res.status)
+      
       const { ok, status, json: j, raw } = await readSafe(res)
+      console.log('📊 AI Helper response data:', { ok, status, json: j, raw })
+      
       if (!ok) {
         toast({ title: 'AI text error', description: `Status ${status}. Using fallback if available.`, variant: 'warning' })
       }
-      const text = (j && typeof j.text === 'string') ? j.text : (typeof j === 'string' ? j : (raw || ''))
-      if (text) onUpdateSelected({ data: { ...(sel.data || {}), html: `<p>${String(text).replace(/\n/g, '<br/>')}</p>`, text } })
-    } finally { setLoading(false) }
+      let text = (j && typeof j.text === 'string') ? j.text : (typeof j === 'string' ? j : (raw || ''))
+      
+      // Apply additional markdown stripping to ensure clean text output
+      text = tidy(text)
+      
+      console.log('✅ Final text output:', text)
+      
+      if (text) {
+        onUpdateSelected({ 
+          data: { 
+            ...(sel.data || {}), 
+            html: `<p>${text.replace(/\n/g, '<br/>')}</p>`, 
+            text 
+          } 
+        })
+        console.log('📝 Text content updated successfully')
+      } else {
+        console.warn('⚠️ No text content generated')
+      }
+    } catch (error) {
+      console.error('❌ AI text generation failed:', error)
+      toast({ title: 'AI text error', description: `Error: ${error.message}`, variant: 'destructive' })
+    } finally { 
+      setLoading(false) 
+      console.log('🔄 AI text generation completed, loading set to false')
+    }
   }
 
   const doFlash = async () => {
     setLoading(true)
     try {
+      const lessonContext = `Lesson: ${meta.title || ''}, Topic: ${meta.topic || ''}, Grade ${meta.grade}, Difficulty ${meta.difficulty || 2}`
+      const fullPrompt = desc 
+        ? `${desc}\n\n${lessonContext}`
+        : `Create ${flashCount} concise flashcards about ${meta.topic} for Grade ${meta.grade} (difficulty ${meta.difficulty}).\nReturn JSON with a 'cards' array like [{"q":"question","a":"answer"}].\nDo NOT include markdown fences or code blocks.\n\n${lessonContext}`
+      
       const res = await fetch('/api/ai-helper', {
         method: 'POST',
         headers: authHeaders,
         body: JSON.stringify({
           tool: 'FLASHCARDS',
           // Encourage structured, fence-free output; still parse defensively
-          prompt: desc || `Create 6 concise flashcards about ${meta.topic} for Grade ${meta.grade} (difficulty ${meta.difficulty}).\nReturn JSON with a 'cards' array like [{"q":"question","a":"answer"}].\nDo NOT include markdown fences or code blocks.`,
+          prompt: fullPrompt,
           topic: meta.topic,
+          topicId: meta.topicId,
           grade: meta.grade,
           difficulty: meta.difficulty,
-          limit: 6
+          limit: flashCount
         })
       })
       const { ok, status, json: j, raw } = await readSafe(res)
@@ -367,14 +592,20 @@ function AiHelperPanel({ sel, meta, onUpdateSelected }: { sel: PlacedTool; meta:
     } finally { setLoading(false) }
   }
 
+  const [flashCount, setFlashCount] = useState(6)
   const [mcq, setMcq] = useState(2); const [tf, setTf] = useState(2); const [fib, setFib] = useState(1)
   const doQuiz = async () => {
     setLoading(true)
     try {
+      const lessonContext = `Lesson: ${meta.title || ''}, Topic: ${meta.topic || ''}, Grade ${meta.grade}, Difficulty ${meta.difficulty || 2}`
+      const fullPrompt = desc 
+        ? `${desc}\n\n${lessonContext}`
+        : lessonContext
+        
       const res = await fetch('/api/ai-helper', {
         method: 'POST',
         headers: authHeaders,
-        body: JSON.stringify({ tool: 'QUIZ', prompt: desc, topic: meta.topic, grade: meta.grade, difficulty: meta.difficulty, counts: { MCQ: mcq, TF: tf, FIB: fib } })
+        body: JSON.stringify({ tool: 'QUIZ', prompt: fullPrompt, topic: meta.topic, topicId: meta.topicId, grade: meta.grade, difficulty: meta.difficulty, counts: { MCQ: mcq, TF: tf, FIB: fib } })
       })
       const { ok, status, json: j } = await readSafe(res)
       if (!ok) {
@@ -407,13 +638,19 @@ function AiHelperPanel({ sel, meta, onUpdateSelected }: { sel: PlacedTool; meta:
   const doCross = async () => {
     setLoading(true)
     try {
+      const lessonContext = `Lesson: ${meta.title || ''}, Topic: ${meta.topic || ''}, Grade ${meta.grade}, Difficulty ${meta.difficulty || 2}`
+      const fullPrompt = desc 
+        ? `${desc}\n\n${lessonContext}`
+        : `Generate ${Math.min(30, Math.max(4, cwCount))} crossword entries about ${meta.topic} for Grade ${meta.grade} (difficulty ${meta.difficulty}).\nFor EACH word, provide a UNIQUE, definition-style clue that describes what the word is or means in this topic. Do NOT include the word.\nRespond ONLY as JSON: {"items":[{"answer":"UPPERCASE","clue":"short definition"}, ...]}. Mix word lengths (3–10).\n\n${lessonContext}`
+      
       const res = await fetch('/api/ai-helper', {
         method: 'POST',
         headers: authHeaders,
         body: JSON.stringify({
           tool: 'CROSSWORD',
-          prompt: desc || `Generate ${Math.min(30, Math.max(4, cwCount))} crossword entries about ${meta.topic} for Grade ${meta.grade} (difficulty ${meta.difficulty}).\nFor EACH word, provide a UNIQUE, definition-style clue that describes what the word is or means in this topic. Do NOT include the word.\nRespond ONLY as JSON: {"items":[{"answer":"UPPERCASE","clue":"short definition"}, ...]}. Mix word lengths (3–10).`,
+          prompt: fullPrompt,
           topic: meta.topic,
+          topicId: meta.topicId,
           grade: meta.grade,
           difficulty: meta.difficulty,
           limit: Math.min(30, Math.max(1, cwCount))
@@ -528,9 +765,21 @@ function AiHelperPanel({ sel, meta, onUpdateSelected }: { sel: PlacedTool; meta:
 
   return (
     <div className="space-y-2">
-      <textarea className="w-full border rounded p-2 text-xs" placeholder="Optional description to guide AI" value={desc} onChange={(e) => setDesc(e.target.value)} />
       {sel.kind === 'TEXT' && (
         <div className="space-y-2">
+          <textarea 
+            className="w-full border rounded p-2 text-xs" 
+            placeholder="System prompt (guides AI behavior and style)" 
+            value={systemPrompt} 
+            onChange={(e) => setSystemPrompt(e.target.value)}
+            rows={2}
+          />
+          <textarea 
+            className="w-full border rounded p-2 text-xs" 
+            placeholder="Description (specific content guidance)" 
+            value={desc} 
+            onChange={(e) => setDesc(e.target.value)} 
+          />
           <div className="grid grid-cols-2 gap-2 text-xs">
             <label>Min words<input className="w-full border rounded p-1" type="number" min={10} max={500} value={minWords} onChange={(e)=> setMinWords(e.target.value === '' ? '' : Number(e.target.value))} /></label>
             <label>Max words<input className="w-full border rounded p-1" type="number" min={10} max={1000} value={maxWords} onChange={(e)=> setMaxWords(e.target.value === '' ? '' : Number(e.target.value))} /></label>
@@ -538,7 +787,17 @@ function AiHelperPanel({ sel, meta, onUpdateSelected }: { sel: PlacedTool; meta:
           <Button size="sm" disabled={loading} onClick={doText}>Generate Text</Button>
         </div>
       )}
-      {sel.kind === 'FLASHCARDS' && <Button size="sm" disabled={loading} onClick={doFlash}>Generate Flashcards</Button>}
+      {sel.kind !== 'TEXT' && (
+        <>
+          <textarea className="w-full border rounded p-2 text-xs" placeholder="Optional description to guide AI" value={desc} onChange={(e) => setDesc(e.target.value)} />
+        </>
+      )}
+      {sel.kind === 'FLASHCARDS' && (
+        <div className="space-y-2">
+          <label className="text-xs">Flashcards count <input className="w-full border rounded p-1" type="number" min={1} max={20} value={flashCount} onChange={(e) => setFlashCount(Number(e.target.value))} /></label>
+          <Button size="sm" disabled={loading} onClick={doFlash}>Generate Flashcards</Button>
+        </div>
+      )}
       {sel.kind === 'QUIZ' && (
         <div className="space-y-2">
           <div className="grid grid-cols-3 gap-1 text-xs">
@@ -560,8 +819,8 @@ function AiHelperPanel({ sel, meta, onUpdateSelected }: { sel: PlacedTool; meta:
   )
 }
 
-function RightInspector({ items, selectedId, onSelect, onSave, onPreview, onPublish, onUpdateSelected, meta, onReorder }: { items: PlacedTool[]; selectedId: string | null; onSelect: (id: string) => void; onSave: () => void; onPreview: () => void; onPublish: () => void; onUpdateSelected: (patch: any) => void; meta: { title: string; topic: string; grade: number; vanta: string }; onReorder: (id: string, action: 'up'|'down'|'front'|'back') => void }) {
-  const iconFor = (k: ToolKind) => k==='TEXT'? <Type className="h-3.5 w-3.5 text-sky-600"/> : k==='FLASHCARDS'? <Boxes className="h-3.5 w-3.5 text-emerald-600"/> : k==='QUIZ'? <HelpCircle className="h-3.5 w-3.5 text-violet-600"/> : k==='CROSSWORD'? <Grid3X3 className="h-3.5 w-3.5 text-amber-600"/> : <ImageIcon className="h-3.5 w-3.5 text-pink-600"/>
+function RightInspector({ items, selectedId, onSelect, onSave, onPreview, onPublish, onUpdateSelected, meta, onReorder }: { items: PlacedTool[]; selectedId: string | null; onSelect: (id: string) => void; onSave: () => void; onPreview: () => void; onPublish: () => void; onUpdateSelected: (patch: any) => void; meta: { title: string; topic: string; topicId: string; grade: number; vanta: string }; onReorder: (id: string, action: 'up'|'down'|'front'|'back') => void }) {
+  const iconFor = (k: ToolKind) => k==='TEXT'? <Type className="h-3.5 w-3.5 text-sky-600"/> : k==='FLASHCARDS'? <Boxes className="h-3.5 w-3.5 text-emerald-600"/> : k==='QUIZ'? <HelpCircle className="h-3.5 w-3.5 text-violet-600"/> : k==='CROSSWORD'? <Grid3X3 className="h-3.5 w-3.5 text-amber-600"/> : k==='IMAGE'? <ImageIcon className="h-3.5 w-3.5 text-pink-600"/> : <Play className="h-3.5 w-3.5 text-red-600"/>
   const sel = selectedId ? items.find(i=>i.id===selectedId) : null
   return (
     <aside className="w-72 shrink-0 p-3 bg-white/70 backdrop-blur border-l">
@@ -637,7 +896,7 @@ function RightInspector({ items, selectedId, onSelect, onSave, onPreview, onPubl
         {!sel ? (
           <div className="text-xs text-gray-500">Select a layer to use AI.</div>
         ) : (
-          <AiHelperPanel sel={sel} meta={{ ...meta, difficulty: (meta as any).difficulty }} onUpdateSelected={onUpdateSelected} />
+          <AiHelperPanel sel={sel} meta={{ ...meta, topicId: meta.topicId, difficulty: (meta as any).difficulty }} onUpdateSelected={onUpdateSelected} />
         )}
       </div>
     </aside>
@@ -647,7 +906,6 @@ function RightInspector({ items, selectedId, onSelect, onSave, onPreview, onPubl
 type GuideLines = { v: number[]; h: number[] }
 function Draggable({ item, onChange, selected, onSelect, onConfigure, onDuplicate, onDelete, onDragState, snap, gridSize, allItems, onGuideChange, onActivate, canvasH, onCanvasNeed }: { item: PlacedTool; onChange: (p: Partial<PlacedTool>) => void; selected: boolean; onSelect: () => void; onConfigure: () => void; onDuplicate: () => void; onDelete: () => void; onDragState: (dragging: boolean) => void; snap: boolean; gridSize: number; allItems: PlacedTool[]; onGuideChange: (g: GuideLines) => void; onActivate: () => void; canvasH: number; onCanvasNeed: (needW: number, needH: number) => void }) {
   const start = useRef<{x:number;y:number;w:number;h:number;mx:number;my:number;resizing:boolean; dir?: 'n'|'s'|'e'|'w'|'ne'|'nw'|'se'|'sw'} | null>(null)
-  const textRef = useRef<HTMLDivElement | null>(null)
   const [flipMap, setFlipMap] = useState<Record<string, boolean>>({})
   const threshold = 6
 
@@ -813,31 +1071,36 @@ function Draggable({ item, onChange, selected, onSelect, onConfigure, onDuplicat
               style={{ right: 0, top: '50%', transform: 'translate(50%, -50%)' }} onMouseDown={beginDrag} />
           </>
         )}
-  <div className="p-3 text-sm text-gray-700 h-[calc(100%-2rem)] overflow-auto sn-tool-content rounded-lg" style={{ background: (item.data?.bgColor as string) || 'transparent' }} onMouseDown={(e)=>{ e.stopPropagation(); onSelect(); onActivate(); }}>
+  <div className="p-3 text-sm text-gray-700 h-[calc(100%-2rem)] overflow-auto sn-tool-content rounded-lg" style={{ background: (item.data?.bgColor as string) || 'transparent' }} onMouseDown={(e)=>{ 
+    // For text tools, only trigger selection if clicking outside the editor
+    if (item.kind === "TEXT") {
+      const target = e.target as HTMLElement;
+      // Check if the click is inside the BlockNote editor or textarea
+      const isInsideEditor = target.closest('[contenteditable="true"]') || 
+                            target.closest('textarea') || 
+                            target.closest('.bn-editor') ||
+                            target.closest('.bn-block-content') ||
+                            target.tagName.toLowerCase() === 'textarea';
+      if (!isInsideEditor) {
+        e.stopPropagation(); 
+        onSelect(); 
+        onActivate(); 
+      }
+    } else {
+      e.stopPropagation(); 
+      onSelect(); 
+      onActivate(); 
+    }
+  }}>
   {item.kind === "TEXT" && (
-            <div className="h-full flex flex-col gap-2">
-              <div className="flex items-center gap-1 text-xs">
-        <button className="px-2 py-1 border rounded" onMouseDown={(e)=>{e.preventDefault(); textRef.current?.focus(); document.execCommand('bold')}}>Bold</button>
-        <button className="px-2 py-1 border rounded" onMouseDown={(e)=>{e.preventDefault(); textRef.current?.focus(); document.execCommand('italic')}}>Italic</button>
-        <button className="px-2 py-1 border rounded" onMouseDown={(e)=>{e.preventDefault(); textRef.current?.focus(); document.execCommand('formatBlock', false, 'h2')}}>H2</button>
-        <button className="px-2 py-1 border rounded" onMouseDown={(e)=>{e.preventDefault(); textRef.current?.focus(); document.execCommand('formatBlock', false, 'p')}}>P</button>
-              </div>
-              <div
-                ref={textRef}
-                contentEditable
-                suppressContentEditableWarning
-                className="prose max-w-none min-h-40 bg-white/60 rounded p-3 outline-none"
-                onInput={(e)=>{
-                  const html = (e.currentTarget as HTMLDivElement).innerHTML
-                  const text = (e.currentTarget as HTMLDivElement).innerText
+            <div className="h-full">
+              <RichTextEditor 
+                key={`${item.id}-${item.data?.html ? item.data.html.length : 0}`}
+                initialHtml={item.data?.html || ''}
+                onChange={(html, text) => {
                   onChange({ data: { ...item.data, html, text } })
                 }}
-                dangerouslySetInnerHTML={{ __html: (item.data?.html || item.data?.text) ? (item.data?.html || (item.data?.text as string).replace(/\n/g,'<br/>')) : 'Sample text…' }}
               />
-              <div className="border-t pt-2">
-                <div className="text-xs text-gray-500 mb-1">Live render</div>
-                <div className="prose max-w-none bg-white/50 rounded p-3" dangerouslySetInnerHTML={{ __html: (item.data?.html || item.data?.text) ? (item.data?.html || (item.data?.text as string).replace(/\n/g,'<br/>')) : 'Sample text…' }} />
-              </div>
             </div>
           )}
           {item.kind === "IMAGE" && (()=>{
@@ -1043,6 +1306,50 @@ function Draggable({ item, onChange, selected, onSelect, onConfigure, onDuplicat
               </div>
             )
           })()}
+
+          {item.kind === "VIDEO" && (() => {
+            const url: string = item.data?.url || ''
+            const autoplay: boolean = item.data?.autoplay || false
+            const showControls: boolean = item.data?.showControls !== false
+            const set = (patch: any) => onChange({ data: { ...item.data, ...patch } })
+            return (
+              <div className="h-full flex flex-col gap-2">
+                <div className="flex items-center gap-2 text-xs">
+                  <input 
+                    className="flex-1 border rounded px-2 py-1" 
+                    placeholder="YouTube URL (https://youtube.com/watch?v=...)" 
+                    value={url} 
+                    onChange={(e) => set({ url: e.target.value })} 
+                  />
+                </div>
+                <div className="flex items-center gap-4 text-xs">
+                  <label className="flex items-center gap-1">
+                    <input 
+                      type="checkbox" 
+                      checked={autoplay} 
+                      onChange={(e) => set({ autoplay: e.target.checked })} 
+                    />
+                    Autoplay
+                  </label>
+                  <label className="flex items-center gap-1">
+                    <input 
+                      type="checkbox" 
+                      checked={showControls} 
+                      onChange={(e) => set({ showControls: e.target.checked })} 
+                    />
+                    Show controls
+                  </label>
+                </div>
+                <div className="flex-1 min-h-48 bg-white/60 rounded p-2 overflow-hidden">
+                  <YouTubeViewer 
+                    url={url} 
+                    autoplay={autoplay} 
+                    showControls={showControls} 
+                  />
+                </div>
+              </div>
+            )
+          })()}
           
         </div>
       </div>
@@ -1054,8 +1361,121 @@ export default function LessonBuilder() {
   const confirmDialog = useConfirm()
   const [items, setItems] = useState<PlacedTool[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
+
+  // Predefined lesson template for new lessons
+  const createLessonTemplate = (): PlacedTool[] => [
+    {
+      id: crypto.randomUUID(),
+      kind: 'TEXT',
+      x: 40,
+      y: 40,
+      w: 600,
+      h: 240,
+      z: 1,
+      data: {
+        html: '<h2>Lesson Introduction</h2><p>Welcome to your new lesson! Edit this text to introduce the topic and learning objectives.</p>',
+        text: 'Lesson Introduction\nWelcome to your new lesson! Edit this text to introduce the topic and learning objectives.'
+      }
+    },
+    {
+      id: crypto.randomUUID(),
+      kind: 'IMAGE',
+      x: 680,
+      y: 40,
+      w: 480,
+      h: 320,
+      z: 1,
+      data: {
+        url: '',
+        alt: 'Add an image to support your lesson content',
+        caption: 'Supporting Image'
+      }
+    },
+    {
+      id: crypto.randomUUID(),
+      kind: 'TEXT',
+      x: 40,
+      y: 320,
+      w: 600,
+      h: 240,
+      z: 1,
+      data: {
+        html: '<h3>Main Content</h3><p>Add your primary lesson content here. Explain key concepts, provide examples, and guide students through the learning material.</p>',
+        text: 'Main Content\nAdd your primary lesson content here. Explain key concepts, provide examples, and guide students through the learning material.'
+      }
+    },
+    {
+      id: crypto.randomUUID(),
+      kind: 'FLASHCARDS',
+      x: 40,
+      y: 600,
+      w: 600,
+      h: 260,
+      z: 1,
+      data: {
+        cards: [
+          { front: 'Key Term 1', back: 'Definition or explanation of the first important concept' },
+          { front: 'Key Term 2', back: 'Definition or explanation of the second important concept' },
+          { front: 'Key Term 3', back: 'Definition or explanation of the third important concept' }
+        ]
+      }
+    },
+    {
+      id: crypto.randomUUID(),
+      kind: 'VIDEO',
+      x: 680,
+      y: 400,
+      w: 640,
+      h: 360,
+      z: 1,
+      data: {
+        url: '',
+        title: 'Educational Video',
+        description: 'Add a video URL to enhance your lesson with multimedia content'
+      }
+    },
+    {
+      id: crypto.randomUUID(),
+      kind: 'QUIZ',
+      x: 40,
+      y: 900,
+      w: 600,
+      h: 220,
+      z: 1,
+      data: {
+        questions: [
+          {
+            question: 'What is the main topic of this lesson?',
+            options: ['Option A', 'Option B', 'Option C', 'Option D'],
+            correct: 0,
+            explanation: 'This question helps assess understanding of the lesson topic.'
+          },
+          {
+            question: 'Which concept is most important to remember?',
+            options: ['Concept 1', 'Concept 2', 'Concept 3', 'Concept 4'],
+            correct: 1,
+            explanation: 'This reinforces key learning objectives.'
+          }
+        ]
+      }
+    },
+    {
+      id: crypto.randomUUID(),
+      kind: 'TEXT',
+      x: 680,
+      y: 800,
+      w: 600,
+      h: 240,
+      z: 1,
+      data: {
+        html: '<h3>Lesson Summary</h3><p>Summarize the key takeaways from this lesson. What should students remember? How does this connect to future learning?</p>',
+        text: 'Lesson Summary\nSummarize the key takeaways from this lesson. What should students remember? How does this connect to future learning?'
+      }
+    }
+  ]
   const [activeId, setActiveId] = useState<string | null>(null)
-  const [meta, setMeta] = useState({ title: "", topic: "", grade: 3, vanta: "globe", difficulty: 2 as 1|2|3 })
+  const [meta, setMeta] = useState({ title: "", topicId: "", topic: "", grade: 3, vanta: "globe", difficulty: 2 as 1|2|3 })
+  const [topics, setTopics] = useState<Array<{id: string; title: string; grade_level: string | null}>>([])
   const [lessonId, setLessonId] = useState<string | null>(null)
   const canvasRef = useRef<HTMLDivElement | null>(null)
   const [dragging, setDragging] = useState(false)
@@ -1122,6 +1542,26 @@ export default function LessonBuilder() {
     try { document.documentElement.setAttribute('data-canvas-scale', String(zoom)) } catch {}
     return () => { try { document.documentElement.removeAttribute('data-canvas-scale') } catch {} }
   }, [zoom])
+  
+  // Load topics for lesson metadata
+  useEffect(() => {
+    if (!session) return
+    async function loadTopics() {
+      try {
+        const res = await fetch('/api/topics', {
+          headers: { Authorization: `Bearer ${session?.access_token}` }
+        })
+        if (res.ok) {
+          const data = await res.json()
+          setTopics(data.topics || [])
+        }
+      } catch (error) {
+        console.error('Failed to load topics:', error)
+      }
+    }
+    loadTopics()
+  }, [session])
+  
   // Non-passive wheel handler for zooming to avoid passive event error
   useEffect(()=>{
     const el = viewportRef.current
@@ -1189,7 +1629,7 @@ export default function LessonBuilder() {
         if (json?.lesson) {
           setLessonId(json.lesson.id)
           const l = json.lesson
-          setMeta({ title: l.title || '', topic: l.topic || '', grade: l.grade_level || 3, vanta: l.vanta_effect || 'globe', difficulty: (l.layout_json?.meta?.difficulty ?? 2) as 1|2|3 })
+          setMeta({ title: l.title || '', topicId: '', topic: l.topic || '', grade: l.grade_level || 3, vanta: l.vanta_effect || 'globe', difficulty: (l.layout_json?.meta?.difficulty ?? 2) as 1|2|3 })
           setItems(Array.isArray(l.layout_json?.items) ? l.layout_json.items : [])
           // Initialize dynamic canvas height (width fixed to 1280)
           const savedH = Number(l.layout_json?.meta?.canvasHeight) || 0
@@ -1206,11 +1646,57 @@ export default function LessonBuilder() {
     })()
   }, [session])
 
+  // Load topics for the selector
+  useEffect(() => {
+    if (!session) return
+    ;(async () => {
+      try {
+        const res = await fetch('/api/topics?limit=200')
+        if (res.ok) {
+          const data = await res.json()
+          setTopics(data.items || [])
+        }
+      } catch (error) {
+        console.error('Failed to load topics:', error)
+      }
+    })()
+  }, [session])
+
+  // Update topic title when topicId changes
+  useEffect(() => {
+    if (meta.topicId && topics.length > 0) {
+      const selectedTopic = topics.find(t => t.id === meta.topicId)
+      if (selectedTopic && selectedTopic.title !== meta.topic) {
+        setMeta(prev => ({ ...prev, topic: selectedTopic.title }))
+      }
+    }
+  }, [meta.topicId, topics])
+
+  // Load template for new lessons (when no ID in URL and items are empty)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const id = params.get('id')
+    
+    // Only initialize template for completely new lessons (no ID and no existing items)
+    if (!id && items.length === 0 && session) {
+      const template = createLessonTemplate()
+      setItems(template)
+      
+      // Calculate canvas height to accommodate all template items
+      const maxY = Math.max(...template.map(item => item.y + item.h))
+      const templateHeight = Math.ceil((maxY + 80) / gridSize) * gridSize
+      setCanvasSize(prev => ({ 
+        w: 1280, 
+        h: Math.max(800, templateHeight)
+      }))
+    }
+  }, [session, items.length, gridSize])
+
   const saveDraft = async (opts?: { silent?: boolean }): Promise<string | null> => {
   if (!session) { toast({ title: 'Sign in required', description: 'Please sign in to save your work.', variant: 'warning' }); return null }
     try {
       // Enforce required meta fields only for explicit actions (not autosave)
-      if (!meta.title.trim() || !meta.topic.trim() || !meta.grade || !meta.vanta) {
+      if (!meta.title.trim() || !meta.topicId.trim() || !meta.grade || !meta.vanta) {
   if (!opts?.silent) { setShowMetaDialog(true); toast({ title: 'Lesson settings needed', description: 'Fill in title, topic, grade, and background before saving.', variant: 'info' }) }
         return null
       }
@@ -1219,6 +1705,7 @@ export default function LessonBuilder() {
         id: lessonId || undefined,
         title: meta.title,
         topic: meta.topic,
+        topic_id: meta.topicId,
         grade_level: meta.grade,
         vanta_effect: meta.vanta,
   layout_json: { items, meta: { difficulty: meta.difficulty, designWidth: 1280, designHeight: 800, canvasWidth: 1280, canvasHeight: canvasSize.h } },
@@ -1302,7 +1789,13 @@ export default function LessonBuilder() {
             if (e.key==='ArrowDown') { e.preventDefault(); const ny = sel.y + delta; updateItem(sel.id, { y: ny }); setCanvasSize(prev=> ({ w: Math.max(prev.w, sel.x + sel.w + 40), h: Math.max(prev.h, ny + sel.h + 40) })) }
             if (e.key==='Delete') {
               e.preventDefault()
-              confirmDialog({ title: 'Delete selected block?', actionText: 'Delete', cancelText: 'Cancel', variant: 'destructive' })
+              confirmDialog({ 
+                title: 'Delete selected block?', 
+                description: 'This will permanently remove the selected block from your lesson.',
+                actionText: 'Delete', 
+                cancelText: 'Cancel', 
+                variant: 'destructive' 
+              })
                 .then(ok => {
                   if (ok) {
                     const prevItems = items
@@ -1358,7 +1851,7 @@ export default function LessonBuilder() {
               </div>
               {/* Scrollable body */}
               <div className="flex-1 overflow-auto">
-                <VantaBackground effect={(meta.vanta || 'globe') as any}>
+                <VantaBackground effect={(meta.vanta || 'globe') as any} lessonBuilder={true}>
                   <div className="px-4 py-5">
                     <div className="relative mb-4 mx-auto rounded-3xl backdrop-blur-[2px] p-6" style={{ width: previewWidth }}>
                       <h3 className="text-2xl font-semibold tracking-tight bg-gradient-to-r from-sky-400 to-indigo-400 bg-clip-text text-transparent mb-1">{meta.title || 'Lesson Preview'}</h3>
@@ -1422,6 +1915,16 @@ export default function LessonBuilder() {
                             return (
                               <StudentToolCard variant="crossword" bodyBgColor={it.data?.bgColor as string | undefined} accentIntensity={it.data?.accentIntensity}>
                                 <CrosswordViewer words={words} storageKey={storageKey} />
+                              </StudentToolCard>
+                            )
+                          })()}
+                          {it.kind === 'VIDEO' && (()=>{
+                            const url = it.data?.url as string | undefined
+                            const autoplay = it.data?.autoplay as boolean | undefined
+                            const showControls = it.data?.showControls !== false
+                            return (
+                              <StudentToolCard variant="video" bodyBgColor={it.data?.bgColor as string | undefined} accentIntensity={it.data?.accentIntensity}>
+                                <YouTubeViewer url={url} autoplay={autoplay} showControls={showControls} />
                               </StudentToolCard>
                             )
                           })()}
@@ -1575,7 +2078,13 @@ export default function LessonBuilder() {
                         onConfigure={()=>setShowMetaDialog(true)}
                         onDuplicate={()=>setItems(prev=>{ const copy={...it,id:crypto.randomUUID(),y:it.y+20,x:it.x+20}; return [...prev, copy] })}
                         onDelete={async ()=>{
-                          const ok = await confirmDialog({ title: 'Delete this block?', actionText: 'Delete', cancelText: 'Cancel', variant: 'destructive' })
+                          const ok = await confirmDialog({ 
+                            title: 'Delete this block?', 
+                            description: 'This will permanently remove this block from your lesson.',
+                            actionText: 'Delete', 
+                            cancelText: 'Cancel', 
+                            variant: 'destructive' 
+                          })
                           if (ok) {
                             const prevItems = items
                             setItems(prev=>prev.filter(x=>x.id!==it.id))
@@ -1635,13 +2144,37 @@ export default function LessonBuilder() {
           </DialogHeader>
           <div className="grid gap-3">
             <input className="border rounded p-2" placeholder="Lesson title" value={meta.title} onChange={(e)=>setMeta({...meta,title:e.target.value})} />
-            <input className="border rounded p-2" placeholder="Topic" value={meta.topic} onChange={(e)=>setMeta({...meta,topic:e.target.value})} />
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Topic</label>
+              <select 
+                value={meta.topicId} 
+                onChange={(e) => {
+                  const topicId = e.target.value
+                  const topic = topics.find(t => t.id === topicId)
+                  setMeta({...meta, topicId, topic: topic?.title || ''})
+                }} 
+                className="w-full border rounded p-2"
+              >
+                <option value="">Select a topic...</option>
+                {topics
+                  .filter(topic => !meta.grade || !topic.grade_level || parseInt(topic.grade_level) === meta.grade)
+                  .map(topic => (
+                    <option key={topic.id} value={topic.id}>
+                      {topic.title} {topic.grade_level ? `(Grade ${topic.grade_level})` : ''}
+                    </option>
+                  ))
+                }
+              </select>
+            </div>
             <div className="grid grid-cols-3 gap-2">
-              <select className="border rounded p-2" value={meta.grade} onChange={(e)=>setMeta({...meta,grade:Number(e.target.value)})}>
-                {[1,2,3,4,5,6].map(g=> <option key={g} value={g}>{`Grade ${g}`}</option>)}
+              <select className="border rounded p-2" value={meta.grade} onChange={(e) => {
+                const newGrade = Number(e.target.value);
+                setMeta({...meta, grade: newGrade, topicId: ''}); // Clear topic when grade changes
+              }}>
+                {[1,2,3,4,5,6].map(g => <option key={g} value={g}>{`Grade ${g}`}</option>)}
               </select>
               <select className="border rounded p-2" value={meta.vanta} onChange={(e)=>setMeta({...meta,vanta:e.target.value})}>
-                {['globe','birds','halo','net','topology','clouds2','rings','cells','waves'].map(v=> <option key={v} value={v}>{v}</option>)}
+                {['globe','birds','halo','net','topology','clouds2','rings','cells','waves','fog'].map(v=> <option key={v} value={v}>{v}</option>)}
               </select>
               <select className="border rounded p-2" value={meta.difficulty} onChange={(e)=>setMeta({...meta,difficulty: Number(e.target.value) as 1|2|3})}>
                 <option value={1}>Easy</option>

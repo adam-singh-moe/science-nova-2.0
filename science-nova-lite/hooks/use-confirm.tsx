@@ -40,9 +40,9 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>{opts.title ?? "Are you sure?"}</DialogTitle>
-            {opts.description && (
-              <DialogDescription>{opts.description}</DialogDescription>
-            )}
+            <DialogDescription>
+              {opts.description ?? "This action cannot be undone."}
+            </DialogDescription>
           </DialogHeader>
           <DialogFooter className="mt-2">
             <Button variant="outline" onClick={() => handleClose(false)}>

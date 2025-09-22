@@ -1,19 +1,9 @@
 "use client"
 
 import { createContext, useContext, useEffect, useState } from 'react'
-import { User, Session } from '@supabase/supabase-js'
+import type { User, Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
-
-interface Profile {
-  id: string
-  full_name: string | null
-  role: 'STUDENT' | 'TEACHER' | 'ADMIN' | 'DEVELOPER' | null
-  grade_level: number | null
-  learning_preference: string | null
-  created_at: string
-  updated_at: string
-  email: string | null
-}
+import type { Profile, Role } from '@/types/domain'
 
 interface AuthContextType {
   user: User | null
@@ -46,13 +36,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
-      const { data, error } = await supabase
+  const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', user.id)
         .single()
 
       if (error) {
+        // If profile doesn't exist, try to create it with STUDENT role
+        if (error.code === 'PGRST116') {
+          console.log('Profile not found, creating new profile for user:', user.id)
+          const { data: newProfile, error: createError } = await supabase
+            .from('profiles')
+            .insert({
+              id: user.id,
+              full_name: user.user_metadata?.full_name || '',
+              role: 'STUDENT' as Role, // Always STUDENT by default
+              learning_preference: 'VISUAL',
+              email: user.email
+            })
+            .select()
+            .single()
+
+          if (createError) {
+            console.error('Error creating profile:', createError)
+            return
+          }
+          
+          setProfile(newProfile)
+          return
+        }
+        
         console.error('Error fetching profile:', error)
         return
       }

@@ -39,7 +39,7 @@ function getRandomResponse(gradeLevel: number = 5): string {
 }
 
 // Search function that uses real textbook data when user is authenticated, mock data otherwise
-async function searchRelevantTextbookContent(question: string, gradeLevel: number = 5, userId?: string) {
+async function searchRelevantTextbookContent(question: string, gradeLevel: number = 5, userId?: string, isPrivileged: boolean = false) {
   // If no userId provided, return mock data for demo mode
   if (!userId || userId === "demo-user-001") {
     return [
@@ -58,25 +58,36 @@ async function searchRelevantTextbookContent(question: string, gradeLevel: numbe
   try {
     const supabase = await createRouteHandlerClient()
     
-    // Search in textbook_embeddings for content relevant to the question and grade level
-    const { data: textbookChunks, error } = await supabase
+    // Search in textbook_embeddings for content relevant to the question
+    // For privileged users, search across all grade levels; for students, restrict to their grade
+    let query = supabase
       .from('textbook_embeddings')
       .select('content, metadata, grade_level')
-      .eq('grade_level', gradeLevel)
+    
+    if (!isPrivileged) {
+      query = query.eq('grade_level', gradeLevel)
+    }
+    
+    const { data: textbookChunks, error } = await query
       .textSearch('content', question.replace(/[^\w\s]/g, ''), {
         type: 'websearch',
         config: 'english'
       })
-      .limit(3)
+      .limit(5) // Increase limit for privileged users who might need more diverse content
 
     if (error) {
       console.error('Error searching textbook embeddings:', error)
       
       // Fallback: try a simple ilike search if text search fails
-      const { data: fallbackChunks, error: fallbackError } = await supabase
+      let fallbackQuery = supabase
         .from('textbook_embeddings')
         .select('content, metadata, grade_level')
-        .eq('grade_level', gradeLevel)
+      
+      if (!isPrivileged) {
+        fallbackQuery = fallbackQuery.eq('grade_level', gradeLevel)
+      }
+      
+      const { data: fallbackChunks, error: fallbackError } = await fallbackQuery
         .ilike('content', `%${question}%`)
         .limit(3)
 
@@ -118,28 +129,38 @@ async function searchRelevantTextbookContent(question: string, gradeLevel: numbe
       }))
     }
 
-    // If no results found, try a broader search within the same grade level
-    console.log(`No content found for grade ${gradeLevel}, trying broader search...`)
-    const { data: broaderChunks, error: broaderError } = await supabase
+    // If no results found, try a broader search
+    console.log(`No content found${!isPrivileged ? ` for grade ${gradeLevel}` : ''}, trying broader search...`)
+    let broaderQuery = supabase
       .from('textbook_embeddings')
       .select('content, metadata, grade_level')
-      .eq('grade_level', gradeLevel)  // ✅ MAINTAIN GRADE LEVEL RESTRICTION
+    
+    if (!isPrivileged) {
+      broaderQuery = broaderQuery.eq('grade_level', gradeLevel)  // Maintain grade level restriction for students
+    }
+    
+    const { data: broaderChunks, error: broaderError } = await broaderQuery
       .ilike('content', `%${question.split(' ').slice(0, 2).join(' ')}%`)  // Use fewer keywords for broader search
       .limit(3)
 
     if (broaderError || !broaderChunks || broaderChunks.length === 0) {
-      // If still no results, try searching for any science content for this grade
-      const { data: anyGradeContent, error: anyError } = await supabase
+      // If still no results, try searching for any science content
+      let anyContentQuery = supabase
         .from('textbook_embeddings')
         .select('content, metadata, grade_level')
-        .eq('grade_level', gradeLevel)  // ✅ STILL MAINTAIN GRADE LEVEL RESTRICTION
-        .limit(3)
+      
+      if (!isPrivileged) {
+        anyContentQuery = anyContentQuery.eq('grade_level', gradeLevel)  // Still maintain grade level restriction for students
+      }
+      
+      const { data: anyGradeContent, error: anyError } = await anyContentQuery.limit(3)
 
       if (anyError || !anyGradeContent || anyGradeContent.length === 0) {
-        // If no results found for this grade level at all, return grade-appropriate message
+        // If no results found, return appropriate message
+        const gradeText = isPrivileged ? "appropriate for the requested level" : `grade ${gradeLevel}`
         return [
           {
-            content: `I searched our grade ${gradeLevel} textbook library but couldn't find specific content about "${question}". Let me provide you with general information appropriate for your grade level.`,
+            content: `I searched our textbook library but couldn't find specific content about "${question}". Let me provide you with general information ${gradeText}.`,
             metadata: {
               source: "Science Nova AI",
               grade_level: gradeLevel,
@@ -149,23 +170,23 @@ async function searchRelevantTextbookContent(question: string, gradeLevel: numbe
         ]
       }
 
-      // Return any available content for this grade level
+      // Return any available content
       return anyGradeContent.slice(0, 1).map(chunk => ({
         content: chunk.content,
         metadata: {
           ...chunk.metadata,
-          source: chunk.metadata?.file_name || `Science Textbook Grade ${gradeLevel}`,
+          source: chunk.metadata?.file_name || `Science Textbook${!isPrivileged ? ` Grade ${gradeLevel}` : ''}`,
           grade_level: chunk.grade_level
         }
       }))
     }
 
-    // Return broader results from the same grade level
+    // Return broader results
     return broaderChunks.map(chunk => ({
       content: chunk.content,
       metadata: {
         ...chunk.metadata,
-        source: chunk.metadata?.file_name || `Science Textbook Grade ${gradeLevel}`,
+        source: chunk.metadata?.file_name || `Science Textbook${!isPrivileged ? ` Grade ${gradeLevel}` : ''}`,
         grade_level: chunk.grade_level
       }
     }))
@@ -175,7 +196,7 @@ async function searchRelevantTextbookContent(question: string, gradeLevel: numbe
     // Fall back to mock data on any error
     return [
       {
-        content: `Science textbook content related to "${question}". This is educational content appropriate for grade ${gradeLevel} students.`,
+        content: `Science textbook content related to "${question}". This is educational content${!isPrivileged ? ` appropriate for grade ${gradeLevel} students` : ''}.`,
         metadata: {
           source: "Demo Science Textbook",
           grade_level: gradeLevel,
@@ -229,7 +250,8 @@ export async function POST(request: NextRequest) {
     let profile = {
       grade_level: gradeLevel || 5,
       learning_preference: learningPreference || "visual",
-      full_name: "Science Explorer"
+      full_name: "Science Explorer",
+      role: "STUDENT" as string
     }
 
     // If not a demo user, try to fetch real profile from database
@@ -246,7 +268,8 @@ export async function POST(request: NextRequest) {
           profile = {
             grade_level: userProfile.grade_level || gradeLevel || 5,
             learning_preference: userProfile.learning_preference || learningPreference || "visual",
-            full_name: userProfile.full_name || "Science Explorer"
+            full_name: userProfile.full_name || "Science Explorer",
+            role: userProfile.role || "STUDENT"
           }
         }
       } catch (error) {
@@ -257,28 +280,41 @@ export async function POST(request: NextRequest) {
 
     const userGradeLevel = profile.grade_level
     const userLearningStyle = profile.learning_preference || "visual"
+    const userRole = profile.role
 
-    if (!userGradeLevel || userGradeLevel < 1 || userGradeLevel > 12) {
+    // Admin, Teacher, and Developer accounts don't need grade level validation
+    const isPrivileged = userRole === 'ADMIN' || userRole === 'TEACHER' || userRole === 'DEVELOPER'
+    
+    if (!isPrivileged && (!userGradeLevel || userGradeLevel < 1 || userGradeLevel > 12)) {
       return NextResponse.json({ 
         error: "Invalid grade level. Please update your profile with a valid grade level (1-12)." 
       }, { status: 400 })
     }
 
-    // Check if the question is appropriate for the student's grade level
-    if (!isQuestionAppropriateForGrade(message, userGradeLevel)) {
-      const gradeAppropriateResponse = `That's a really interesting question! However, that topic is usually studied in higher grades. Let me suggest some ${userGradeLevel <= 2 ? 'simpler' : userGradeLevel <= 5 ? 'grade-appropriate' : 'foundational'} science questions you might enjoy: What do you observe in nature around you? How do things move? What makes plants grow? Feel free to ask about these topics!`
+    // Use effective grade level - for privileged users, their actual grade doesn't matter for filtering
+    const effectiveGradeLevel = userGradeLevel || (isPrivileged ? 5 : null)
+    if (!effectiveGradeLevel) {
+      return NextResponse.json({ 
+        error: "Invalid grade level. Please update your profile with a valid grade level (1-12)." 
+      }, { status: 400 })
+    }
+
+    // Skip grade-level question filtering for privileged users
+    if (!isPrivileged && !isQuestionAppropriateForGrade(message, effectiveGradeLevel)) {
+      const gradeAppropriateResponse = `That's a really interesting question! However, that topic is usually studied in higher grades. Let me suggest some ${effectiveGradeLevel <= 2 ? 'simpler' : effectiveGradeLevel <= 5 ? 'grade-appropriate' : 'foundational'} science questions you might enjoy: What do you observe in nature around you? How do things move? What makes plants grow? Feel free to ask about these topics!`
       
       return NextResponse.json({
         response: gradeAppropriateResponse,
         relevantContentFound: false,
         contentSources: 0,
-        gradeLevel: userGradeLevel,
+        gradeLevel: effectiveGradeLevel,
         redirected: true
       })
     }
 
-    // Search for relevant textbook content ONLY from the user's grade level
-    const relevantContent = await searchRelevantTextbookContent(message, userGradeLevel, userId)
+    // Search for relevant textbook content from the appropriate grade level
+    // For privileged users, allow access to all grade levels (use effectiveGradeLevel but don't restrict search)
+    const relevantContent = await searchRelevantTextbookContent(message, effectiveGradeLevel, userId, isPrivileged)
 
     // Build context from grade-appropriate textbook content
     const textbookContext = relevantContent.length > 0 
@@ -323,13 +359,35 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const gradeGuidelines = getGradeGuidelines(userGradeLevel)
+    const gradeGuidelines = getGradeGuidelines(effectiveGradeLevel)
 
     // Create grade-specific and curriculum-aligned system prompt
-    const systemPrompt = `You are a specialized AI Science Tutor for Grade ${userGradeLevel} students. You MUST follow these strict guidelines:
+    const systemPrompt = isPrivileged 
+      ? `You are a specialized AI Science Assistant for educators and administrators. You have access to comprehensive science content across all grade levels. You can:
+- Provide detailed explanations appropriate for any educational level
+- Access content from any grade level as requested
+- Use professional scientific terminology as appropriate
+- Reference multiple grade levels when comparing concepts
+- Provide curriculum planning insights
 
-GRADE LEVEL CONSTRAINTS (Grade ${userGradeLevel}):
-- Use ${gradeGuidelines.complexity} explanations appropriate for ${userGradeLevel}-year-old students
+INSTRUCTIONS:
+- Provide comprehensive, accurate scientific information
+- Use appropriate complexity based on the context of the question
+- Reference specific grade levels when relevant
+- Be clear about which grade level concepts you're discussing
+
+${conversationHistory && conversationHistory.length > 0 ? `CONVERSATION CONTEXT:
+You are continuing a conversation. Here's what was discussed recently:
+${conversationHistory.map((msg: any, idx: number) => `${idx + 1}. ${msg.role === 'user' ? 'User' : 'You'}: ${msg.content}`).join('\n')}` : ''}
+
+TEXTBOOK CONTEXT:
+${textbookContext || 'No specific textbook content found. Provide accurate scientific information based on your knowledge.'}
+
+Remember: You are assisting educators/administrators, so provide comprehensive information suitable for educational planning and instruction.`
+      : `You are a specialized AI Science Tutor for Grade ${effectiveGradeLevel} students. You MUST follow these strict guidelines:
+
+GRADE LEVEL CONSTRAINTS (Grade ${effectiveGradeLevel}):
+- Use ${gradeGuidelines.complexity} explanations appropriate for ${effectiveGradeLevel}-year-old students
 - Use ${gradeGuidelines.vocabulary} only
 - Focus on ${gradeGuidelines.concepts}
 - Provide examples from ${gradeGuidelines.examples}
@@ -348,33 +406,12 @@ Use this context to:
 - Build on concepts already discussed
 - Avoid repeating explanations you've already given
 - Make connections between the current question and previous ones
-- Remember the student's interests and learning pace
+- Remember the student's interests and learning pace` : ''}
 
-` : ''}CONTENT RESTRICTIONS:
-- ONLY answer questions appropriate for Grade ${userGradeLevel} curriculum
-- If asked about advanced topics beyond Grade ${userGradeLevel}, redirect to grade-appropriate aspects
-- Do NOT discuss topics that are typically taught in higher grades
-- Keep responses to 2-3 short paragraphs maximum
+TEXTBOOK CONTEXT:
+${textbookContext || 'No specific textbook content found. Provide accurate scientific information based on your knowledge.'}
 
-REQUIRED TEACHING APPROACH:
-1. Start with what the student might already know
-2. Use simple analogies from their everyday life
-3. Encourage hands-on observation when safe
-4. End with a simple question to check understanding
-5. Be encouraging and patient
-3. Encourage hands-on observation when safe
-4. End with a simple question to check understanding
-5. Be encouraging and patient
-
-${textbookContext ? `CURRICULUM CONTENT (Grade ${userGradeLevel} textbooks only):
-Base your response on this grade-appropriate textbook content:
-${textbookContext}
-
-IMPORTANT: Only use information that is appropriate for Grade ${userGradeLevel} understanding.
-` : `IMPORTANT: No textbook content available for this topic at Grade ${userGradeLevel} level. Provide a basic, age-appropriate response and suggest asking a teacher for more detailed information.
-`}
-
-Remember: You are teaching a ${userGradeLevel}-year-old. Keep it simple, engaging, and grade-appropriate!`
+Remember: You are assisting a Grade ${effectiveGradeLevel} student, so adjust complexity appropriately.`
 
     // Generate AI response using textbook content and curriculum-aligned prompts
     let text: string
@@ -383,7 +420,7 @@ Remember: You are teaching a ${userGradeLevel}-year-old. Keep it simple, engagin
     
     if (!userId || userId === "demo-user-001") {
       // For demo users, use mock responses but still show textbook integration
-      text = getRandomResponse(userGradeLevel)
+      text = getRandomResponse(effectiveGradeLevel)
       
       if (textbookContext) {
         text += `\n\n📚 This response is based on grade-appropriate textbook content from our curriculum.`
@@ -524,7 +561,7 @@ Only use image generation when it would significantly enhance understanding of t
                   body: JSON.stringify({
                     prompt: enhancedPrompt,
                     aspectRatio: '1:1',
-                    gradeLevel: userGradeLevel
+                    gradeLevel: effectiveGradeLevel
                   })
                 })
 
@@ -601,7 +638,7 @@ Only use image generation when it would significantly enhance understanding of t
       response: text,
       relevantContentFound: relevantContent.length > 0,
       contentSources: relevantContent.length,
-      gradeLevel: userGradeLevel,
+      gradeLevel: effectiveGradeLevel,
       textbookSources: textbookSources.slice(0, 3), // Limit for response size
       images: generatedImages,
       isUsingFallback: isUsingFallback

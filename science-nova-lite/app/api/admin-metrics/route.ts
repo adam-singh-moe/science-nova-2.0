@@ -102,7 +102,8 @@ export async function GET(req: NextRequest) {
     const days: DayPoint[] = []
     for (let i=0;i<7;i++) {
       const d = new Date(todayUTC); d.setUTCDate(d.getUTCDate() - (6 - i))
-      days.push({ day: d.toLocaleDateString('en-US', { weekday: 'short' }), views: 0, quizzes: 0 })
+      const dayLabel = d.toLocaleDateString('en-US', { weekday: 'short' })
+      days.push({ day: dayLabel, views: 0, quizzes: 0 })
     }
     const dayKey = (iso: string) => {
       const d = new Date(iso); return d.toLocaleDateString('en-US', { weekday: 'short' })
@@ -158,10 +159,21 @@ export async function GET(req: NextRequest) {
         const g = classify(l?.title, l?.topic) || 'Other'
         freq[g] = (freq[g] || 0) + 1
       }
-      const palette = ['#60a5fa','#a78bfa','#34d399','#f59e0b','#f43f5e','#10b981']
-      const entries = Object.entries(freq).sort((a,b)=> b[1]-a[1]).slice(0,5)
+      const palette = ['#3b82f6','#8b5cf6','#10b981','#f59e0b','#ef4444','#06b6d4','#ec4899']
+      const entries = Object.entries(freq).sort((a,b)=> b[1]-a[1]).slice(0,6)
       const total = entries.reduce((s,[,v])=> s+v, 0) || 1
-      topicSlices = entries.map(([name, v], i)=> ({ name, value: Math.round((v/total)*100), color: palette[i % palette.length] }))
+      topicSlices = entries.map(([name, v], i)=> ({ 
+        name, 
+        value: Math.round((v/total)*100), 
+        color: palette[i % palette.length] 
+      }))
+      
+      // Ensure we have at least some data for better visualization
+      if (topicSlices.length === 0) {
+        topicSlices = [
+          { name: 'No Data', value: 100, color: '#e5e7eb' }
+        ]
+      }
     }
 
     const payload = {

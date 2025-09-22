@@ -58,6 +58,7 @@ export async function GET(req: NextRequest) {
   }
   if (status) query = query.eq('status', status)
   // Students are always filtered by their own grade if available
+  // Admins, Teachers, and Developers can view all grades (no filtering)
   if (role === 'STUDENT' && !id) {
     if (typeof studentGrade === 'number') {
       query = query.eq('grade_level', studentGrade)
@@ -66,7 +67,8 @@ export async function GET(req: NextRequest) {
       const g = Number(grade)
       if (!Number.isNaN(g)) query = query.eq('grade_level', g)
     }
-  } else if (grade && !id) {
+  } else if (grade && !id && !isPrivileged) {
+    // Only apply grade filtering for non-privileged users when explicitly requested
     const g = Number(grade)
     if (!Number.isNaN(g)) query = query.eq('grade_level', g)
   }

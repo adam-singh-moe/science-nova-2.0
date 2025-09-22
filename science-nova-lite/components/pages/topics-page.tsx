@@ -20,6 +20,9 @@ export function TopicsPage() {
 
   const isAuthenticated = !!user
   const userGradeLevel = profile?.grade_level || null
+  
+  // Check if user has privileged role that should see all content
+  const isPrivileged = profile?.role && ['ADMIN', 'TEACHER', 'DEVELOPER'].includes(profile.role)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -34,7 +37,8 @@ export function TopicsPage() {
           .limit(6)
           .order('created_at', { ascending: false })
 
-        if (isAuthenticated && userGradeLevel) {
+        // Only filter by grade level for non-privileged users with a grade level
+        if (isAuthenticated && userGradeLevel && !isPrivileged) {
           topicsQuery = topicsQuery.eq('grade_level', userGradeLevel)
         } else {
           topicsQuery = topicsQuery.in('grade_level', [1,2,3,4,5,6])
@@ -47,15 +51,15 @@ export function TopicsPage() {
       }
     }
     if (!loading) fetchData()
-  }, [isAuthenticated, userGradeLevel, loading])
+  }, [isAuthenticated, userGradeLevel, loading, isPrivileged])
 
   if (loading || loadingData) {
     return (
       <div className="min-h-screen">
         <div className="container mx-auto px-4 py-8">
           <div className="max-w-4xl mx-auto text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-blue-600">Loading recommended topics...</p>
+            <div className="animate-soft-pulse rounded-full h-12 w-12 bg-gradient-to-r from-blue-500 to-purple-600 mx-auto mb-4 shadow-glow"></div>
+            <p className="text-blue-600 font-medium">Loading recommended topics...</p>
           </div>
         </div>
       </div>
@@ -71,19 +75,22 @@ export function TopicsPage() {
           </Button>
 
           <div className="mb-8">
-            <h1 className="font-heading text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-green-600 mb-2">Recommended Topics for You</h1>
+            <h1 className="kid-h1 text-5xl font-bold mb-2">Recommended Topics for You</h1>
             <p className="text-green-700 text-lg">Our AI has specially curated these topics for your learning level</p>
           </div>
 
           {!isAuthenticated && (
-            <Card className="bg-blue-50/80 backdrop-blur-md border-blue-200 border-2 mb-6">
+            <Card variant="glass" className="border-blue-300 mb-6">
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="font-semibold text-blue-900">Demo Mode - Sample Topics</h3>
+                    <h3 className="font-semibold text-blue-900 flex items-center gap-2">
+                      <Sparkles className="h-5 w-5" />
+                      Demo Mode - Sample Topics
+                    </h3>
                     <p className="text-blue-700 text-sm">You're viewing sample recommended topics. Sign in to get personalized recommendations for your grade level!</p>
                   </div>
-                  <Button asChild>
+                  <Button variant="physics" asChild>
                     <Link href="/login"><LogIn className="h-4 w-4 mr-2" /> Sign In for Personal Recommendations</Link>
                   </Button>
                 </div>
@@ -95,8 +102,20 @@ export function TopicsPage() {
             <CardContent className="pt-6 text-center">
               <Sparkles className="h-12 w-12 text-blue-600 mx-auto mb-4" />
               <h2 className="text-2xl font-bold text-blue-700 mb-2">Welcome to Your Science Adventure!</h2>
-              <p className="text-green-700 mb-4">{isAuthenticated && userGradeLevel ? `These topics have been specially selected for Grade ${userGradeLevel} students.` : "These topics have been carefully selected to spark your curiosity about science!"}</p>
-              <Button asChild><Link href="/topics/all"><Search className="h-4 w-4 mr-2" /> {isAuthenticated && userGradeLevel ? `Explore All Grade ${userGradeLevel} Topics` : "Search & Filter All Topics"} <ArrowRight className="h-4 w-4 ml-2" /></Link></Button>
+              <p className="text-green-700 mb-4">{
+                isPrivileged 
+                  ? "These topics have been specially selected from all grade levels to showcase our diverse content." 
+                  : isAuthenticated && userGradeLevel 
+                    ? `These topics have been specially selected for Grade ${userGradeLevel} students.` 
+                    : "These topics have been carefully selected to spark your curiosity about science!"
+              }</p>
+              <Button asChild><Link href="/topics/all"><Search className="h-4 w-4 mr-2" /> {
+                isPrivileged 
+                  ? "Explore All Topics (All Grades)" 
+                  : isAuthenticated && userGradeLevel 
+                    ? `Explore All Grade ${userGradeLevel} Topics` 
+                    : "Search & Filter All Topics"
+              } <ArrowRight className="h-4 w-4 ml-2" /></Link></Button>
             </CardContent>
           </Card>
 
@@ -140,8 +159,20 @@ export function TopicsPage() {
           <Card className="mt-8 bg-gradient-to-r from-blue-50/80 to-green-50/80 backdrop-blur-md border-blue-200 border-2">
             <CardContent className="pt-6 text-center">
               <h3 className="text-xl font-semibold text-blue-700 mb-2">Want to explore more?</h3>
-              <p className="text-green-700 mb-4">{isAuthenticated && userGradeLevel ? `Browse all Grade ${userGradeLevel} topics available for your learning level` : `Browse our complete collection of ${totalTopicsCount} science topics`}</p>
-              <Button asChild size="lg"><Link href="/topics/all"><Search className="h-4 w-4 mr-2" /> {isAuthenticated && userGradeLevel ? `Browse All Grade ${userGradeLevel} Topics` : "Search & Filter All Topics"} <ArrowRight className="h-4 w-4 ml-2" /></Link></Button>
+              <p className="text-green-700 mb-4">{
+                isPrivileged 
+                  ? `Browse our complete collection of ${totalTopicsCount} science topics from all grade levels` 
+                  : isAuthenticated && userGradeLevel 
+                    ? `Browse all Grade ${userGradeLevel} topics available for your learning level` 
+                    : `Browse our complete collection of ${totalTopicsCount} science topics`
+              }</p>
+              <Button asChild size="lg"><Link href="/topics/all"><Search className="h-4 w-4 mr-2" /> {
+                isPrivileged 
+                  ? "Browse All Topics (All Grades)" 
+                  : isAuthenticated && userGradeLevel 
+                    ? `Browse All Grade ${userGradeLevel} Topics` 
+                    : "Search & Filter All Topics"
+              } <ArrowRight className="h-4 w-4 ml-2" /></Link></Button>
             </CardContent>
           </Card>
         </div>

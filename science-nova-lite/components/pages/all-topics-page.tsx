@@ -25,6 +25,9 @@ export function AllTopicsPage() {
 
   const isAuthenticated = !!user
   const userGradeLevel = profile?.grade_level || null
+  
+  // Check if user has privileged role that should see all content
+  const isPrivileged = profile?.role && ['ADMIN', 'TEACHER', 'DEVELOPER'].includes(profile.role)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -38,7 +41,10 @@ export function AllTopicsPage() {
           .select(`id, title, grade_level, study_areas!inner ( name, vanta_effect )`)
           .order('title')
 
-        if (isAuthenticated && userGradeLevel) topicsQuery = topicsQuery.eq('grade_level', userGradeLevel)
+        // Only filter by grade level for non-privileged users with a grade level
+        if (isAuthenticated && userGradeLevel && !isPrivileged) {
+          topicsQuery = topicsQuery.eq('grade_level', userGradeLevel)
+        }
 
         const { data: topicsData } = await topicsQuery
         const formatted = (topicsData || []).map((t: any) => ({ ...t, study_areas: Array.isArray(t.study_areas) ? t.study_areas[0] : t.study_areas }))
@@ -48,7 +54,7 @@ export function AllTopicsPage() {
       }
     }
     if (!loading) fetchData()
-  }, [isAuthenticated, userGradeLevel, loading])
+  }, [isAuthenticated, userGradeLevel, loading, isPrivileged])
 
   useEffect(() => {
     let filtered = topics
@@ -78,8 +84,20 @@ export function AllTopicsPage() {
         </div>
 
         <div className="mb-8">
-          <h1 className="font-heading text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-green-600 mb-2">{isAuthenticated && userGradeLevel ? `All Grade ${userGradeLevel} Topics` : "All Science Topics"}</h1>
-          <p className="text-green-700 text-lg">{isAuthenticated && userGradeLevel ? `Browse all available Grade ${userGradeLevel} science topics for your learning level` : "Explore our complete collection of science topics!"}</p>
+          <h1 className="font-heading text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-green-600 mb-2">{
+            isPrivileged 
+              ? "All Science Topics" 
+              : isAuthenticated && userGradeLevel 
+                ? `All Grade ${userGradeLevel} Topics` 
+                : "All Science Topics"
+          }</h1>
+          <p className="text-green-700 text-lg">{
+            isPrivileged 
+              ? "Explore our complete collection of science topics from all grade levels!" 
+              : isAuthenticated && userGradeLevel 
+                ? `Browse all available Grade ${userGradeLevel} science topics for your learning level` 
+                : "Explore our complete collection of science topics!"
+          }</p>
         </div>
 
         {!isAuthenticated && (
@@ -101,7 +119,13 @@ export function AllTopicsPage() {
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-center">
               <div>
                 <div className="text-2xl font-bold text-blue-600">{topics.length}</div>
-                <div className="text-sm text-gray-600">{isAuthenticated && userGradeLevel ? `Grade ${userGradeLevel} Topics` : 'Total Topics'}</div>
+                <div className="text-sm text-gray-600">{
+                  isPrivileged 
+                    ? 'Total Topics' 
+                    : isAuthenticated && userGradeLevel 
+                      ? `Grade ${userGradeLevel} Topics` 
+                      : 'Total Topics'
+                }</div>
               </div>
               <div>
                 <div className="text-2xl font-bold text-green-600">{studyAreas.length}</div>
@@ -118,7 +142,13 @@ export function AllTopicsPage() {
         <Card className="mb-8 bg-white/80 backdrop-blur-md border-gray-300 border-2">
           <CardHeader>
             <CardTitle className="text-2xl text-blue-700 flex items-center gap-2">Filter Topics</CardTitle>
-            <CardDescription className="text-green-700">{isAuthenticated && userGradeLevel ? `Search and filter through all Grade ${userGradeLevel} topics available for your learning level` : "Search and filter through our complete topic collection"}</CardDescription>
+            <CardDescription className="text-green-700">{
+              isPrivileged 
+                ? "Search and filter through our complete topic collection from all grade levels" 
+                : isAuthenticated && userGradeLevel 
+                  ? `Search and filter through all Grade ${userGradeLevel} topics available for your learning level` 
+                  : "Search and filter through our complete topic collection"
+            }</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

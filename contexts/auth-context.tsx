@@ -7,7 +7,7 @@ import { supabase } from '@/lib/supabase'
 interface Profile {
   id: string
   full_name: string | null
-  role: 'STUDENT' | 'ADMIN' | null
+  role: 'STUDENT' | 'ADMIN' | 'TEACHER' | 'DEVELOPER' | null
   grade_level: number | null
   learning_preference: string | null
   created_at: string

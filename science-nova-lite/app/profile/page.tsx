@@ -23,13 +23,25 @@ export default function ProfilePage() {
   const [learningPreference, setLearningPreference] = useState<string>("")
   const [loading, setLoading] = useState(true)
 
+  // Check if user is privileged (admin/teacher/developer)
+  const isPrivileged = profile?.role === 'ADMIN' || profile?.role === 'TEACHER' || profile?.role === 'DEVELOPER'
+
   useEffect(() => {
     if (!user) {
       router.replace("/login")
       return
     }
     setFullName(profile?.full_name || "")
-    setGradeLevel(String(profile?.grade_level ?? ""))
+    // Handle grade level initialization - don't show grade for privileged users
+    let initialGradeLevel = ""
+    if (isPrivileged) {
+      initialGradeLevel = "" // Don't show any grade for privileged users
+    } else if (profile?.grade_level && profile.grade_level >= 1 && profile.grade_level <= 6) {
+      initialGradeLevel = String(profile.grade_level)
+    } else if (!isPrivileged) {
+      initialGradeLevel = ""
+    }
+    setGradeLevel(initialGradeLevel)
     setLearningPreference(profile?.learning_preference || "")
     setLoading(false)
   }, [user, profile, router])
@@ -38,11 +50,20 @@ export default function ProfilePage() {
     e.preventDefault()
     if (!user) return
     try {
+      // For privileged users, save 0 as grade level to represent access to all grades
+      let gradeToSave: string | number | null = null
+      
+      if (isPrivileged) {
+        gradeToSave = 0
+      } else if (gradeLevel && gradeLevel !== "all_grades") {
+        gradeToSave = Number(gradeLevel)
+      }
+      
       const { error } = await supabase
         .from("profiles")
         .update({
           full_name: fullName,
-          grade_level: gradeLevel ? Number(gradeLevel) : null,
+          grade_level: gradeToSave,
           learning_preference: learningPreference || null,
         })
         .eq("id", user.id)
@@ -75,9 +96,14 @@ export default function ProfilePage() {
         <div className="grid gap-6 lg:grid-cols-3">
           <Card className="lg:col-span-2 border bg-white/80 backdrop-blur">
             <CardHeader>
-              <CardTitle className="text-2xl">Student Profile</CardTitle>
+              <CardTitle className="text-2xl">
+                {isPrivileged ? `${profile?.role} Profile` : 'Student Profile'}
+              </CardTitle>
               <CardDescription>
-                Keep your details up to date for personalized lessons.
+                {isPrivileged 
+                  ? 'Manage your account settings and preferences.'
+                  : 'Keep your details up to date for personalized lessons.'
+                }
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -90,21 +116,28 @@ export default function ProfilePage() {
                     placeholder="Your name"
                   />
                 </div>
-                <div className="grid gap-2">
-                  <Label>Grade level</Label>
-                  <Select value={gradeLevel} onValueChange={setGradeLevel}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select grade" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Array.from({ length: 6 }, (_, i) => String(i + 1)).map((g) => (
-                        <SelectItem key={g} value={g}>
-                          Grade {g}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                
+                {/* Grade level - Only show for students */}
+                {!isPrivileged && (
+                  <div className="grid gap-2">
+                    <Label>
+                      Grade level 
+                    </Label>
+                    <Select value={gradeLevel} onValueChange={setGradeLevel}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select grade" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.from({ length: 6 }, (_, i) => String(i + 1)).map((g) => (
+                          <SelectItem key={g} value={g}>
+                            Grade {g}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                
                 <div className="grid gap-2">
                   <Label>Learning preference</Label>
                   <Select value={learningPreference} onValueChange={setLearningPreference}>
@@ -151,12 +184,24 @@ export default function ProfilePage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Grade</span>
-                  <span className="font-medium">{gradeLevel ? `Grade ${gradeLevel}` : "—"}</span>
+                  <span className="font-medium">
+                    {isPrivileged 
+                      ? (gradeLevel && gradeLevel !== "all_grades" ? `Grade ${gradeLevel}` : "All Grades") 
+                      : (gradeLevel ? `Grade ${gradeLevel}` : "—")
+                    }
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Preference</span>
                   <span className="font-medium">{learningPreference || "—"}</span>
                 </div>
+                {isPrivileged && (
+                  <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <p className="text-xs text-blue-700">
+                      <strong>Access Level:</strong> You have {profile?.role?.toLowerCase()} privileges and can access all content regardless of grade level settings.
+                    </p>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

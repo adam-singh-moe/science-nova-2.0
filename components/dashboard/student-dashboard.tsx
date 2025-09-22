@@ -109,44 +109,44 @@ export function StudentDashboard() {
     <div className="min-h-screen p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-8 animate-fade-up">
           <h1
             className={`font-heading text-5xl font-bold text-transparent bg-clip-text ${theme.gradient.header} mb-2 flex items-center gap-3`}
           >
-            <Star className={`h-10 w-10 ${theme.icon.warning}`} />
+            <Star className={`h-10 w-10 ${theme.icon.warning} animate-subtle-glow`} />
             Your Science Adventure
           </h1>
-          <p className={`${theme.text.secondary} text-lg`}>
+          <p className={`${theme.text.secondary} text-lg animate-stagger-fade`} style={{ animationDelay: '0.2s' }}>
             Discover amazing topics and learn with AI-powered content!
           </p>
         </div>
 
         {/* Filters */}
-        <Card className={`mb-8 backdrop-blur-lg ${theme.background.card} ${theme.border.secondary} border-2`}>
+        <Card className={`mb-8 backdrop-blur-lg ${theme.background.card} ${theme.border.secondary} border-2 animate-slide-in-right`} style={{ animationDelay: '0.3s' }}>
           <CardHeader>
             <CardTitle className={`${theme.text.primary} flex items-center gap-2`}>
-              <Filter className="h-5 w-5" />
+              <Filter className="h-5 w-5 animate-gentle-bounce" />
               Find Your Perfect Topic
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="relative">
-                <Search className={`absolute left-3 top-3 h-4 w-4 ${theme.icon.primary}`} />
+              <div className="relative group">
+                <Search className={`absolute left-3 top-3 h-4 w-4 ${theme.icon.primary} transition-transform group-focus-within:scale-110`} />
                 <Input
                   placeholder="Search topics..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className={`pl-10 ${theme.input.background} ${theme.input.border} border-2 ${theme.input.text} ${theme.input.placeholder}`}
+                  className={`pl-10 ${theme.input.background} ${theme.input.border} border-2 ${theme.input.text} ${theme.input.placeholder} transition-all duration-200 focus:animate-subtle-glow`}
                 />
               </div>
               <Select value={selectedArea} onValueChange={setSelectedArea}>
                 <SelectTrigger
-                  className={`${theme.input.background} ${theme.input.border} border-2 ${theme.input.text}`}
+                  className={`${theme.input.background} ${theme.input.border} border-2 ${theme.input.text} transition-all duration-200 hover:scale-[1.02] active:animate-button-press`}
                 >
                   <SelectValue placeholder="All Study Areas" />
                 </SelectTrigger>
-                <SelectContent className={`${theme.background.card} ${theme.border.secondary} border-2`}>
+                <SelectContent className={`${theme.background.card} ${theme.border.secondary} border-2 animate-modal-scale-in`}>
                   <SelectItem
                     value="all"
                     className={`${theme.text.primary} ${theme.hover.background} ${theme.hover.text}`}
@@ -166,11 +166,11 @@ export function StudentDashboard() {
               </Select>
               <Select value={selectedGrade} onValueChange={setSelectedGrade}>
                 <SelectTrigger
-                  className={`${theme.input.background} ${theme.input.border} border-2 ${theme.input.text}`}
+                  className={`${theme.input.background} ${theme.input.border} border-2 ${theme.input.text} transition-all duration-200 hover:scale-[1.02] active:animate-button-press`}
                 >
                   <SelectValue placeholder="All Grades" />
                 </SelectTrigger>
-                <SelectContent className={`${theme.background.card} ${theme.border.secondary} border-2`}>
+                <SelectContent className={`${theme.background.card} ${theme.border.secondary} border-2 animate-modal-scale-in`}>
                   <SelectItem
                     value="all"
                     className={`${theme.text.primary} ${theme.hover.background} ${theme.hover.text}`}
@@ -194,24 +194,25 @@ export function StudentDashboard() {
 
         {/* Topics Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredTopics.map((topic) => (
+          {filteredTopics.map((topic, index) => (
             <Link key={topic.id} href={`/topic/${topic.id}`}>
               <Card
-                className={`h-full group backdrop-blur-lg ${theme.background.card} ${theme.border.secondary} border-2 ${theme.hover.border} hover:shadow-xl transform hover:scale-105 transition-all duration-300 cursor-pointer`}
+                className={`h-full group backdrop-blur-lg ${theme.background.card} ${theme.border.secondary} border-2 ${theme.hover.border} hover:shadow-xl transform hover:scale-105 transition-all duration-300 cursor-pointer animate-stagger-fade`}
+                style={{ animationDelay: `${0.5 + index * 0.1}s` }}
               >
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <BookOpen
-                      className={`h-8 w-8 ${theme.icon.primary} group-hover:${theme.icon.secondary} transition-colors`}
+                      className={`h-8 w-8 ${theme.icon.primary} group-hover:${theme.icon.secondary} transition-colors group-hover:animate-gentle-bounce`}
                     />
                     <div className="flex gap-2">
                       <Badge
-                        className={`${getGradeColor(topic.grade_level)} text-white font-semibold ${theme.border.primary} border`}
+                        className={`${getGradeColor(topic.grade_level)} text-white font-semibold ${theme.border.primary} border transform group-hover:scale-110 transition-transform`}
                       >
                         Grade {topic.grade_level}
                       </Badge>
                       <Badge
-                        className={`${getAreaColor(topic.study_areas?.name || 'Science')} text-white font-semibold ${theme.border.primary} border`}
+                        className={`${getAreaColor(topic.study_areas?.name || 'Science')} text-white font-semibold ${theme.border.primary} border transform group-hover:scale-110 transition-transform`}
                       >
                         {topic.study_areas?.name || 'Science'}
                       </Badge>
@@ -233,11 +234,11 @@ export function StudentDashboard() {
         </div>
 
         {filteredTopics.length === 0 && (
-          <Card className={`backdrop-blur-lg ${theme.background.card} ${theme.border.secondary} border-2`}>
+          <Card className={`backdrop-blur-lg ${theme.background.card} ${theme.border.secondary} border-2 animate-fade-up`} style={{ animationDelay: '0.6s' }}>
             <CardContent className="text-center py-12">
-              <BookOpen className={`h-16 w-16 ${theme.icon.warning} mx-auto mb-4 animate-pulse`} />
-              <h3 className={`text-2xl font-semibold ${theme.text.accent} mb-2`}>🚀 No topics found yet!</h3>
-              <p className={theme.text.primary}>Try adjusting your search or filters to discover amazing science topics waiting for you.</p>
+              <BookOpen className={`h-16 w-16 ${theme.icon.warning} mx-auto mb-4 animate-soft-pulse`} />
+              <h3 className={`text-2xl font-semibold ${theme.text.accent} mb-2 animate-stagger-fade`} style={{ animationDelay: '0.8s' }}>🚀 No topics found yet!</h3>
+              <p className={`${theme.text.primary} animate-stagger-fade`} style={{ animationDelay: '1s' }}>Try adjusting your search or filters to discover amazing science topics waiting for you.</p>
             </CardContent>
           </Card>
         )}

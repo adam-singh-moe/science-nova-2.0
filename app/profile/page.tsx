@@ -164,6 +164,9 @@ export default function ProfilePage() {
   const { user, profile, loading } = useAuth()
   
   const isAuthenticated = !!user
+  
+  // Check if user is privileged (admin/teacher/developer)
+  const isPrivileged = profile?.role === 'ADMIN' || profile?.role === 'TEACHER' || profile?.role === 'DEVELOPER'
 
   // Form state for editable fields - initialize once
   const [formData, setFormData] = useState({
@@ -194,9 +197,19 @@ export default function ProfilePage() {
   // Initialize form data when user/profile data becomes available
   useEffect(() => {
     if (profile) {
+      // For privileged users, don't show any grade for display purposes (they use 6 internally)
+      let displayGradeLevel = "6"; // default
+      if (isPrivileged) {
+        displayGradeLevel = ""; // Don't show any grade for privileged users
+      } else if (profile.grade_level && profile.grade_level > 0 && profile.grade_level <= 6) {
+        displayGradeLevel = profile.grade_level.toString();
+      } else if (!isPrivileged) {
+        displayGradeLevel = "6"; // Default for students
+      }
+      
       setFormData({
         full_name: profile.full_name || user?.email?.split('@')[0] || "Science Explorer",
-        grade_level: (profile.grade_level || 6).toString(),
+        grade_level: displayGradeLevel,
         learning_preference: profile.learning_preference || "VISUAL"
       })
     } else if (!loading) {
@@ -207,7 +220,7 @@ export default function ProfilePage() {
         learning_preference: mockProfile.learning_preference
       })
     }
-  }, [user?.id, profile?.id, loading]) // Use stable dependencies
+  }, [user?.id, profile?.id, loading, isPrivileged]) // Use stable dependencies
 
   // Use real user data if available, otherwise fall back to mock data for demo
   const currentProfile = profile ? {
@@ -258,6 +271,9 @@ export default function ProfilePage() {
         throw new Error('No valid session found')
       }
 
+      // For privileged users, save 0 as grade level to represent access to all grades
+      const gradeToSave = isPrivileged ? 0 : parseInt(formData.grade_level);
+
       const response = await fetch('/api/profile', {
         method: 'PUT',
         headers: {
@@ -266,7 +282,7 @@ export default function ProfilePage() {
         },
         body: JSON.stringify({
           full_name: formData.full_name,
-          grade_level: parseInt(formData.grade_level),
+          grade_level: gradeToSave,
           learning_preference: formData.learning_preference
         })
       })
@@ -556,31 +572,33 @@ export default function ProfilePage() {
                             </p>
                           </div>
 
-                          {/* Grade Level */}
-                          <div className="space-y-2">
-                            <Label htmlFor="gradeLevel" className="text-white/90 font-medium flex items-center gap-2">
-                              <div className="p-1 bg-gradient-to-r from-orange-500/50 to-red-500/50 rounded-md">
-                                <GraduationCap className="h-4 w-4 text-orange-300" />
-                              </div>
-                              Grade Level
-                            </Label>
-                            <Select 
-                              value={formData.grade_level} 
-                              onValueChange={(value) => handleInputChange('grade_level', value)}
-                              disabled={!isAuthenticated}
-                            >
-                              <SelectTrigger className="bg-gradient-to-r from-orange-500/25 to-red-500/25 border-2 border-orange-400/50 rounded-xl text-white hover:border-orange-400/70 focus:border-orange-400 focus:shadow-[0_0_20px_rgba(251,146,60,0.3)] transition-all duration-300">
-                                <SelectValue placeholder="Select grade level" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {Array.from({ length: 12 }, (_, i) => (
-                                  <SelectItem key={i + 1} value={(i + 1).toString()}>
-                                    {i + 1}{i === 0 ? 'st' : i === 1 ? 'nd' : i === 2 ? 'rd' : 'th'} Grade
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
+                          {/* Grade Level - Only show for students and only after profile is loaded */}
+                          {!loading && !isPrivileged && (
+                            <div className="space-y-2">
+                              <Label htmlFor="gradeLevel" className="text-white/90 font-medium flex items-center gap-2">
+                                <div className="p-1 bg-gradient-to-r from-orange-500/50 to-red-500/50 rounded-md">
+                                  <GraduationCap className="h-4 w-4 text-orange-300" />
+                                </div>
+                                Grade Level
+                              </Label>
+                              <Select 
+                                value={formData.grade_level} 
+                                onValueChange={(value) => handleInputChange('grade_level', value)}
+                                disabled={!isAuthenticated}
+                              >
+                                <SelectTrigger className="bg-gradient-to-r from-orange-500/25 to-red-500/25 border-2 border-orange-400/50 rounded-xl text-white hover:border-orange-400/70 focus:border-orange-400 focus:shadow-[0_0_20px_rgba(251,146,60,0.3)] transition-all duration-300">
+                                  <SelectValue placeholder="Select grade level" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {Array.from({ length: 6 }, (_, i) => (
+                                    <SelectItem key={i + 1} value={(i + 1).toString()}>
+                                      {i + 1}{i === 0 ? 'st' : i === 1 ? 'nd' : i === 2 ? 'rd' : 'th'} Grade
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          )}
 
                           {/* Learning Preference */}
                           <div className="space-y-2">

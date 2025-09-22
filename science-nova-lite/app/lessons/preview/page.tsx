@@ -7,6 +7,7 @@ import { VantaBackground } from "@/components/vanta-background"
 import { useSearchParams } from "next/navigation"
 import { FlashcardsViewer } from "@/components/flashcards-viewer"
 import ImageViewer from "@/components/image-viewer"
+import YouTubeViewer from "@/components/youtube-viewer"
 const QuizViewer = dynamic(() => import("@/components/quiz-viewer").then(m => m.QuizViewer), { ssr: false, loading: () => <div className="text-sm text-gray-500">Loading quiz…</div> })
 const CrosswordViewer = dynamic(() => import("@/components/crossword-viewer").then(m => m.CrosswordViewer), { ssr: false, loading: () => <div className="text-sm text-gray-500">Loading crossword…</div> })
 import type { QuizItem as ViewerQuizItem } from "@/components/quiz-viewer"
@@ -45,7 +46,7 @@ function LessonPreviewInner() {
   const canvasH = Number(parsed?.meta?.canvasHeight) || designH
 
   return (
-    <VantaBackground effect={hydrated ? (parsed?.meta?.vanta || 'globe') : 'globe'}>
+    <VantaBackground effect={hydrated ? (parsed?.meta?.vanta || 'globe') : 'globe'} lessonBuilder={true}>
       <Navbar />
       <main className="px-4 py-6">
         <div className="relative mb-6 mx-auto w-[1280px]">
@@ -131,6 +132,16 @@ function LessonPreviewInner() {
                     </StudentToolCard>
                   )
                 })()}
+                {it.kind === 'VIDEO' && (()=>{
+                  const url = it.data?.url as string | undefined
+                  const autoplay = it.data?.autoplay as boolean | undefined
+                  const showControls = it.data?.showControls !== false
+                  return (
+                    <StudentToolCard variant="video" bodyBgColor={it.data?.bgColor as string | undefined}>
+                      <YouTubeViewer url={url} autoplay={autoplay} showControls={showControls} />
+                    </StudentToolCard>
+                  )
+                })()}
                   </div>
                 ))}
                   </div>
@@ -195,6 +206,16 @@ function LessonPreviewInner() {
                     return (
                       <StudentToolCard variant="image" bodyBgColor={it.data?.bgColor as string | undefined}>
                         <ImageViewer url={url} gradient={gradient} fit={fit} alt={alt} caption={caption} variant="stacked" />
+                      </StudentToolCard>
+                    )
+                  })()}
+                  {it.kind === 'VIDEO' && (()=>{
+                    const url = it.data?.url as string | undefined
+                    const autoplay = it.data?.autoplay as boolean | undefined
+                    const showControls = it.data?.showControls !== false
+                    return (
+                      <StudentToolCard variant="video" bodyBgColor={it.data?.bgColor as string | undefined}>
+                        <YouTubeViewer url={url} autoplay={autoplay} showControls={showControls} />
                       </StudentToolCard>
                     )
                   })()}

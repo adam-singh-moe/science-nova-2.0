@@ -33,8 +33,11 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Full name is required' }, { status: 400 })
     }
 
-    if (grade_level && (typeof grade_level !== 'number' || grade_level < 1 || grade_level > 12)) {
-      return NextResponse.json({ error: 'Grade level must be between 1 and 12' }, { status: 400 })
+    // Validate grade level: allow 0-6 (0 for privileged users, 1-6 for students)
+    if (grade_level !== null && grade_level !== undefined) {
+      if (typeof grade_level !== 'number' || grade_level < 0 || grade_level > 6) {
+        return NextResponse.json({ error: 'Grade level must be between 0 and 6' }, { status: 400 })
+      }
     }
 
     const validLearningPreferences = ['VISUAL', 'AUDITORY', 'KINESTHETIC', 'READING']
@@ -47,7 +50,7 @@ export async function PUT(request: NextRequest) {
       .from('profiles')
       .update({
         full_name: full_name.trim(),
-        grade_level: grade_level || null,
+        grade_level: grade_level,
         learning_preference: learning_preference || null,
         updated_at: new Date().toISOString()
       })

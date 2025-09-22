@@ -1,7 +1,7 @@
 import * as React from "react"
-import { Type as TypeIcon, Grid3X3, Image as ImageIcon, HelpCircle, PanelsTopLeft } from "lucide-react"
+import { Type as TypeIcon, Grid3X3, Image as ImageIcon, HelpCircle, PanelsTopLeft, Play } from "lucide-react"
 
-type Variant = "text" | "flashcards" | "quiz" | "crossword" | "image"
+type Variant = "text" | "flashcards" | "quiz" | "crossword" | "image" | "video"
 
 const gradientMap: Record<Variant, string> = {
   text: "from-sky-400/70 via-cyan-400/60 to-indigo-400/70",
@@ -9,6 +9,7 @@ const gradientMap: Record<Variant, string> = {
   quiz: "from-amber-400/70 via-orange-400/60 to-rose-400/70",
   crossword: "from-emerald-400/70 via-teal-400/60 to-lime-400/70",
   image: "from-violet-400/70 via-purple-400/60 to-indigo-400/70",
+  video: "from-red-400/70 via-orange-400/60 to-pink-400/70",
 }
 
 const iconMap: Record<Variant, React.ComponentType<any>> = {
@@ -17,6 +18,7 @@ const iconMap: Record<Variant, React.ComponentType<any>> = {
   quiz: HelpCircle,
   crossword: Grid3X3,
   image: ImageIcon,
+  video: Play,
 }
 
 const labelMap: Record<Variant, string> = {
@@ -25,15 +27,17 @@ const labelMap: Record<Variant, string> = {
   quiz: "Quiz",
   crossword: "Crossword",
   image: "Image",
+  video: "Video",
 }
 
-// Soft, creative default frame gradients per tool (used when no explicit accent color is set)
+// Soft, creative default frame gradients per tool (enhanced with better shadows and interactions)
 const defaultFrameGradient: Record<Variant, string> = {
-  text: "from-sky-400/70 via-cyan-400/60 to-indigo-400/70",
-  flashcards: "from-fuchsia-400/70 via-pink-400/60 to-rose-400/70",
-  quiz: "from-amber-400/70 via-orange-400/60 to-rose-400/70",
-  crossword: "from-emerald-400/70 via-teal-400/60 to-lime-400/70",
-  image: "from-violet-400/70 via-purple-400/60 to-indigo-400/70",
+  text: "from-sky-400/70 via-cyan-400/60 to-indigo-400/70 shadow-glow",
+  flashcards: "from-fuchsia-400/70 via-pink-400/60 to-rose-400/70 shadow-glow-purple",
+  quiz: "from-amber-400/70 via-orange-400/60 to-rose-400/70 shadow-glow-orange",
+  crossword: "from-emerald-400/70 via-teal-400/60 to-lime-400/70 shadow-glow-green",
+  image: "from-violet-400/70 via-purple-400/60 to-indigo-400/70 shadow-glow-purple",
+  video: "from-red-400/70 via-orange-400/60 to-pink-400/70 shadow-glow-red",
 }
 
 export function StudentToolCard({ variant, actions, children, bodyBgColor, accentIntensity }: { variant: Variant; actions?: React.ReactNode; children: React.ReactNode; bodyBgColor?: string; accentIntensity?: number }) {
@@ -98,13 +102,13 @@ export function StudentToolCard({ variant, actions, children, bodyBgColor, accen
   const softBg = accentRgb ? rgba(accentRgb, softAlpha) : 'transparent'
   return (
     <div
-      className={`h-full w-full rounded-3xl p-[2px] ${accentRgb ? '' : `bg-gradient-to-br ${defaultFrameGradient[variant]}`} shadow-[0_8px_24px_rgba(0,0,0,0.18)]`}
+      className={`h-full w-full rounded-3xl p-[2px] ${accentRgb ? '' : `bg-gradient-to-br ${defaultFrameGradient[variant]}`} transition-all duration-300 ease-out hover:scale-[1.01] hover:shadow-elevation-3`}
       style={frameStyle}
     >
-  <div className="h-full w-full rounded-[1.45rem] flex flex-col overflow-hidden bg-transparent" style={{ ['--sn-accent' as any]: accent || 'transparent', ['--sn-accent-strength' as any]: String(Math.max(0.4, Math.min(1.6, intensity))), ['--sn-accent-soft' as any]: softBg }}>
+  <div className="h-full w-full rounded-[1.45rem] flex flex-col overflow-hidden bg-transparent hover-gentle" style={{ ['--sn-accent' as any]: accent || 'transparent', ['--sn-accent-strength' as any]: String(Math.max(0.4, Math.min(1.6, intensity))), ['--sn-accent-soft' as any]: softBg }}>
         <div className="flex items-center justify-between px-3 py-2">
           <div className="flex items-center gap-2 drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]" style={{ color: fgHeader }}>
-            <span className="h-7 w-7 rounded-full grid place-items-center" style={{ backgroundColor: accentRgb ? rgba(tint(accentRgb, -0.1), 0.35) : 'rgba(255,255,255,0.15)' }}>
+            <span className="h-8 w-8 rounded-2xl grid place-items-center transition-all duration-300 hover:scale-110" style={{ backgroundColor: accentRgb ? rgba(tint(accentRgb, -0.1), 0.35) : 'rgba(255,255,255,0.15)' }}>
               <Icon className="h-4 w-4" />
             </span>
             <span className="text-sm font-semibold tracking-wide">{label}</span>
@@ -112,7 +116,7 @@ export function StudentToolCard({ variant, actions, children, bodyBgColor, accen
           <div className="shrink-0">{actions}</div>
         </div>
         <div className="flex-1 overflow-auto p-3">
-          <div className="w-full h-full rounded-xl" style={{ background: 'transparent', color: fgContent }}>
+          <div className="w-full h-full rounded-xl transition-all duration-300" style={{ background: 'transparent', color: fgContent }}>
             <div className="p-3">
               {children}
             </div>

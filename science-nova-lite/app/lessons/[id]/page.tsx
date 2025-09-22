@@ -6,6 +6,7 @@ import CrosswordViewer from "@/components/crossword-viewer.client"
 import type { QuizItem as ViewerQuizItem } from "@/components/quiz-viewer"
 import { FlashcardsViewer } from "@/components/flashcards-viewer"
 import ImageViewer from "@/components/image-viewer"
+import YouTubeViewer from "@/components/youtube-viewer"
 import { setBlockDone } from "@/lib/progress"
 import { AutoCompleteWrapper } from "@/components/auto-complete-wrapper"
 
@@ -42,7 +43,7 @@ export default async function LessonView(props: { params: Promise<{ id: string }
   const tocItems = items.map((it: any) => ({ id: String(it.id), label: (it.kind || 'Item'), y: Number(it.y) || 0 }))
 
   return (
-  <VantaBackground effect={vanta || vantaEffect} preset={vantaPreset}>
+  <VantaBackground effect={vanta || vantaEffect} preset={vantaPreset} lessonBuilder={true}>
   <main className="min-h-screen py-10">
   {/* Telemetry: lesson view + heartbeat */}
   <LessonActivityClient lessonId={lesson.id} />
@@ -116,6 +117,18 @@ export default async function LessonView(props: { params: Promise<{ id: string }
                     </ToolContainer>
                   )
                 })()}
+                {it.kind === 'VIDEO' && (()=>{
+                  const url = it.data?.url as string | undefined
+                  const autoplay = it.data?.autoplay as boolean | undefined
+                  const showControls = it.data?.showControls !== false
+                  return (
+                    <AutoCompleteWrapper lessonId={lesson.id} blockId={it.id}>
+                      <ToolContainer variant="video" bodyBgColor={it.data?.bgColor as string | undefined}>
+                        <YouTubeViewer url={url} autoplay={autoplay} showControls={showControls} />
+                      </ToolContainer>
+                    </AutoCompleteWrapper>
+                  )
+                })()}
                 </div>
               ))}
                 </div>
@@ -168,6 +181,18 @@ export default async function LessonView(props: { params: Promise<{ id: string }
                   <ToolContainer variant="crossword" bodyBgColor={it.data?.bgColor as string | undefined}>
                     <CrosswordViewer words={words} storageKey={storageKey} />
                   </ToolContainer>
+                )
+              })()}
+              {it.kind === 'VIDEO' && (()=> {
+                const url = it.data?.url as string | undefined
+                const autoplay = it.data?.autoplay as boolean | undefined
+                const showControls = it.data?.showControls !== false
+                return (
+                  <AutoCompleteWrapper lessonId={lesson.id} blockId={it.id}>
+                    <ToolContainer variant="video" bodyBgColor={it.data?.bgColor as string | undefined}>
+                      <YouTubeViewer url={url} autoplay={autoplay} showControls={showControls} />
+                    </ToolContainer>
+                  </AutoCompleteWrapper>
                 )
               })()}
               {it.kind === 'IMAGE' && (()=> {

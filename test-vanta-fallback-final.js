@@ -104,6 +104,11 @@ function createTopicBasedVantaFallback(prompt) {
       gradient: "linear-gradient(135deg, #ff4500 0%, #ff6347 50%, #8b0000 100%)",
       vantaEffect: 'birds'
     }
+  } else if (lowerPrompt.includes('fog') || lowerPrompt.includes('mist') || lowerPrompt.includes('cloud') || lowerPrompt.includes('atmospheric') || lowerPrompt.includes('haze')) {
+    return {
+      gradient: "linear-gradient(135deg, #845700 0%, #e6005e 50%, #f58548 100%)",
+      vantaEffect: 'fog'
+    }
   } else {
     // Default cosmic theme
     return {

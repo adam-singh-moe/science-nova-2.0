@@ -21,6 +21,11 @@ export function VantaBackground({ effect = "GLOBE", className = "" }: VantaBackg
   useEffect(() => {
     if (!vantaRef.current) return
 
+    // Add a small delay to ensure DOM is ready
+    const timer = setTimeout(() => {
+      loadVanta()
+    }, 100)
+
     const loadVanta = async () => {
       try {
         // Load THREE.js from CDN if not already loaded
@@ -71,6 +76,9 @@ export function VantaBackground({ effect = "GLOBE", className = "" }: VantaBackg
           case "waves":
             scriptUrl = "https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.waves.min.js"
             break
+          case "fog":
+            scriptUrl = "https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.fog.min.js"
+            break
           default:
             scriptUrl = "https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.globe.min.js"
         }
@@ -102,8 +110,13 @@ export function VantaBackground({ effect = "GLOBE", className = "" }: VantaBackg
           vantaEffect.current = null
         }
 
-        // Wait a bit for scripts to be ready
-        await new Promise((resolve) => setTimeout(resolve, 200))
+        // Clear any existing styles to ensure fresh start
+        if (vantaRef.current) {
+          vantaRef.current.style.background = ''
+        }
+
+        // Wait a bit for scripts to be ready and cleanup to complete
+        await new Promise((resolve) => setTimeout(resolve, 300))
 
         // Create new effect with validation
         if (window.VANTA && window.THREE && vantaRef.current) {
@@ -116,8 +129,10 @@ export function VantaBackground({ effect = "GLOBE", className = "" }: VantaBackg
                 el: vantaRef.current,
                 THREE: window.THREE,
                 ...effectConfig,
+                // Force re-render with timestamp to avoid caching
+                version: Date.now()
               })
-              console.log(`Vanta effect "${effectName}" loaded successfully`)
+              console.log(`Vanta effect "${effectName}" loaded successfully with colors:`, effectConfig)
             } catch (initError) {
               console.error(`Error initializing Vanta effect "${effectName}":`, initError)
               applyFallbackBackground(effectName)
@@ -147,6 +162,7 @@ export function VantaBackground({ effect = "GLOBE", className = "" }: VantaBackg
           rings: "linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)",
           cells: "linear-gradient(135deg, #ec4899 0%, #be185d 100%)",
           waves: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+          fog: "linear-gradient(135deg, #845700 0%, #e6005e 50%, #f58548 100%)",
           globe: "linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #1e40af 100%)",
         }
 
@@ -156,9 +172,10 @@ export function VantaBackground({ effect = "GLOBE", className = "" }: VantaBackg
       }
     }
 
-    loadVanta()
-
     return () => {
+      // Clear timer
+      clearTimeout(timer)
+      
       // Safe cleanup
       if (vantaEffect.current) {
         try {
@@ -171,7 +188,7 @@ export function VantaBackground({ effect = "GLOBE", className = "" }: VantaBackg
         vantaEffect.current = null
       }
     }
-  }, [effect])
+  }, [effect]) // Re-run when effect changes
 
   const loadScript = (src: string): Promise<void> => {
     return new Promise((resolve, reject) => {
@@ -212,6 +229,8 @@ export function VantaBackground({ effect = "GLOBE", className = "" }: VantaBackg
         return window.VANTA.GLOBE
       case "waves":
         return window.VANTA.WAVES
+      case "fog":
+        return window.VANTA.FOG
       default:
         return window.VANTA.GLOBE
     }
@@ -295,27 +314,34 @@ export function VantaBackground({ effect = "GLOBE", className = "" }: VantaBackg
       case "globe":
         return {
           ...baseConfig,
-          backgroundColor: 0xcbe6e6,
-          color: 0x870c,
-          color2: 0x39bbfa,
+          backgroundColor: 0x111025,
+          color: 0x56bb,
+          color2: 0xf24a68,
           size: 1.5,
           scale: 1.0,
         }
       case "waves":
         return {
           ...baseConfig,
-          color: 0xd3b84,
+          color: 0x6788,
           shininess: 30.0,
           waveHeight: 15.0,
           waveSpeed: 1.0,
           zoom: 1.0,
         }
+      case "fog":
+        return {
+          ...baseConfig,
+          highlightColor: 0x845700,
+          midtoneColor: 0xe6005e,
+          lowlightColor: 0xf58548,
+        }
       default: // globe
         return {
           ...baseConfig,
-          backgroundColor: 0xcbe6e6,
-          color: 0x870c,
-          color2: 0x39bbfa,
+          backgroundColor: 0x111025,
+          color: 0x56bb,
+          color2: 0xf24a68,
           size: 1.5,
           scale: 1.0,
         }

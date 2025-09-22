@@ -199,14 +199,14 @@ export function CrosswordViewer({
 
   const selected = currentWord()
 
-  // Fixed cell size for consistent appearance - adjusted for better fit
-  const cellSize = isLarge ? 'w-5 h-5 text-xs' : 'w-7 h-7 text-sm'
+  // Fixed cell size for consistent appearance - smaller for better fit in preview
+  const cellSize = isLarge ? 'w-4 h-4 text-xs' : 'w-5 h-5 text-xs'
 
   return (
     <div className={`grid gap-4 md:grid-cols-[1fr_280px] transition-all duration-500 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-1'}`}>
-      <div className="flex flex-col items-center min-w-0 overflow-auto">
-        <div className="bg-gray-700 rounded-lg p-4 inline-block" role="group" aria-label="Crossword grid">
-          <div className="grid gap-0" style={{ gridTemplateColumns: `repeat(${cols}, 1fr)`, gridTemplateRows: `repeat(${rows}, 1fr)` }}>
+      <div className="flex flex-col items-center min-w-0">
+        <div className="bg-gray-700 rounded-lg p-2 max-w-full overflow-auto" role="group" aria-label="Crossword grid">
+          <div className="grid gap-0 mx-auto" style={{ gridTemplateColumns: `repeat(${cols}, 1fr)`, gridTemplateRows: `repeat(${rows}, 1fr)` }}>
             {Array.from({ length: rows * cols }, (_, index) => {
               const r = Math.floor(index / cols)
               const c = index % cols

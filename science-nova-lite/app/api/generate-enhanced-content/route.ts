@@ -1,7 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { generateText } from "ai"
-import { google } from "@ai-sdk/google"
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { generateEducationalContent, getAI } from '@/lib/simple-ai'
 
 export const runtime = 'nodejs'
 let svcClient: SupabaseClient | null = null
@@ -92,66 +91,46 @@ export async function POST(request: NextRequest) {
 
     const { data: topicData, error: topicError } = await supa
       .from("topics")
-      .select(`title, grade_level, admin_prompt, study_areas (name, vanta_effect)`).eq("id", topicId).single()
+      .select(`title, grade_level, admin_prompt`).eq("id", topicId).single()
   if (topicError || !topicData) { const r = NextResponse.json({ error: "Topic not found" }, { status: 404 }); r.headers.set('Cache-Control','no-store'); r.headers.set('Vary','Authorization'); return r }
 
-    const studyAreaName = (topicData.study_areas as any)?.name || 'Science'
+    const studyAreaName = 'Science' // Always science since this is a science learning platform
     const gradeLevel = topicData.grade_level
     const relevantTextbookContent = await searchRelevantTextbookContent(topicData.title, gradeLevel)
-    const textbookContentPrompt = formatTextbookContentForPrompt(relevantTextbookContent)
-
-    const basePrompt = `
-${textbookContentPrompt}
-
-You are an AI tutor creating educational content for Grade ${gradeLevel} about "${topicData.title}" in ${studyAreaName}.
-
-Create structured content with this exact JSON format:
-{ "lessonContent": "500-800 words... Include [IMAGE_PROMPT: description] placeholders.", "contentImagePrompts": ["...", "...", "..."], "flashcards": [{"id":"1","front":"...","back":"...","imagePrompt":"..."},{"id":"2","front":"...","back":"...","imagePrompt":"..."},{"id":"3","front":"...","back":"...","imagePrompt":"..."},{"id":"4","front":"...","back":"...","imagePrompt":"..."},{"id":"5","front":"...","back":"...","imagePrompt":"..."}], "quiz": [{"id":"1","question":"...","options":["A","B","C","D"],"correctAnswer":0,"explanation":"..."},{"id":"2","question":"...","options":["A","B","C","D"],"correctAnswer":1,"explanation":"..."},{"id":"3","question":"...","options":["A","B","C","D"],"correctAnswer":2,"explanation":"..."},{"id":"4","question":"...","options":["A","B","C","D"],"correctAnswer":3,"explanation":"..."},{"id":"5","question":"...","options":["A","B","C","D"],"correctAnswer":0,"explanation":"..."}] }
-
-IMPORTANT REQUIREMENTS:
-- Use the textbook content provided above as your primary reference for accuracy
-- Grade-appropriate language for Grade ${gradeLevel}
-- Exactly 5 flashcards and 5 quiz questions
-- Each flashcard includes an imagePrompt
-- 2-3 contentImagePrompts
-- Child-friendly, accurate
-${topicData.admin_prompt ? `Additional Instructions: ${topicData.admin_prompt}` : ""}
-`
-
-    // If Google AI key isn't set, return a small deterministic fallback so dev doesn't break.
+    
+    // Use the new simple AI system
+    const ai = getAI()
+    console.log('AI Status:', ai.getStatus())
+    
     let parsedContent: any
-    if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
+    try {
+      parsedContent = await generateEducationalContent(topicData.title, gradeLevel, {
+        type: 'lesson',
+        style: 'fun'
+      })
+    } catch (error) {
+      console.error('AI generation error:', error)
+      // Fallback content
       parsedContent = {
-        lessonContent: `Intro to ${topicData.title}:\nThis is a lightweight preview generated without external AI during local development.\n[IMAGE_PROMPT: A friendly illustration of ${topicData.title}]`,
+        lessonContent: `Learning about ${topicData.title} (Grade ${gradeLevel}):\n\nThis topic is designed to help students understand key concepts in ${studyAreaName}. The content is tailored for Grade ${gradeLevel} learners and provides engaging, age-appropriate explanations.\n\n[IMAGE_PROMPT: Students learning about ${topicData.title}]`,
         contentImagePrompts: [
-          `${studyAreaName} concept art about ${topicData.title}`,
-          `Kid-friendly visual of ${topicData.title} in nature`
+          `Educational illustration of ${topicData.title}`,
+          `Students exploring ${topicData.title} concepts`
         ],
         flashcards: [
-          { id: "1", front: `What is ${topicData.title}?`, back: `${topicData.title} relates to ${studyAreaName}.`, imagePrompt: `${topicData.title} simple icon` },
-          { id: "2", front: `Where do we see ${topicData.title}?`, back: `In everyday ${studyAreaName} examples.`, imagePrompt: `${topicData.title} in real life` },
-          { id: "3", front: `Why learn ${topicData.title}?`, back: `It builds science understanding.`, imagePrompt: `students exploring ${topicData.title}` },
-          { id: "4", front: `A key fact about ${topicData.title}?`, back: `It helps explain the world.`, imagePrompt: `key fact visual` },
-          { id: "5", front: `Fun example of ${topicData.title}?`, back: `A simple, relatable demo.`, imagePrompt: `fun example` }
+          { id: "1", front: `What is ${topicData.title}?`, back: `${topicData.title} is an important concept in ${studyAreaName}.`, imagePrompt: `${topicData.title} concept illustration` },
+          { id: "2", front: "Why is this topic important?", back: `Understanding ${topicData.title} helps us learn about ${studyAreaName}.`, imagePrompt: `Importance of ${topicData.title}` },
+          { id: "3", front: "How does this relate to real life?", back: `${topicData.title} can be observed in many everyday situations.`, imagePrompt: `Real world ${topicData.title}` },
+          { id: "4", front: `What grade level is this for?`, back: `This content is designed for Grade ${gradeLevel} students.`, imagePrompt: `Grade ${gradeLevel} learning` },
+          { id: "5", front: `What subject area?`, back: `${topicData.title} belongs to ${studyAreaName}.`, imagePrompt: `${studyAreaName} subject area` }
         ],
         quiz: [
-          { id: "1", question: `Which subject area is this?`, options: ["Math", "History", "Science", "Art"], correctAnswer: 2, explanation: `${topicData.title} is in ${studyAreaName}.` },
-          { id: "2", question: `What grade is this for?`, options: [String(gradeLevel - 1), String(gradeLevel), String(gradeLevel + 1), "All"], correctAnswer: 1, explanation: `Tailored for Grade ${gradeLevel}.` },
-          { id: "3", question: `Why learn science?`, options: ["Memorize", "Understand nature", "Ignore", "Copy"], correctAnswer: 1, explanation: "To understand the natural world." },
-          { id: "4", question: `Best way to learn?`, options: ["Rush", "Be curious", "Skip", "Cram"], correctAnswer: 1, explanation: "Curiosity helps." },
-          { id: "5", question: `Is ${topicData.title} useful?`, options: ["No", "Sometimes", "Yes", "Never"], correctAnswer: 2, explanation: `It connects to real life.` }
+          { id: "1", question: `What subject area does ${topicData.title} belong to?`, options: ["Math", "Science", "History", "Art"], correctAnswer: 1, explanation: `${topicData.title} is part of ${studyAreaName}.` },
+          { id: "2", question: `What grade is this content for?`, options: [`Grade ${gradeLevel-1}`, `Grade ${gradeLevel}`, `Grade ${gradeLevel+1}`, "All grades"], correctAnswer: 1, explanation: `Designed for Grade ${gradeLevel}.` },
+          { id: "3", question: "What's the best way to learn?", options: ["Memorize only", "Ask questions", "Skip lessons", "Rush through"], correctAnswer: 1, explanation: "Asking questions helps understanding." },
+          { id: "4", question: "Why study science?", options: ["It's required", "To understand the world", "For tests only", "No reason"], correctAnswer: 1, explanation: "Science helps us understand our world." },
+          { id: "5", question: "What makes learning effective?", options: ["Speed", "Curiosity", "Avoiding questions", "Memorization"], correctAnswer: 1, explanation: "Curiosity drives effective learning." }
         ]
-      }
-    } else {
-      const result = await generateText({ model: google("gemini-2.5-flash-lite-preview-06-17"), prompt: basePrompt, temperature: 0.7, maxOutputTokens: 2500 })
-
-      try {
-        let cleaned = result.text.trim()
-        if (cleaned.startsWith('```')) cleaned = cleaned.replace(/^```json?\s*/, '').replace(/\s*```$/, '')
-        const first = cleaned.indexOf('{'); const last = cleaned.lastIndexOf('}')
-        parsedContent = JSON.parse(cleaned.substring(first, last+1))
-      } catch {
-        const r = NextResponse.json({ error: "Failed to generate valid content" }, { status: 500 }); r.headers.set('Cache-Control','no-store'); r.headers.set('Vary','Authorization'); return r
       }
     }
 

@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js"
+import type { Role } from "@/types/domain"
 
 let _client: SupabaseClient | null = null
 function initClient(): SupabaseClient {
@@ -41,7 +42,7 @@ export type Database = {
         Row: {
           id: string
           full_name: string
-          role: "STUDENT" | "ADMIN"
+          role: Role
           learning_preference: "STORY" | "VISUAL" | "FACTS"
           grade_level: number
           created_at: string
@@ -49,13 +50,13 @@ export type Database = {
         Insert: {
           id: string
           full_name: string
-          role?: "STUDENT" | "ADMIN"
+          role?: Role
           learning_preference?: "STORY" | "VISUAL" | "FACTS"
           grade_level: number
         }
         Update: {
           full_name?: string
-          role?: "STUDENT" | "ADMIN"
+          role?: Role
           learning_preference?: "STORY" | "VISUAL" | "FACTS"
           grade_level?: number
         }

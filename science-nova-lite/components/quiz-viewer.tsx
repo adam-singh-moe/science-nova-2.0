@@ -16,7 +16,7 @@ function normalize(s: string) {
   return (s || "").trim().toLowerCase()
 }
 
-export function QuizViewer({ items, storageKey, initialMode }: { items: QuizItem[]; storageKey?: string; initialMode?: 'practice'|'review' }) {
+export function QuizViewer({ items, storageKey, initialMode, contentMeta }: { items: QuizItem[]; storageKey?: string; initialMode?: 'practice'|'review'; contentMeta?: { entryId: string; topicId: string; category: string; subtype: string } }) {
   const [responses, setResponses] = useState<Record<number, string | boolean | undefined>>({})
   const [checked, setChecked] = useState<Record<number, boolean>>({})
   const [mode, setMode] = useState<'practice'|'review'>(initialMode || 'practice')
@@ -56,6 +56,45 @@ export function QuizViewer({ items, storageKey, initialMode }: { items: QuizItem
     const t = setTimeout(() => setMounted(true), 10)
     return () => clearTimeout(t)
   }, [])
+
+  // Track explanation views for achievement system
+  React.useEffect(() => {
+    if (!storageKey) return
+    const [_, lessonId, blockId] = storageKey.split(':')
+    if (!lessonId || !blockId) return
+
+    // Count how many explanations are currently visible
+    let visibleExplanations = 0
+    items.forEach((q, idx) => {
+      const isChecked = checked[idx]
+      const r = responses[idx]
+      let isCorrect = false
+      if (isChecked) {
+        if (q.type === "MCQ" || q.type === "FIB") {
+          isCorrect = normalize(String(r ?? "")) === normalize(String(q.answer ?? ""))
+        } else if (q.type === "TF") {
+          isCorrect = String(r) === String(q.answer)
+        }
+      }
+      // Count if explanation is shown (wrong answer with explanation visible)
+      if (isChecked && !isCorrect && q.answer !== undefined) {
+        visibleExplanations++
+      }
+    })
+
+    // Track explanation views when explanations become visible
+    if (visibleExplanations > 0) {
+      try {
+        postLessonEvent({ 
+          lessonId, 
+          blockId, 
+          toolKind: 'QUIZ', 
+          eventType: 'explanation_view',
+          data: { explanationCount: visibleExplanations }
+        })
+      } catch {}
+    }
+  }, [checked, responses, items, storageKey])
 
   const results = useMemo(() => {
     let correct = 0
@@ -111,6 +150,7 @@ export function QuizViewer({ items, storageKey, initialMode }: { items: QuizItem
         setBlockDone({ lessonId, blockId }, true)
       }
     } catch {}
+    // content completion telemetry (outside lesson context) - removed as part of content management system
   }
 
   const percentChecked = Math.round((results.totalChecked / Math.max(1, results.total)) * 100)

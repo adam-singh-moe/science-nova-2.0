@@ -5,7 +5,7 @@ import ToolActions from "./tool-actions"
 import { StudentToolCard } from "./student-tool-card"
 
 export type ToolContainerProps = {
-  variant: "text" | "flashcards" | "quiz" | "crossword" | "image"
+  variant: "text" | "flashcards" | "quiz" | "crossword" | "image" | "video"
   children: React.ReactNode
   enableReadAloud?: boolean
   bodyBgColor?: string
@@ -20,11 +20,14 @@ export function ToolContainer({ variant, children, enableReadAloud = true, bodyB
     }
   }, [])
 
+  // Don't show AI helper tools for video variant
+  const showActions = variant !== "video"
+
   return (
     <StudentToolCard
       variant={variant}
-  bodyBgColor={bodyBgColor}
-      actions={<ToolActions targetRef={contentRef as React.RefObject<HTMLElement>} />}
+      bodyBgColor={bodyBgColor}
+      actions={showActions ? <ToolActions targetRef={contentRef as React.RefObject<HTMLElement>} /> : undefined}
     >
       <div className="tool-content" ref={contentRef}>
         {children}

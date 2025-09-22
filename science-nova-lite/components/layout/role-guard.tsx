@@ -2,8 +2,7 @@
 
 import { useAuth } from "@/contexts/auth-context"
 import Link from "next/link"
-
-type Role = 'STUDENT' | 'TEACHER' | 'ADMIN' | 'DEVELOPER'
+import type { Role } from "@/types/domain"
 
 export function hasAccess(userRole: Role | null | undefined, allowed: Role[] | "ANY_AUTH") {
   if (!userRole) return false

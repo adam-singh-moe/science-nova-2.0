@@ -17,16 +17,33 @@ export async function PUT(request: NextRequest) {
     const { data: { user } } = await userSupabase.auth.getUser(token)
     if (!user) return NextResponse.json({ error: 'Invalid user session' }, { status: 401 })
 
+    // Get user's current role to determine if grade level is required
+    const { data: currentProfile } = await userSupabase.from('profiles').select('role').eq('id', user.id).single()
+    const userRole = currentProfile?.role || 'STUDENT'
+    const isPrivileged = userRole === 'ADMIN' || userRole === 'TEACHER' || userRole === 'DEVELOPER'
+
     if (!full_name || typeof full_name !== 'string' || full_name.trim().length === 0) {
       return NextResponse.json({ error: 'Full name is required' }, { status: 400 })
     }
-    if (grade_level && (typeof grade_level !== 'number' || grade_level < 1 || grade_level > 12)) {
+    
+    // Grade level is only required for students
+    if (!isPrivileged && grade_level && (typeof grade_level !== 'number' || grade_level < 1 || grade_level > 12)) {
       return NextResponse.json({ error: 'Grade level must be between 1 and 12' }, { status: 400 })
+    }
+    
+    // Allow privileged users to have null grade level
+    if (isPrivileged && grade_level && (typeof grade_level !== 'number' || grade_level < 1 || grade_level > 12)) {
+      return NextResponse.json({ error: 'If specified, grade level must be between 1 and 12' }, { status: 400 })
     }
 
     const { data, error } = await userSupabase
       .from('profiles')
-      .update({ full_name: full_name.trim(), grade_level: grade_level || null, learning_preference: learning_preference || null, updated_at: new Date().toISOString() })
+      .update({ 
+        full_name: full_name.trim(), 
+        grade_level: grade_level || null, 
+        learning_preference: learning_preference || null, 
+        updated_at: new Date().toISOString() 
+      })
       .eq('id', user.id)
       .select()
       .single()
