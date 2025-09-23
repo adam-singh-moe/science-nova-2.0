@@ -271,60 +271,145 @@ export default function DiscoveryPage() {
     const factMoreInfo = fact?.moreInfo || (content.payload as any)?.more_info
     
     return (
-      <div className="p-6">
-        {/* Header Info */}
-        <div className="flex items-center gap-3 mb-6">
-          <div className="rounded-full bg-gradient-to-r from-green-500/80 to-blue-500/80 p-3 backdrop-blur-sm border border-green-400/30 shadow-lg">
-            <div className="text-white drop-shadow-[0_0_15px_rgba(34,197,94,0.6)]">
-              {getSubtypeIcon(content.subtype)}
+      <div className="relative overflow-hidden">
+        {/* Subtly Enhanced Header with Better Structure */}
+        <div className="relative bg-gradient-to-br from-slate-900/95 via-slate-800/90 to-slate-900/95 border-b border-white/15">
+          {/* Background decoration with subtle enhancement */}
+          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/8 via-cyan-500/12 to-blue-500/8"></div>
+          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-emerald-400/15 to-cyan-400/15 rounded-full blur-3xl"></div>
+          
+          <div className="relative p-8">
+            {/* Topic and Grade Info - Enhanced Colors */}
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500/25 to-cyan-500/25 border border-emerald-400/40 backdrop-blur-sm shadow-lg">
+                  <span className="text-emerald-200 font-bold text-lg">
+                    {content.topics?.[0]?.title || 'Science'}
+                  </span>
+                </div>
+                <div className="px-3 py-1.5 rounded-lg bg-white/15 border border-white/25 backdrop-blur-sm shadow-lg">
+                  <span className="text-white/90 font-semibold">
+                    Grade {content.topics?.[0]?.grade_level || 'K-12'}
+                  </span>
+                </div>
+              </div>
+              
+              {/* Content Type and Difficulty */}
+              <div className="flex items-center gap-2">
+                <Badge className="bg-gradient-to-r from-blue-500/35 to-indigo-500/35 border-blue-400/50 text-blue-100 backdrop-blur-sm shadow-lg">
+                  <div className="flex items-center gap-1.5">
+                    <div className="text-lg">{getSubtypeIcon(content.subtype)}</div>
+                    <span className="font-semibold">{content.subtype}</span>
+                  </div>
+                </Badge>
+                {content.difficulty && (
+                  <Badge className={`backdrop-blur-sm shadow-lg ${getDifficultyColor(content.difficulty)}`}>
+                    {content.difficulty}
+                  </Badge>
+                )}
+              </div>
             </div>
-          </div>
-          <div>
-            <p className="text-white/80 text-sm drop-shadow-[0_1px_4px_rgba(0,0,0,0.6)]">
-              {content.topics?.[0]?.title} • Grade {content.topics?.[0]?.grade_level}
-            </p>
+
+            {/* Title Section - Enhanced Prominence */}
+            <div className="space-y-3">
+              <h2 className="text-3xl font-bold text-white leading-tight tracking-wide drop-shadow-lg">
+                {factTitle}
+              </h2>
+              <div className="w-28 h-1.5 bg-gradient-to-r from-emerald-400 via-cyan-400 to-blue-400 rounded-full shadow-lg"></div>
+            </div>
           </div>
         </div>
 
-        {/* Image */}
-        {factImage && (
-          <div className="mb-6 rounded-2xl overflow-hidden border border-white/25 shadow-lg">
-            <img 
-              src={factImage} 
-              alt={factTitle}
-              className="w-full h-64 object-cover"
-            />
+        {/* Subtly Enhanced Content Area */}
+        <div className="p-8 space-y-8 bg-gradient-to-b from-slate-900/60 to-slate-800/40">
+          {/* Image Section - Subtle Enhancement */}
+          {factImage && (
+            <div className="relative group">
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-500/25 to-purple-500/25 rounded-2xl blur-xl opacity-70 group-hover:opacity-90 transition-opacity duration-500"></div>
+              <div className="relative overflow-hidden rounded-2xl border border-white/25 shadow-2xl bg-white/8 backdrop-blur-sm">
+                <img 
+                  src={factImage} 
+                  alt={factTitle}
+                  className="w-full h-80 object-cover transition-transform duration-700 group-hover:scale-[1.02]"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent"></div>
+              </div>
+            </div>
+          )}
+          
+          {/* Main Content - Enhanced Typography */}
+          <div className="relative">
+            <div className="bg-gradient-to-r from-white/8 to-white/12 rounded-2xl p-8 border border-white/15 backdrop-blur-sm shadow-xl">
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0 mt-1">
+                  <div className="w-3 h-3 bg-gradient-to-r from-emerald-400 via-cyan-400 to-blue-400 rounded-full shadow-lg"></div>
+                </div>
+                <div className="flex-1">
+                  <p className="text-white/95 leading-relaxed text-xl font-light tracking-wide">
+                    {factContent}
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
-        )}
-        
-        {/* Main Content */}
-        <div className="mb-6">
-          <p className="text-white/90 leading-relaxed text-lg drop-shadow-[0_1px_4px_rgba(0,0,0,0.6)]">
-            {factContent}
-          </p>
+
+          {/* Enhanced Information Sections */}
+          <div className="grid gap-6">
+            {/* Fun Fact - Redesigned */}
+            {factFunFact && (
+              <div className="relative group">
+                <div className="absolute inset-0 bg-gradient-to-r from-yellow-500/10 to-amber-500/10 rounded-2xl blur-lg opacity-50"></div>
+                <div className="relative p-6 bg-gradient-to-br from-yellow-500/15 via-amber-500/10 to-orange-500/15 border border-yellow-400/30 rounded-2xl backdrop-blur-sm shadow-xl">
+                  <div className="flex items-start gap-6">
+                    <div className="flex-shrink-0">
+                      <div className="relative">
+                        <div className="absolute inset-0 bg-yellow-400 rounded-2xl blur-lg opacity-40"></div>
+                        <div className="relative bg-gradient-to-r from-yellow-400 to-amber-400 p-4 rounded-2xl shadow-lg">
+                          <Lightbulb className="h-8 w-8 text-white drop-shadow-[0_0_15px_rgba(251,191,36,0.8)]" />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex-1 space-y-3">
+                      <h3 className="font-bold text-2xl bg-gradient-to-r from-yellow-200 to-amber-200 bg-clip-text text-transparent">
+                        Fun Fact
+                      </h3>
+                      <p className="text-yellow-100/90 leading-relaxed text-lg font-light">
+                        {factFunFact}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* More Information - Redesigned */}
+            {factMoreInfo && (
+              <div className="relative group">
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-cyan-500/10 rounded-2xl blur-lg opacity-50"></div>
+                <div className="relative p-6 bg-gradient-to-br from-blue-500/15 via-cyan-500/10 to-indigo-500/15 border border-blue-400/30 rounded-2xl backdrop-blur-sm shadow-xl">
+                  <div className="flex items-start gap-6">
+                    <div className="flex-shrink-0">
+                      <div className="relative">
+                        <div className="absolute inset-0 bg-blue-400 rounded-2xl blur-lg opacity-40"></div>
+                        <div className="relative bg-gradient-to-r from-blue-400 to-cyan-400 p-4 rounded-2xl shadow-lg">
+                          <Info className="h-8 w-8 text-white drop-shadow-[0_0_15px_rgba(59,130,246,0.8)]" />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex-1 space-y-3">
+                      <h3 className="font-bold text-2xl bg-gradient-to-r from-blue-200 to-cyan-200 bg-clip-text text-transparent">
+                        Learn More
+                      </h3>
+                      <p className="text-blue-100/90 leading-relaxed text-lg font-light">
+                        {factMoreInfo}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
-
-        {/* Fun Fact */}
-        {factFunFact && (
-          <div className="mb-6 p-4 bg-yellow-500/20 border-l-4 border-yellow-400 rounded-r-2xl backdrop-blur-sm border border-yellow-400/30">
-            <div className="flex items-center gap-2 mb-2">
-              <Lightbulb className="h-5 w-5 text-yellow-400 drop-shadow-[0_0_10px_rgba(251,191,36,0.4)]" />
-              <h3 className="font-semibold text-yellow-300 drop-shadow-[0_1px_4px_rgba(0,0,0,0.6)]">Fun Fact!</h3>
-            </div>
-            <p className="text-yellow-200 drop-shadow-[0_1px_4px_rgba(0,0,0,0.6)]">{factFunFact}</p>
-          </div>
-        )}
-
-        {/* More Information */}
-        {factMoreInfo && (
-          <div className="p-4 bg-blue-500/20 border-l-4 border-blue-400 rounded-r-2xl backdrop-blur-sm border border-blue-400/30">
-            <div className="flex items-center gap-2 mb-2">
-              <Info className="h-5 w-5 text-blue-400 drop-shadow-[0_0_10px_rgba(59,130,246,0.4)]" />
-              <h3 className="font-semibold text-blue-300 drop-shadow-[0_1px_4px_rgba(0,0,0,0.6)]">More Information</h3>
-            </div>
-            <p className="text-blue-200 drop-shadow-[0_1px_4px_rgba(0,0,0,0.6)]">{factMoreInfo}</p>
-          </div>
-        )}
       </div>
     )
   }

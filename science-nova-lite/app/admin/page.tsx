@@ -101,12 +101,10 @@ export default function AdminHome() {
       <RoleGuard allowed={["TEACHER", "ADMIN", "DEVELOPER"]}>
         <main className="mx-auto max-w-7xl px-4 py-6 md:px-6">
           {/* Admin navigation */}
-          <div className="sticky top-0 z-10 mb-6 rounded-2xl border bg-white/70 px-3 py-3 backdrop-blur supports-[backdrop-filter]:bg-white/60">
+          <div className="sticky top-0 z-10 mb-6 rounded-2xl border bg-white/70 px-3 py-3 backdrop-blur supports-[backdrop-filter]:bg-white/60 shadow-lg">
             <div className="flex flex-wrap items-center gap-2 md:gap-3">
               <Link href="/admin" className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500/10 to-sky-500/10 px-3 py-2 text-sm font-medium text-indigo-700 ring-1 ring-inset ring-indigo-200 hover:from-indigo-500/15 hover:to-sky-500/15"><BarChart3 className="h-4 w-4"/>Dashboard</Link>
-              <Link href="/admin/lessons/builder" className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-gray-700 ring-1 ring-inset ring-gray-200 hover:bg-gray-50"><Plus className="h-4 w-4"/> New Lesson</Link>
-              <Link href="/admin/lessons/saved" className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-gray-700 ring-1 ring-inset ring-gray-200 hover:bg-gray-50"><BarChart2 className="h-4 w-4"/> Saved Lessons</Link>
-              <Link href="/admin/lessons/published" className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-gray-700 ring-1 ring-inset ring-gray-200 hover:bg-gray-50"><BookOpen className="h-4 w-4"/> Published Lessons</Link>
+              <Link href="/admin/lessons" className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-gray-700 ring-1 ring-inset ring-gray-200 hover:bg-gray-50"><BookOpen className="h-4 w-4"/> Lessons Manager</Link>
               <Link href="/admin/documents" className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-gray-700 ring-1 ring-inset ring-gray-200 hover:bg-gray-50"><FileText className="h-4 w-4"/> Textbooks & Curriculum</Link>
               <Link href="/admin/content" className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-gray-700 ring-1 ring-inset ring-gray-200 hover:bg-gray-50"><Rocket className="h-4 w-4"/> Content Manager</Link>
               <RoleGuard allowed={["ADMIN", "DEVELOPER"]}>
@@ -118,7 +116,7 @@ export default function AdminHome() {
           </div>
 
           {/* Greeting card */}
-          <div className="mb-8 rounded-3xl border bg-gradient-to-r from-indigo-100 via-sky-100 to-fuchsia-100 p-8 shadow-sm">
+          <div className="mb-8 rounded-3xl border bg-gradient-to-r from-indigo-100 via-sky-100 to-fuchsia-100 p-8 shadow-lg">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div className="flex-1">
                 <h1 className="text-3xl font-bold text-indigo-900 md:text-4xl">Science Nova Admin Dashboard</h1>
@@ -149,6 +147,56 @@ export default function AdminHome() {
             </div>
           </div>
 
+          {/* Quick Actions */}
+          <div className="mb-8 rounded-3xl border bg-white/80 backdrop-blur shadow-lg p-6">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">Quick Actions</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Link
+                href="/admin/lessons/builder"
+                className="flex items-center gap-3 p-4 rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-500 text-white hover:from-blue-600 hover:to-indigo-600 transition-all shadow-lg hover:shadow-xl"
+              >
+                <Plus className="h-6 w-6" />
+                <div className="text-left">
+                  <div className="font-medium">Create New Lesson</div>
+                  <div className="text-sm text-white/90">Build interactive lessons</div>
+                </div>
+              </Link>
+              
+              <Link
+                href="/admin/content"
+                className="flex items-center gap-3 p-4 rounded-2xl bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600 transition-all shadow-lg hover:shadow-xl"
+              >
+                <Rocket className="h-6 w-6" />
+                <div className="text-left">
+                  <div className="font-medium">Content Manager</div>
+                  <div className="text-sm text-white/90">Manage arcade & discovery</div>
+                </div>
+              </Link>
+              
+              <Link
+                href="/admin/documents"
+                className="flex items-center gap-3 p-4 rounded-2xl bg-gradient-to-r from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600 transition-all shadow-lg hover:shadow-xl"
+              >
+                <FileText className="h-6 w-6" />
+                <div className="text-left">
+                  <div className="font-medium">Upload Content</div>
+                  <div className="text-sm text-white/90">Add textbooks & curriculum</div>
+                </div>
+              </Link>
+              
+              <Link
+                href="/admin/students"
+                className="flex items-center gap-3 p-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:from-emerald-600 hover:to-teal-600 transition-all shadow-lg hover:shadow-xl"
+              >
+                <Users className="h-6 w-6" />
+                <div className="text-left">
+                  <div className="font-medium">View Students</div>
+                  <div className="text-sm text-white/90">Monitor progress</div>
+                </div>
+              </Link>
+            </div>
+          </div>
+
           {/* Stats */}
           <section className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
             {stats.map((s) => (
@@ -168,7 +216,7 @@ export default function AdminHome() {
           {/* Charts */}
           <section className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-12">
             {/* Engagement Chart - Takes up 8 columns */}
-            <div className="rounded-2xl border bg-white/80 p-6 backdrop-blur lg:col-span-8">
+            <div className="rounded-2xl border bg-white/80 p-6 backdrop-blur shadow-lg lg:col-span-8">
               <div className="mb-6 flex items-center justify-between">
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900">Weekly Learning Activity</h3>
@@ -182,7 +230,7 @@ export default function AdminHome() {
             </div>
 
             {/* Topic Distribution Chart - Takes up 4 columns, aligns with rightmost stats */}
-            <div className="rounded-2xl border bg-white/80 p-6 backdrop-blur lg:col-span-4">
+            <div className="rounded-2xl border bg-white/80 p-6 backdrop-blur shadow-lg lg:col-span-4">
               <div className="mb-6">
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900">Subject Focus</h3>
@@ -202,14 +250,14 @@ export default function AdminHome() {
           </section>
 
           {/* Recent lessons */}
-          <section className="mt-8 rounded-2xl border bg-white/80 p-6 backdrop-blur">
+          <section className="mt-8 rounded-2xl border bg-white/80 p-6 backdrop-blur shadow-lg">
             <div className="mb-4 flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">Recent Lessons</h3>
                 <p className="text-sm text-gray-600">Your most recently created and updated lessons</p>
               </div>
               <Link 
-                href="/admin/lessons/saved" 
+                href="/admin/lessons" 
                 className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium text-indigo-600 hover:bg-indigo-50 transition-colors"
               >
                 View all

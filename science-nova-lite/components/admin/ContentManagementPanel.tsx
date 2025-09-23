@@ -161,7 +161,7 @@ export function ContentManagementPanel({ initialCategory = 'ARCADE', fixedCatego
   }
 
   const renderContentCard = (entry: ContentEntry) => (
-    <Card key={entry.id} className="p-4 hover:shadow-md transition-shadow">
+    <Card key={entry.id} className="p-4 hover:shadow-md transition-shadow shadow-lg">
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-2">
@@ -282,7 +282,7 @@ export function ContentManagementPanel({ initialCategory = 'ARCADE', fixedCatego
 
         <TabsContent value={activeTab} className="space-y-4">
           {/* Filters */}
-          <Card className="p-4">
+          <Card className="p-4 shadow-lg">
             <div className="flex flex-wrap gap-4">
               <div className="flex-1 min-w-[200px]">
                 <div className="flex gap-2">
@@ -342,11 +342,11 @@ export function ContentManagementPanel({ initialCategory = 'ARCADE', fixedCatego
           {/* Content List */}
           <div className="space-y-2">
             {loading ? (
-              <Card className="p-8 text-center">
+              <Card className="p-8 text-center shadow-lg">
                 <div className="animate-pulse">Loading content...</div>
               </Card>
             ) : content.length === 0 ? (
-              <Card className="p-8 text-center">
+              <Card className="p-8 text-center shadow-lg">
                 <div className="text-gray-500">
                   No {activeTab.toLowerCase()} content found.
                 </div>

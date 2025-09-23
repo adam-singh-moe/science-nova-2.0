@@ -14,7 +14,8 @@ import {
   Filter,
   Download,
   Eye,
-  User
+  User,
+  BookOpen
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -172,7 +173,7 @@ export default function StudentsPage() {
       <RoleGuard allowed={["TEACHER", "ADMIN", "DEVELOPER"]}>
         <main className="mx-auto max-w-7xl px-4 py-6 md:px-6">
           {/* Admin navigation */}
-          <div className="sticky top-0 z-10 mb-6 rounded-2xl border bg-white/70 px-3 py-3 backdrop-blur supports-[backdrop-filter]:bg-white/60">
+          <div className="sticky top-0 z-10 mb-6 rounded-2xl border bg-white/70 px-3 py-3 backdrop-blur supports-[backdrop-filter]:bg-white/60 shadow-lg">
             <div className="flex flex-wrap items-center gap-2 md:gap-3">
               <Link
                 href="/admin"
@@ -190,28 +191,94 @@ export default function StudentsPage() {
           </div>
 
           {/* Page header */}
-          <div className="mb-6 rounded-3xl border bg-gradient-to-r from-indigo-100 via-sky-100 to-fuchsia-100 p-8 shadow-sm">
-            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <div>
-                <h1 className="text-2xl font-semibold text-indigo-900 md:text-3xl">Student Management</h1>
-                <p className="mt-1 max-w-2xl text-sm text-indigo-900/70">
-                  View and analyze all student accounts, their activity, and progress reports.
+          <div className="mb-6 rounded-3xl border bg-gradient-to-r from-indigo-100 via-sky-100 to-fuchsia-100 p-8 shadow-lg">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex-1">
+                <h1 className="text-3xl font-bold text-indigo-900 md:text-4xl">Student Management</h1>
+                <p className="mt-2 max-w-3xl text-base text-indigo-900/70 md:text-lg">
+                  View and analyze all student accounts, their activity, and progress reports. Monitor engagement and academic performance.
                 </p>
+                
+                {/* Quick Stats */}
+                <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="rounded-2xl bg-white/60 backdrop-blur p-4">
+                    <div className="text-2xl font-bold text-blue-900">{pagination.totalCount}</div>
+                    <div className="text-sm text-blue-700">Total Students</div>
+                  </div>
+                  <div className="rounded-2xl bg-white/60 backdrop-blur p-4">
+                    <div className="text-2xl font-bold text-green-900">
+                      {students.filter(s => s.last_sign_in_at && new Date(s.last_sign_in_at) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)).length}
+                    </div>
+                    <div className="text-sm text-green-700">Active This Week</div>
+                  </div>
+                  <div className="rounded-2xl bg-white/60 backdrop-blur p-4">
+                    <div className="text-2xl font-bold text-purple-900">
+                      {students.filter(s => s.last_sign_in_at && new Date(s.last_sign_in_at) > new Date(Date.now() - 24 * 60 * 60 * 1000)).length}
+                    </div>
+                    <div className="text-sm text-purple-700">Active Today</div>
+                  </div>
+                  <div className="rounded-2xl bg-white/60 backdrop-blur p-4">
+                    <div className="text-2xl font-bold text-orange-900">
+                      {students.filter(s => !s.last_sign_in_at).length}
+                    </div>
+                    <div className="text-sm text-orange-700">Never Signed In</div>
+                  </div>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm">
-                  <Download className="h-4 w-4 mr-2" />
+              
+              <div className="flex flex-col gap-3 sm:flex-row lg:flex-col xl:flex-row">
+                <Button variant="outline" size="lg" className="bg-white/80 backdrop-blur">
+                  <Download className="h-5 w-5 mr-2" />
                   Export Data
                 </Button>
-                <Badge variant="secondary" className="bg-white/50">
-                  {pagination.totalCount} students
-                </Badge>
+                <Link href="/admin/lessons/builder">
+                  <Button className="bg-gradient-to-tr from-indigo-500 to-sky-500 hover:brightness-105 transition-all hover:shadow-xl text-white">
+                    <User className="h-5 w-5 mr-2" />
+                    View Student Reports
+                  </Button>
+                </Link>
               </div>
             </div>
           </div>
 
+          {/* Quick Actions */}
+          <div className="mb-6 rounded-3xl border bg-white/80 backdrop-blur shadow-lg p-6">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">Quick Actions</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Link
+                href="/admin/lessons"
+                className="flex items-center gap-3 p-4 rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-500 text-white hover:from-blue-600 hover:to-indigo-600 transition-all shadow-lg hover:shadow-xl"
+              >
+                <BookOpen className="h-6 w-6" />
+                <div className="text-left">
+                  <div className="font-medium">Lessons Manager</div>
+                  <div className="text-sm text-white/90">View lesson engagement</div>
+                </div>
+              </Link>
+              
+              <button className="flex items-center gap-3 p-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:from-emerald-600 hover:to-teal-600 transition-all shadow-lg hover:shadow-xl">
+                <Download className="h-6 w-6" />
+                <div className="text-left">
+                  <div className="font-medium">Export Data</div>
+                  <div className="text-sm text-white/90">Download student reports</div>
+                </div>
+              </button>
+              
+              <Link
+                href="/admin/reports"
+                className="flex items-center gap-3 p-4 rounded-2xl bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600 transition-all shadow-lg hover:shadow-xl"
+              >
+                <BarChart3 className="h-6 w-6" />
+                <div className="text-left">
+                  <div className="font-medium">View Reports</div>
+                  <div className="text-sm text-white/90">Weekly activity reports</div>
+                </div>
+              </Link>
+            </div>
+          </div>
+
           {/* Filters and search */}
-          <div className="mb-6 rounded-2xl border bg-white/70 p-4 backdrop-blur">
+          <div className="mb-6 rounded-2xl border bg-white/70 p-4 backdrop-blur shadow-lg">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div className="flex flex-1 items-center gap-3">
                 <div className="relative flex-1 max-w-md">
@@ -246,7 +313,7 @@ export default function StudentsPage() {
           </div>
 
           {/* Students table */}
-          <div className="rounded-2xl border bg-white/70 backdrop-blur overflow-hidden">
+          <div className="rounded-2xl border bg-white/70 backdrop-blur overflow-hidden shadow-lg">
             {loading ? (
               <div className="p-8 text-center">
                 <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent text-indigo-600"></div>

@@ -204,7 +204,7 @@ export default function DocumentsPage() {
       <RoleGuard allowed={["TEACHER", "ADMIN", "DEVELOPER"]}>
         <main className="mx-auto max-w-7xl px-4 py-6 md:px-6">
           {/* Admin navigation */}
-          <div className="sticky top-0 z-10 mb-6 rounded-2xl border bg-white/70 px-3 py-3 backdrop-blur supports-[backdrop-filter]:bg-white/60">
+          <div className="sticky top-0 z-10 mb-6 rounded-2xl border bg-white/70 px-3 py-3 backdrop-blur supports-[backdrop-filter]:bg-white/60 shadow-lg">
             <div className="flex flex-wrap items-center gap-2 md:gap-3">
               <Link
                 href="/admin"
@@ -222,7 +222,7 @@ export default function DocumentsPage() {
           </div>
           
           {/* Header */}
-          <div className="mb-8 rounded-3xl border bg-gradient-to-r from-indigo-100 via-sky-100 to-fuchsia-100 p-8 shadow-sm">
+          <div className="mb-8 rounded-3xl border bg-gradient-to-r from-indigo-100 via-sky-100 to-fuchsia-100 p-8 shadow-lg">
             <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex-1">
                 <h1 className="text-3xl font-bold text-indigo-900 md:text-4xl">Textbooks & Curriculum</h1>
@@ -335,7 +335,7 @@ export default function DocumentsPage() {
             </div>
             
             {/* Grade filter */}
-            <div className="rounded-2xl border bg-white/80 p-3 backdrop-blur shadow-sm">
+            <div className="rounded-2xl border bg-white/80 p-3 backdrop-blur shadow-lg">
               <div className="flex flex-wrap items-center gap-2">
                 <button 
                   onClick={() => setSelectedGrade(null)} 
@@ -377,7 +377,7 @@ export default function DocumentsPage() {
               </button>
             </div>
           ) : filteredDocuments.length === 0 ? (
-            <div className="rounded-2xl border bg-white/80 p-12 backdrop-blur text-center">
+            <div className="rounded-2xl border bg-white/80 p-12 backdrop-blur text-center shadow-lg">
               <div className="mx-auto w-24 h-24 rounded-full bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center mb-6">
                 <Upload className="h-12 w-12 text-indigo-600" />
               </div>
@@ -440,7 +440,7 @@ export default function DocumentsPage() {
                 {filteredDocuments.map((doc, index) => (
                   <div 
                     key={index} 
-                    className="group relative overflow-hidden rounded-xl border bg-white/80 backdrop-blur p-6 shadow-sm hover:shadow-md transition-all"
+                    className="group relative overflow-hidden rounded-xl border bg-white/80 backdrop-blur p-6 shadow-lg hover:shadow-xl transition-all"
                   >
                     <div className="absolute -right-4 -top-4 rounded-full bg-gray-50 p-8"></div>
                     <div className={`absolute right-4 top-4 rounded-full p-2 ${

@@ -18,7 +18,7 @@ export default function ContentManagerPage() {
       <RoleGuard allowed={["TEACHER", "ADMIN", "DEVELOPER"]}>
         <main className="mx-auto max-w-7xl px-4 py-6 md:px-6">
           {/* Admin navigation */}
-          <div className="sticky top-0 z-10 mb-6 rounded-2xl border bg-white/70 px-3 py-3 backdrop-blur supports-[backdrop-filter]:bg-white/60">
+          <div className="sticky top-0 z-10 mb-6 rounded-2xl border bg-white/70 px-3 py-3 backdrop-blur supports-[backdrop-filter]:bg-white/60 shadow-lg">
             <div className="flex flex-wrap items-center gap-2 md:gap-3">
               <Link
                 href="/admin"
@@ -36,7 +36,7 @@ export default function ContentManagerPage() {
           </div>
 
           {/* Header */}
-          <div className="mb-8 rounded-3xl border bg-gradient-to-r from-indigo-100 via-sky-100 to-fuchsia-100 p-8 shadow-sm">
+          <div className="mb-8 rounded-3xl border bg-gradient-to-r from-indigo-100 via-sky-100 to-fuchsia-100 p-8 shadow-lg">
             <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex-1">
                 <h1 className="text-3xl font-bold text-indigo-900 md:text-4xl">Content Manager</h1>
@@ -46,19 +46,19 @@ export default function ContentManagerPage() {
                 
                 {/* Quick Stats */}
                 <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="rounded-2xl bg-white/60 backdrop-blur p-4">
+                  <div className="rounded-2xl bg-white/60 backdrop-blur p-4 shadow-lg">
                     <div className="text-2xl font-bold text-purple-900">0</div>
                     <div className="text-sm text-purple-700">Arcade Games</div>
                   </div>
-                  <div className="rounded-2xl bg-white/60 backdrop-blur p-4">
+                  <div className="rounded-2xl bg-white/60 backdrop-blur p-4 shadow-lg">
                     <div className="text-2xl font-bold text-green-900">0</div>
                     <div className="text-sm text-green-700">Discovery Activities</div>
                   </div>
-                  <div className="rounded-2xl bg-white/60 backdrop-blur p-4">
+                  <div className="rounded-2xl bg-white/60 backdrop-blur p-4 shadow-lg">
                     <div className="text-2xl font-bold text-blue-900">0</div>
                     <div className="text-sm text-blue-700">Total Interactions</div>
                   </div>
-                  <div className="rounded-2xl bg-white/60 backdrop-blur p-4">
+                  <div className="rounded-2xl bg-white/60 backdrop-blur p-4 shadow-lg">
                     <div className="text-2xl font-bold text-orange-900">0</div>
                     <div className="text-sm text-orange-700">Content Items</div>
                   </div>
@@ -67,13 +67,13 @@ export default function ContentManagerPage() {
               
               <div className="flex flex-col gap-3 sm:flex-row lg:flex-col xl:flex-row">
                 <Link
-                  href="/admin/arcade"
+                  href="/admin/content/arcade"
                   className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-tr from-purple-500 to-indigo-500 px-6 py-4 text-white shadow-lg hover:brightness-105 transition-all hover:shadow-xl font-medium"
                 >
                   <Plus className="h-5 w-5" /> Create Arcade Game
                 </Link>
                 <Link
-                  href="/admin/discovery"
+                  href="/admin/content/discovery"
                   className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-tr from-green-500 to-teal-500 px-6 py-4 text-white shadow-lg hover:brightness-105 transition-all hover:shadow-xl font-medium"
                 >
                   <Plus className="h-5 w-5" /> Create Discovery Activity
@@ -93,7 +93,7 @@ export default function ContentManagerPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Arcade Games Card */}
-              <Card className="border-purple-200 bg-gradient-to-br from-purple-50 to-purple-100/50 hover:shadow-md transition-all">
+              <Card className="border-purple-200 bg-gradient-to-br from-purple-50 to-purple-100/50 hover:shadow-md transition-all shadow-lg">
                 <CardHeader>
                   <div className="flex items-center gap-3">
                     <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 text-white">
@@ -126,7 +126,7 @@ export default function ContentManagerPage() {
                       <div className="text-purple-700">Match and remember</div>
                     </div>
                   </div>
-                  <Link href="/admin/arcade" className="w-full">
+                  <Link href="/admin/content/arcade" className="w-full">
                     <Button className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white">
                       <Gamepad2 className="h-4 w-4 mr-2" />
                       Manage Arcade Games
@@ -136,7 +136,7 @@ export default function ContentManagerPage() {
               </Card>
 
               {/* Discovery Activities Card */}
-              <Card className="border-green-200 bg-gradient-to-br from-green-50 to-emerald-100/50 hover:shadow-md transition-all">
+              <Card className="border-green-200 bg-gradient-to-br from-green-50 to-emerald-100/50 hover:shadow-md transition-all shadow-lg">
                 <CardHeader>
                   <div className="flex items-center gap-3">
                     <div className="p-3 rounded-xl bg-gradient-to-br from-green-500 to-teal-600 text-white">
@@ -169,7 +169,7 @@ export default function ContentManagerPage() {
                       <div className="text-green-700">Real-world scenarios</div>
                     </div>
                   </div>
-                  <Link href="/admin/discovery" className="w-full">
+                  <Link href="/admin/content/discovery" className="w-full">
                     <Button className="w-full bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 text-white">
                       <Search className="h-4 w-4 mr-2" />
                       Manage Discovery Activities
@@ -186,7 +186,7 @@ export default function ContentManagerPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Link
                 href="/admin/lessons/builder"
-                className="p-4 rounded-xl border bg-white/80 hover:bg-white transition-all hover:shadow-md group"
+                className="p-4 rounded-xl border bg-white/80 hover:bg-white transition-all hover:shadow-md group shadow-lg"
               >
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-blue-100 text-blue-600 group-hover:bg-blue-200 transition-colors">
@@ -201,7 +201,7 @@ export default function ContentManagerPage() {
               
               <Link
                 href="/admin/documents"
-                className="p-4 rounded-xl border bg-white/80 hover:bg-white transition-all hover:shadow-md group"
+                className="p-4 rounded-xl border bg-white/80 hover:bg-white transition-all hover:shadow-md group shadow-lg"
               >
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-orange-100 text-orange-600 group-hover:bg-orange-200 transition-colors">
@@ -216,7 +216,7 @@ export default function ContentManagerPage() {
               
               <Link
                 href="/admin/students"
-                className="p-4 rounded-xl border bg-white/80 hover:bg-white transition-all hover:shadow-md group"
+                className="p-4 rounded-xl border bg-white/80 hover:bg-white transition-all hover:shadow-md group shadow-lg"
               >
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-violet-100 text-violet-600 group-hover:bg-violet-200 transition-colors">

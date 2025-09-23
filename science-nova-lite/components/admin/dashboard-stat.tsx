@@ -23,7 +23,7 @@ export function DashboardStat({
 }: DashboardStatProps) {
   if (isLoading) {
     return (
-      <div className="group relative rounded-2xl border bg-white/80 p-6 backdrop-blur">
+      <div className="group relative rounded-2xl border bg-white/80 p-6 backdrop-blur shadow-lg">
         <div className="animate-pulse">
           <div className="flex items-center gap-2 mb-2">
             <div className="h-4 w-4 bg-gray-200 rounded"></div>
@@ -37,7 +37,7 @@ export function DashboardStat({
   }
 
   return (
-    <div className="group relative rounded-2xl border bg-white/80 p-6 backdrop-blur transition-all hover:bg-white/90 hover:shadow-lg">
+    <div className="group relative rounded-2xl border bg-white/80 p-6 backdrop-blur shadow-lg transition-all hover:bg-white/90 hover:shadow-xl">
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <div className="flex items-center gap-2 text-sm font-medium text-gray-600 mb-1">

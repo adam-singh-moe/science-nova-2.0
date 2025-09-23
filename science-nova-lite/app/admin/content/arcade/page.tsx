@@ -6,7 +6,7 @@ import Link from "next/link"
 import { 
   Gamepad2, Plus, Search, Filter, Edit, Trash2, Eye, 
   BarChart3, BookOpen, FileText, Rocket, Users, Settings,
-  MoreHorizontal, Calendar, Tag, Archive, CheckCircle 
+  MoreHorizontal, Calendar, Tag, Archive, CheckCircle, Compass 
 } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 
@@ -119,7 +119,8 @@ export default function ArcadeManagerPage() {
               <Link href="/admin/lessons" className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-gray-700 ring-1 ring-inset ring-gray-200 hover:bg-gray-50"><BookOpen className="h-4 w-4"/> Lessons Manager</Link>
               <Link href="/admin/documents" className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-gray-700 ring-1 ring-inset ring-gray-200 hover:bg-gray-50"><FileText className="h-4 w-4"/> Textbooks & Curriculum</Link>
               <Link href="/admin/content" className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-gray-700 ring-1 ring-inset ring-gray-200 hover:bg-gray-50"><Rocket className="h-4 w-4"/> Content Manager</Link>
-              <Link href="/admin/arcade" className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-500/10 to-pink-500/10 px-3 py-2 text-sm font-medium text-purple-700 ring-1 ring-inset ring-purple-200 hover:from-purple-500/15 hover:to-pink-500/15"><Gamepad2 className="h-4 w-4"/> Arcade Manager</Link>
+              <Link href="/admin/content/arcade" className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-500/10 to-pink-500/10 px-3 py-2 text-sm font-medium text-purple-700 ring-1 ring-inset ring-purple-200 hover:from-purple-500/15 hover:to-pink-500/15"><Gamepad2 className="h-4 w-4"/> Arcade Manager</Link>
+              <Link href="/admin/content/discovery" className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-gray-700 ring-1 ring-inset ring-gray-200 hover:bg-gray-50"><Compass className="h-4 w-4"/> Discovery Manager</Link>
               <RoleGuard allowed={["ADMIN", "DEVELOPER"]}>
                 <Link href="/admin/topics" className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-gray-700 ring-1 ring-inset ring-gray-200 hover:bg-gray-50"><Settings className="h-4 w-4"/> Topics Manager</Link>
                 <Link href="/admin/students" className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-gray-700 ring-1 ring-inset ring-gray-200 hover:bg-gray-50"><Users className="h-4 w-4"/> Students</Link>
@@ -141,7 +142,7 @@ export default function ArcadeManagerPage() {
               </div>
               <div className="flex gap-3">
                 <Link
-                  href="/admin/arcade/create"
+                  href="/admin/content/arcade/create"
                   className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-tr from-purple-500 to-pink-500 px-6 py-3 text-white shadow-lg hover:brightness-105 transition-all hover:shadow-xl"
                 >
                   <Plus className="h-5 w-5" /> Create New Game
@@ -175,7 +176,7 @@ export default function ArcadeManagerPage() {
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Quick Actions</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <Link
-                href="/admin/arcade/create?type=crossword"
+                href="/admin/content/arcade/create?type=crossword"
                 className="flex items-center gap-3 p-4 rounded-2xl bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600 transition-all shadow-lg hover:shadow-xl"
               >
                 <span className="text-2xl">🧩</span>
@@ -186,7 +187,7 @@ export default function ArcadeManagerPage() {
               </Link>
               
               <Link
-                href="/admin/arcade/create?type=quiz"
+                href="/admin/content/arcade/create?type=quiz"
                 className="flex items-center gap-3 p-4 rounded-2xl bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:from-green-600 hover:to-emerald-600 transition-all shadow-lg hover:shadow-xl"
               >
                 <span className="text-2xl">❓</span>
@@ -197,7 +198,7 @@ export default function ArcadeManagerPage() {
               </Link>
               
               <Link
-                href="/admin/arcade/create?type=word-search"
+                href="/admin/content/arcade/create?type=word-search"
                 className="flex items-center gap-3 p-4 rounded-2xl bg-gradient-to-r from-blue-500 to-cyan-500 text-white hover:from-blue-600 hover:to-cyan-600 transition-all shadow-lg hover:shadow-xl"
               >
                 <span className="text-2xl">🔍</span>
@@ -208,7 +209,7 @@ export default function ArcadeManagerPage() {
               </Link>
               
               <Link
-                href="/admin/arcade/create?type=memory-game"
+                href="/admin/content/arcade/create?type=memory-game"
                 className="flex items-center gap-3 p-4 rounded-2xl bg-gradient-to-r from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600 transition-all shadow-lg hover:shadow-xl"
               >
                 <span className="text-2xl">🃏</span>
@@ -298,7 +299,7 @@ export default function ArcadeManagerPage() {
                     : "Get started by creating your first arcade game"}
                 </p>
                 <Link
-                  href="/admin/arcade/create"
+                  href="/admin/content/arcade/create"
                   className="inline-flex items-center gap-2 rounded-xl bg-purple-600 px-4 py-2 text-white hover:bg-purple-700"
                 >
                   <Plus className="h-4 w-4" />

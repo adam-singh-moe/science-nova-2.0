@@ -189,7 +189,7 @@ export default function TopicsAdminPage() {
       <RoleGuard allowed={["ADMIN", "DEVELOPER"]}>
         <main className="mx-auto max-w-7xl px-4 py-6 md:px-6">
           {/* Admin navigation */}
-          <div className="sticky top-0 z-10 mb-6 rounded-2xl border bg-white/70 px-3 py-3 backdrop-blur supports-[backdrop-filter]:bg-white/60">
+          <div className="sticky top-0 z-10 mb-6 rounded-2xl border bg-white/70 px-3 py-3 backdrop-blur supports-[backdrop-filter]:bg-white/60 shadow-lg">
             <div className="flex flex-wrap items-center gap-2 md:gap-3">
               <Link
                 href="/admin"
@@ -207,7 +207,7 @@ export default function TopicsAdminPage() {
           </div>
 
           {/* Page header */}
-          <div className="mb-8 rounded-3xl border bg-gradient-to-r from-indigo-100 via-sky-100 to-fuchsia-100 p-8 shadow-sm">
+          <div className="mb-8 rounded-3xl border bg-gradient-to-r from-indigo-100 via-sky-100 to-fuchsia-100 p-8 shadow-lg">
             <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
               <div className="flex-1">
                 <h1 className="text-3xl font-bold text-indigo-900 md:text-4xl tracking-tight">Topics Management</h1>
@@ -215,17 +215,68 @@ export default function TopicsAdminPage() {
                   Manage topics that organize lessons and content across the platform.
                 </p>
               </div>
-              <div className="flex gap-3">
-                <div className="rounded-2xl bg-white/70 px-5 py-3 text-center shadow-sm">
-                  <div className="text-xs font-medium uppercase tracking-wide text-indigo-700">Total Topics</div>
-                  <div className="text-2xl font-semibold text-indigo-900 leading-tight">{topics.length}</div>
+              <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                <div className="backdrop-blur-md bg-white/20 rounded-2xl p-4 border border-white/30 shadow-lg">
+                  <div className="text-2xl font-bold text-white">{topics.length}</div>
+                  <div className="text-white/80 text-sm">Total Topics</div>
+                </div>
+                <div className="backdrop-blur-md bg-white/20 rounded-2xl p-4 border border-white/30 shadow-lg">
+                  <div className="text-2xl font-bold text-white">
+                    {new Set(topics.map(topic => topic.grade_level)).size}
+                  </div>
+                  <div className="text-white/80 text-sm">Grade Levels</div>
+                </div>
+                <div className="backdrop-blur-md bg-white/20 rounded-2xl p-4 border border-white/30 shadow-lg">
+                  <div className="text-2xl font-bold text-white">
+                    {topics.filter(topic => topic.admin_prompt).length}
+                  </div>
+                  <div className="text-white/80 text-sm">With Prompts</div>
+                </div>
+                <div className="backdrop-blur-md bg-white/20 rounded-2xl p-4 border border-white/30 shadow-lg">
+                  <div className="text-2xl font-bold text-white">
+                    {topics.filter(topic => topic.created_at && new Date(topic.created_at) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)).length}
+                  </div>
+                  <div className="text-white/80 text-sm">Recent</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Actions */}
+          <div className="mb-8 rounded-3xl border bg-white/80 backdrop-blur shadow-lg p-6">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">Quick Actions</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <button
+                onClick={() => setShowCreateDialog(true)}
+                className="flex items-center gap-3 p-4 rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-500 text-white hover:from-indigo-600 hover:to-purple-600 transition-all shadow-lg hover:shadow-xl"
+              >
+                <Plus className="h-6 w-6" />
+                <div className="text-left">
+                  <div className="font-medium">Create Topic</div>
+                  <div className="text-sm text-white/90">Add a new topic</div>
+                </div>
+              </button>
+              
+              <div className="flex items-center gap-3 p-4 rounded-2xl bg-gradient-to-r from-blue-500 to-cyan-500 text-white">
+                <BookOpen className="h-6 w-6" />
+                <div className="text-left">
+                  <div className="font-medium">Grade Coverage</div>
+                  <div className="text-sm text-white/90">{new Set(topics.map(topic => topic.grade_level)).size} grades covered</div>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-3 p-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white">
+                <BarChart3 className="h-6 w-6" />
+                <div className="text-left">
+                  <div className="font-medium">Content Health</div>
+                  <div className="text-sm text-white/90">{Math.round((topics.filter(t => t.admin_prompt).length / topics.length || 0) * 100)}% have prompts</div>
                 </div>
               </div>
             </div>
           </div>
 
           {/* Content */}
-          <div className="rounded-3xl border bg-white/80 backdrop-blur shadow-sm p-6">
+          <div className="rounded-3xl border bg-white/80 backdrop-blur shadow-lg p-6">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-semibold tracking-tight">All Topics</h2>
               <Button onClick={() => setShowCreateDialog(true)} className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-sky-600 hover:from-indigo-700 hover:to-sky-700">
@@ -246,7 +297,7 @@ export default function TopicsAdminPage() {
                 </div>
               </div>
             ) : (
-              <div className="bg-white/70 rounded-2xl shadow-sm overflow-hidden backdrop-blur border">
+              <div className="bg-white/70 rounded-2xl shadow-lg overflow-hidden backdrop-blur border">
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead className="bg-gray-50/50 border-b">
