@@ -17,6 +17,15 @@ function normalize(s: string) {
 }
 
 export function QuizViewer({ items, storageKey, initialMode, contentMeta }: { items: QuizItem[]; storageKey?: string; initialMode?: 'practice'|'review'; contentMeta?: { entryId: string; topicId: string; category: string; subtype: string } }) {
+  // Early validation to ensure items is a valid array
+  if (!Array.isArray(items) || items.length === 0) {
+    return (
+      <div className="p-8 text-center">
+        <p className="text-gray-500">No quiz questions available.</p>
+      </div>
+    )
+  }
+
   const [responses, setResponses] = useState<Record<number, string | boolean | undefined>>({})
   const [checked, setChecked] = useState<Record<number, boolean>>({})
   const [mode, setMode] = useState<'practice'|'review'>(initialMode || 'practice')
@@ -97,6 +106,11 @@ export function QuizViewer({ items, storageKey, initialMode, contentMeta }: { it
   }, [checked, responses, items, storageKey])
 
   const results = useMemo(() => {
+    // Ensure items is an array before processing
+    if (!Array.isArray(items) || items.length === 0) {
+      return { correct: 0, total: 0, totalChecked: 0 }
+    }
+    
     let correct = 0
     let total = items.length
     items.forEach((q, i) => {

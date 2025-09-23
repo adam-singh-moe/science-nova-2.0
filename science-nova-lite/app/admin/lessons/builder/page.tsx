@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type React from "react"
 import Link from "next/link"
 import { RoleGuard } from "@/components/layout/role-guard"
+import { TopicSelect } from "@/components/admin/TopicSelect"
 // Vanta background is not shown in the builder; only in Preview/Student
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/contexts/auth-context"
@@ -1358,6 +1359,7 @@ function Draggable({ item, onChange, selected, onSelect, onConfigure, onDuplicat
 }
 
 export default function LessonBuilder() {
+  const { session } = useAuth()
   const confirmDialog = useConfirm()
   const [items, setItems] = useState<PlacedTool[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -1542,26 +1544,6 @@ export default function LessonBuilder() {
     try { document.documentElement.setAttribute('data-canvas-scale', String(zoom)) } catch {}
     return () => { try { document.documentElement.removeAttribute('data-canvas-scale') } catch {} }
   }, [zoom])
-  
-  // Load topics for lesson metadata
-  useEffect(() => {
-    if (!session) return
-    async function loadTopics() {
-      try {
-        const res = await fetch('/api/topics', {
-          headers: { Authorization: `Bearer ${session?.access_token}` }
-        })
-        if (res.ok) {
-          const data = await res.json()
-          setTopics(data.topics || [])
-        }
-      } catch (error) {
-        console.error('Failed to load topics:', error)
-      }
-    }
-    loadTopics()
-  }, [session])
-  
   // Non-passive wheel handler for zooming to avoid passive event error
   useEffect(()=>{
     const el = viewportRef.current
@@ -1588,7 +1570,6 @@ export default function LessonBuilder() {
   }, [zoom, pan.x, pan.y])
   const autoSaveRef = useRef<NodeJS.Timeout | null>(null)
   const firstLoadRef = useRef(true)
-  const { session } = useAuth()
   const [showMetaDialog, setShowMetaDialog] = useState(true)
 
   const addTool = (k: ToolKind) => {
@@ -2146,25 +2127,12 @@ export default function LessonBuilder() {
             <input className="border rounded p-2" placeholder="Lesson title" value={meta.title} onChange={(e)=>setMeta({...meta,title:e.target.value})} />
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Topic</label>
-              <select 
+              <TopicSelect 
                 value={meta.topicId} 
-                onChange={(e) => {
-                  const topicId = e.target.value
-                  const topic = topics.find(t => t.id === topicId)
-                  setMeta({...meta, topicId, topic: topic?.title || ''})
-                }} 
+                onChange={(topicId: string) => setMeta({...meta, topicId})} 
                 className="w-full border rounded p-2"
-              >
-                <option value="">Select a topic...</option>
-                {topics
-                  .filter(topic => !meta.grade || !topic.grade_level || parseInt(topic.grade_level) === meta.grade)
-                  .map(topic => (
-                    <option key={topic.id} value={topic.id}>
-                      {topic.title} {topic.grade_level ? `(Grade ${topic.grade_level})` : ''}
-                    </option>
-                  ))
-                }
-              </select>
+                gradeFilter={meta.grade}
+              />
             </div>
             <div className="grid grid-cols-3 gap-2">
               <select className="border rounded p-2" value={meta.grade} onChange={(e) => {
