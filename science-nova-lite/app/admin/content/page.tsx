@@ -41,7 +41,7 @@ export default function ContentManagerPage() {
               <div className="flex-1">
                 <h1 className="text-3xl font-bold text-indigo-900 md:text-4xl">Content Manager</h1>
                 <p className="mt-2 max-w-3xl text-base text-indigo-900/70 md:text-lg">
-                  Create and manage interactive learning experiences. Design arcade games for engagement and discovery activities for exploration.
+                  Create and manage interactive learning experiences. Design arcade games for engagement and discovery content including fun facts and educational info.
                 </p>
                 
                 {/* Quick Stats */}
@@ -52,7 +52,7 @@ export default function ContentManagerPage() {
                   </div>
                   <div className="rounded-2xl bg-white/60 backdrop-blur p-4 shadow-lg">
                     <div className="text-2xl font-bold text-green-900">0</div>
-                    <div className="text-sm text-green-700">Discovery Activities</div>
+                    <div className="text-sm text-green-700">Discovery Content</div>
                   </div>
                   <div className="rounded-2xl bg-white/60 backdrop-blur p-4 shadow-lg">
                     <div className="text-2xl font-bold text-blue-900">0</div>
@@ -70,15 +70,54 @@ export default function ContentManagerPage() {
                   href="/admin/content/arcade"
                   className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-tr from-purple-500 to-indigo-500 px-6 py-4 text-white shadow-lg hover:brightness-105 transition-all hover:shadow-xl font-medium"
                 >
-                  <Plus className="h-5 w-5" /> Create Arcade Game
+                  <Plus className="h-5 w-5" /> Create Game
                 </Link>
                 <Link
                   href="/admin/content/discovery"
                   className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-tr from-green-500 to-teal-500 px-6 py-4 text-white shadow-lg hover:brightness-105 transition-all hover:shadow-xl font-medium"
                 >
-                  <Plus className="h-5 w-5" /> Create Discovery Activity
+                  <Plus className="h-5 w-5" /> Create Fun Fact & Info
                 </Link>
               </div>
+            </div>
+          </div>
+
+          {/* Quick Actions */}
+          <div className="mb-8 rounded-3xl border bg-white/80 backdrop-blur shadow-lg p-6">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">Quick Actions</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Link
+                href="/admin/lessons/builder"
+                className="flex items-center gap-3 p-4 rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-500 text-white hover:from-blue-600 hover:to-indigo-600 transition-all shadow-lg hover:shadow-xl"
+              >
+                <Plus className="h-6 w-6" />
+                <div className="text-left">
+                  <div className="font-medium">Create New Lesson</div>
+                  <div className="text-sm text-white/90">Build interactive lessons</div>
+                </div>
+              </Link>
+              
+              <Link
+                href="/admin/documents"
+                className="flex items-center gap-3 p-4 rounded-2xl bg-gradient-to-r from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600 transition-all shadow-lg hover:shadow-xl"
+              >
+                <FileText className="h-6 w-6" />
+                <div className="text-left">
+                  <div className="font-medium">Upload Content</div>
+                  <div className="text-sm text-white/90">Add textbooks & resources</div>
+                </div>
+              </Link>
+              
+              <Link
+                href="/admin/students"
+                className="flex items-center gap-3 p-4 rounded-2xl bg-gradient-to-r from-violet-500 to-purple-500 text-white hover:from-violet-600 hover:to-purple-600 transition-all shadow-lg hover:shadow-xl"
+              >
+                <Users className="h-6 w-6" />
+                <div className="text-left">
+                  <div className="font-medium">Manage Students</div>
+                  <div className="text-sm text-white/90">View student progress</div>
+                </div>
+              </Link>
             </div>
           </div>
 
@@ -107,23 +146,23 @@ export default function ContentManagerPage() {
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-6">
                   <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div className="bg-white/60 rounded-lg p-3">
-                      <div className="font-medium text-purple-900">Crosswords</div>
-                      <div className="text-purple-700">Interactive puzzles</div>
+                    <div className="bg-white/60 rounded-lg p-6">
+                      <div className="font-medium text-purple-900 text-base">Crosswords</div>
+                      <div className="text-purple-700 mt-1">Interactive puzzles for learning</div>
                     </div>
-                    <div className="bg-white/60 rounded-lg p-3">
-                      <div className="font-medium text-purple-900">Word Search</div>
-                      <div className="text-purple-700">Find hidden words</div>
+                    <div className="bg-white/60 rounded-lg p-6">
+                      <div className="font-medium text-purple-900 text-base">Word Search</div>
+                      <div className="text-purple-700 mt-1">Find hidden words and terms</div>
                     </div>
-                    <div className="bg-white/60 rounded-lg p-3">
-                      <div className="font-medium text-purple-900">Quizzes</div>
-                      <div className="text-purple-700">Multiple choice tests</div>
+                    <div className="bg-white/60 rounded-lg p-6">
+                      <div className="font-medium text-purple-900 text-base">Quizzes</div>
+                      <div className="text-purple-700 mt-1">Multiple choice assessments</div>
                     </div>
-                    <div className="bg-white/60 rounded-lg p-3">
-                      <div className="font-medium text-purple-900">Memory Games</div>
-                      <div className="text-purple-700">Match and remember</div>
+                    <div className="bg-white/60 rounded-lg p-6">
+                      <div className="font-medium text-purple-900 text-base">Memory Games</div>
+                      <div className="text-purple-700 mt-1">Match and remember challenges</div>
                     </div>
                   </div>
                   <Link href="/admin/content/arcade" className="w-full">
@@ -143,91 +182,32 @@ export default function ContentManagerPage() {
                       <Search className="h-6 w-6" />
                     </div>
                     <div>
-                      <CardTitle className="text-xl text-green-900">Discovery Activities</CardTitle>
+                      <CardTitle className="text-xl text-green-900">Discovery Content</CardTitle>
                       <CardDescription className="text-green-700">
-                        Design explorative and investigative activities for hands-on learning
+                        Create engaging fun facts and educational info content for learning
                       </CardDescription>
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div className="bg-white/60 rounded-lg p-3">
-                      <div className="font-medium text-green-900">Virtual Labs</div>
-                      <div className="text-green-700">Simulated experiments</div>
+                <CardContent className="space-y-6">
+                  <div className="grid grid-cols-1 gap-4 text-sm">
+                    <div className="bg-white/60 rounded-lg p-6">
+                      <div className="font-medium text-green-900 text-base">Fun Facts</div>
+                      <div className="text-green-700 mt-1">Interesting and engaging facts to spark curiosity and wonder</div>
                     </div>
-                    <div className="bg-white/60 rounded-lg p-3">
-                      <div className="font-medium text-green-900">Field Studies</div>
-                      <div className="text-green-700">Outdoor exploration</div>
-                    </div>
-                    <div className="bg-white/60 rounded-lg p-3">
-                      <div className="font-medium text-green-900">Research Projects</div>
-                      <div className="text-green-700">Independent inquiry</div>
-                    </div>
-                    <div className="bg-white/60 rounded-lg p-3">
-                      <div className="font-medium text-green-900">Case Studies</div>
-                      <div className="text-green-700">Real-world scenarios</div>
+                    <div className="bg-white/60 rounded-lg p-6">
+                      <div className="font-medium text-green-900 text-base">Infos</div>
+                      <div className="text-green-700 mt-1">Educational information content for comprehensive learning</div>
                     </div>
                   </div>
                   <Link href="/admin/content/discovery" className="w-full">
                     <Button className="w-full bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 text-white">
                       <Search className="h-4 w-4 mr-2" />
-                      Manage Discovery Activities
+                      Manage Discovery Content
                     </Button>
                   </Link>
                 </CardContent>
               </Card>
-            </div>
-          </div>
-
-          {/* Quick Actions */}
-          <div className="mb-8">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Quick Actions</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Link
-                href="/admin/lessons/builder"
-                className="p-4 rounded-xl border bg-white/80 hover:bg-white transition-all hover:shadow-md group shadow-lg"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-blue-100 text-blue-600 group-hover:bg-blue-200 transition-colors">
-                    <Plus className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <div className="font-medium text-gray-900">Create New Lesson</div>
-                    <div className="text-sm text-gray-600">Build interactive lessons</div>
-                  </div>
-                </div>
-              </Link>
-              
-              <Link
-                href="/admin/documents"
-                className="p-4 rounded-xl border bg-white/80 hover:bg-white transition-all hover:shadow-md group shadow-lg"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-orange-100 text-orange-600 group-hover:bg-orange-200 transition-colors">
-                    <FileText className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <div className="font-medium text-gray-900">Upload Content</div>
-                    <div className="text-sm text-gray-600">Add textbooks & resources</div>
-                  </div>
-                </div>
-              </Link>
-              
-              <Link
-                href="/admin/students"
-                className="p-4 rounded-xl border bg-white/80 hover:bg-white transition-all hover:shadow-md group shadow-lg"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-violet-100 text-violet-600 group-hover:bg-violet-200 transition-colors">
-                    <Users className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <div className="font-medium text-gray-900">Manage Students</div>
-                    <div className="text-sm text-gray-600">View student progress</div>
-                  </div>
-                </div>
-              </Link>
             </div>
           </div>
 

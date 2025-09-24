@@ -6,7 +6,7 @@ import Link from "next/link"
 import { 
   Gamepad2, Plus, Search, Filter, Edit, Trash2, Eye, 
   BarChart3, BookOpen, FileText, Rocket, Users, Settings,
-  MoreHorizontal, Calendar, Tag, Archive, CheckCircle, Compass 
+  MoreHorizontal, Calendar, Tag, Archive, CheckCircle, ArrowRight 
 } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 
@@ -115,16 +115,18 @@ export default function ArcadeManagerPage() {
           {/* Admin navigation */}
           <div className="sticky top-0 z-10 mb-6 rounded-2xl border bg-white/70 px-3 py-3 backdrop-blur supports-[backdrop-filter]:bg-white/60 shadow-lg">
             <div className="flex flex-wrap items-center gap-2 md:gap-3">
-              <Link href="/admin" className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-gray-700 ring-1 ring-inset ring-gray-200 hover:bg-gray-50"><BarChart3 className="h-4 w-4"/>Dashboard</Link>
-              <Link href="/admin/lessons" className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-gray-700 ring-1 ring-inset ring-gray-200 hover:bg-gray-50"><BookOpen className="h-4 w-4"/> Lessons Manager</Link>
-              <Link href="/admin/documents" className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-gray-700 ring-1 ring-inset ring-gray-200 hover:bg-gray-50"><FileText className="h-4 w-4"/> Textbooks & Curriculum</Link>
-              <Link href="/admin/content" className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-gray-700 ring-1 ring-inset ring-gray-200 hover:bg-gray-50"><Rocket className="h-4 w-4"/> Content Manager</Link>
-              <Link href="/admin/content/arcade" className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-500/10 to-pink-500/10 px-3 py-2 text-sm font-medium text-purple-700 ring-1 ring-inset ring-purple-200 hover:from-purple-500/15 hover:to-pink-500/15"><Gamepad2 className="h-4 w-4"/> Arcade Manager</Link>
-              <Link href="/admin/content/discovery" className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-gray-700 ring-1 ring-inset ring-gray-200 hover:bg-gray-50"><Compass className="h-4 w-4"/> Discovery Manager</Link>
-              <RoleGuard allowed={["ADMIN", "DEVELOPER"]}>
-                <Link href="/admin/topics" className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-gray-700 ring-1 ring-inset ring-gray-200 hover:bg-gray-50"><Settings className="h-4 w-4"/> Topics Manager</Link>
-                <Link href="/admin/students" className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-gray-700 ring-1 ring-inset ring-gray-200 hover:bg-gray-50"><Users className="h-4 w-4"/> Students</Link>
-              </RoleGuard>
+              <Link href="/admin" className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-gray-700 ring-1 ring-inset ring-gray-200 hover:bg-gray-50">
+                <BarChart3 className="h-4 w-4"/>Dashboard
+              </Link>
+              <div className="flex items-center gap-2">
+                <Link href="/admin/content" className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500/10 to-sky-500/10 px-3 py-2 text-sm font-medium text-indigo-700 ring-1 ring-inset ring-indigo-200 hover:from-indigo-500/15 hover:to-sky-500/15">
+                  <Rocket className="h-4 w-4"/> Content Manager
+                </Link>
+                <ArrowRight className="h-3 w-3 text-gray-400" />
+                <div className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-500/10 to-pink-500/10 px-3 py-2 text-sm font-medium text-purple-700 ring-1 ring-inset ring-purple-200 animate-pulse">
+                  <Gamepad2 className="h-4 w-4"/> Arcade Manager
+                </div>
+              </div>
             </div>
           </div>
 
@@ -140,40 +142,52 @@ export default function ArcadeManagerPage() {
                   <p className="text-gray-600 mt-1">Create and manage interactive learning games for engagement and discovery activities for exploration.</p>
                 </div>
               </div>
-              <div className="flex gap-3">
-                <Link
-                  href="/admin/content/arcade/create"
-                  className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-tr from-purple-500 to-pink-500 px-6 py-3 text-white shadow-lg hover:brightness-105 transition-all hover:shadow-xl"
-                >
-                  <Plus className="h-5 w-5" /> Create New Game
-                </Link>
-              </div>
+
             </div>
             
             {/* Quick Stats */}
-            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4 mt-6">
-              <div className="backdrop-blur-md bg-white/20 rounded-2xl p-4 border border-white/30 shadow-lg">
-                <div className="text-2xl font-bold text-purple-700">{stats.total}</div>
-                <div className="text-purple-600 text-sm">Total Games</div>
+            <div className="mt-6 space-y-4">
+              {/* Primary Stats Row */}
+              <div className="grid grid-cols-3 gap-4">
+                <div className="backdrop-blur-md bg-white/20 rounded-2xl p-4 border border-white/30 shadow-lg">
+                  <div className="text-2xl font-bold text-purple-700">{stats.total}</div>
+                  <div className="text-purple-600 text-sm">Total Games</div>
+                </div>
+                <div className="backdrop-blur-md bg-white/20 rounded-2xl p-4 border border-white/30 shadow-lg">
+                  <div className="text-2xl font-bold text-green-700">{stats.published}</div>
+                  <div className="text-green-600 text-sm">Published</div>
+                </div>
+                <div className="backdrop-blur-md bg-white/20 rounded-2xl p-4 border border-white/30 shadow-lg">
+                  <div className="text-2xl font-bold text-orange-700">{stats.drafts}</div>
+                  <div className="text-orange-600 text-sm">Drafts</div>
+                </div>
               </div>
-              <div className="backdrop-blur-md bg-white/20 rounded-2xl p-4 border border-white/30 shadow-lg">
-                <div className="text-2xl font-bold text-green-700">{stats.published}</div>
-                <div className="text-green-600 text-sm">Published</div>
-              </div>
-              <div className="backdrop-blur-md bg-white/20 rounded-2xl p-4 border border-white/30 shadow-lg">
-                <div className="text-2xl font-bold text-orange-700">{stats.drafts}</div>
-                <div className="text-orange-600 text-sm">Drafts</div>
-              </div>
-              <div className="backdrop-blur-md bg-white/20 rounded-2xl p-4 border border-white/30 shadow-lg">
-                <div className="text-2xl font-bold text-blue-700">{stats.quizzes}</div>
-                <div className="text-blue-600 text-sm">Quizzes</div>
+              
+              {/* Game Type Stats Row */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="backdrop-blur-md bg-white/20 rounded-xl p-3 border border-white/30 shadow-lg">
+                  <div className="text-xl font-bold text-purple-700">{stats.crosswords}</div>
+                  <div className="text-purple-600 text-xs">Crosswords</div>
+                </div>
+                <div className="backdrop-blur-md bg-white/20 rounded-xl p-3 border border-white/30 shadow-lg">
+                  <div className="text-xl font-bold text-green-700">{stats.quizzes}</div>
+                  <div className="text-green-600 text-xs">Quizzes</div>
+                </div>
+                <div className="backdrop-blur-md bg-white/20 rounded-xl p-3 border border-white/30 shadow-lg">
+                  <div className="text-xl font-bold text-blue-700">{stats.wordSearches}</div>
+                  <div className="text-blue-600 text-xs">Word Search</div>
+                </div>
+                <div className="backdrop-blur-md bg-white/20 rounded-xl p-3 border border-white/30 shadow-lg">
+                  <div className="text-xl font-bold text-orange-700">{stats.memoryGames}</div>
+                  <div className="text-orange-600 text-xs">Memory Games</div>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Quick Actions */}
+          {/* Create A Game */}
           <div className="mb-8 rounded-3xl border bg-white/80 backdrop-blur shadow-lg p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Quick Actions</h2>
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">Create A Game</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <Link
                 href="/admin/content/arcade/create?type=crossword"
@@ -369,6 +383,15 @@ export default function ArcadeManagerPage() {
                 ))}
               </div>
             )}
+          </div>
+
+          {/* Back to Content Manager */}
+          <div className="text-center mt-8">
+            <Link href="/admin/content">
+              <button className="text-gray-600 hover:text-gray-900">
+                ← Back to Content Manager
+              </button>
+            </Link>
           </div>
         </main>
       </RoleGuard>
