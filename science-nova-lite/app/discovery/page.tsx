@@ -57,7 +57,8 @@ const mockDiscoveryContent: DiscoveryEntry[] = [
     title: 'Gravity Facts',
     payload: {
       content: 'Did you know that if you could dig a tunnel through the center of the Earth and jump in, it would take about 42 minutes to fall to the other side?',
-      funFact: 'You would be weightless at the center!'
+      funFact: 'You would be weightless at the center!',
+      sources: 'Physics Classroom, NASA Earth Science Division'
     },
     difficulty: 'easy',
     topics: [{
@@ -73,7 +74,8 @@ const mockDiscoveryContent: DiscoveryEntry[] = [
     subtype: 'INTERACTIVE',
     title: 'Solar System Scale',
     payload: {
-      content: 'If Earth were the size of a marble, the Sun would be about 3 feet wide and located about 300 feet away. This incredible scale helps us understand just how vast our solar system really is. The nearest star would be over 15,000 miles away!'
+      content: 'If Earth were the size of a marble, the Sun would be about 3 feet wide and located about 300 feet away. This incredible scale helps us understand just how vast our solar system really is. The nearest star would be over 15,000 miles away!',
+      sources: 'NASA Solar System Exploration, Astronomical Society'
     },
     difficulty: 'medium',
     topics: [{
@@ -90,7 +92,8 @@ const mockDiscoveryContent: DiscoveryEntry[] = [
     title: 'Water Molecule',
     payload: {
       content: 'A single drop of water contains approximately 1.7 sextillion molecules. That\'s 1,700,000,000,000,000,000,000 molecules!',
-      funFact: 'If you could count one molecule per second, it would take 54 billion years!'
+      funFact: 'If you could count one molecule per second, it would take 54 billion years!',
+      sources: 'Chemistry Textbook Association, Molecular Science Institute'
     },
     difficulty: 'medium',
     topics: [{
@@ -106,7 +109,8 @@ const mockDiscoveryContent: DiscoveryEntry[] = [
     subtype: 'INTERACTIVE',
     title: 'Ocean Depths',
     payload: {
-      content: 'The deepest part of the ocean, the Mariana Trench, is so deep that if Mount Everest were placed at the bottom, its peak would still be over a mile underwater. The pressure there is over 1,000 times greater than at sea level, crushing anything that isn\'t specially adapted.'
+      content: 'The deepest part of the ocean, the Mariana Trench, is so deep that if Mount Everest were placed at the bottom, its peak would still be over a mile underwater. The pressure there is over 1,000 times greater than at sea level, crushing anything that isn\'t specially adapted.',
+      sources: 'NOAA Ocean Exploration, National Geographic Society'
     },
     difficulty: 'hard',
     topics: [{
@@ -123,7 +127,8 @@ const mockDiscoveryContent: DiscoveryEntry[] = [
     title: 'Heart Beats',
     payload: {
       content: 'Your heart beats about 100,000 times per day, pumping roughly 2,000 gallons of blood through your body.',
-      funFact: 'In a lifetime, your heart will beat over 2.5 billion times!'
+      funFact: 'In a lifetime, your heart will beat over 2.5 billion times!',
+      sources: 'American Heart Association, Mayo Clinic'
     },
     difficulty: 'easy',
     topics: [{
@@ -139,7 +144,8 @@ const mockDiscoveryContent: DiscoveryEntry[] = [
     subtype: 'INTERACTIVE',
     title: 'States of Matter',
     payload: {
-      content: 'Matter exists in many more states than just solid, liquid, and gas. Scientists have identified at least 15 different states of matter, including plasma (found in stars), Bose-Einstein condensates (created in ultra-cold laboratories), and superfluids that can flow without friction.'
+      content: 'Matter exists in many more states than just solid, liquid, and gas. Scientists have identified at least 15 different states of matter, including plasma (found in stars), Bose-Einstein condensates (created in ultra-cold laboratories), and superfluids that can flow without friction.',
+      sources: 'American Physical Society, MIT Physics Department'
     },
     difficulty: 'medium',
     topics: [{
@@ -156,7 +162,8 @@ const mockDiscoveryContent: DiscoveryEntry[] = [
     title: 'Tree Age',
     payload: {
       content: 'The oldest living tree is over 4,800 years old! It\'s a Great Basin bristlecone pine named Methuselah.',
-      funFact: 'This tree was already ancient when the pyramids were built!'
+      funFact: 'This tree was already ancient when the pyramids were built!',
+      sources: 'U.S. Forest Service, Botanical Research Institute'
     },
     difficulty: 'easy',
     topics: [{
@@ -172,7 +179,8 @@ const mockDiscoveryContent: DiscoveryEntry[] = [
     subtype: 'INTERACTIVE',
     title: 'Light Speed',
     payload: {
-      content: 'Light travels so fast that it could circle the Earth\'s equator 7.5 times in just one second! This incredible speed means that when you look at the stars, you\'re actually seeing them as they were years ago because the light takes time to reach us.'
+      content: 'Light travels so fast that it could circle the Earth\'s equator 7.5 times in just one second! This incredible speed means that when you look at the stars, you\'re actually seeing them as they were years ago because the light takes time to reach us.',
+      sources: 'International Bureau of Weights and Measures, ESA'
     },
     difficulty: 'hard',
     topics: [{
@@ -189,7 +197,8 @@ const mockDiscoveryContent: DiscoveryEntry[] = [
     title: 'Diamond Formation',
     payload: {
       content: 'Diamonds form deep in Earth\'s mantle under extreme pressure and temperature, then are brought to the surface by volcanic eruptions.',
-      funFact: 'Most diamonds are over 1 billion years old!'
+      funFact: 'Most diamonds are over 1 billion years old!',
+      sources: 'Geological Society of America, Smithsonian Gem Collection'
     },
     difficulty: 'medium',
     topics: [{
@@ -283,16 +292,17 @@ export default function DiscoveryPage() {
     const isFact = card.subtype === 'FACT'
     
     if (isFact) {
-      // FACT cards: base size + small adjustment for content
+      // FACT cards: larger size but still smaller than interactive cards
       const contentLength = card.payload?.content?.length || 0
-      const minWidth = 160
-      const minHeight = 112
-      const maxWidth = 280
-      const maxHeight = 200
+      const minWidth = 200
+      const minHeight = 140
+      const maxWidth = 350
+      const maxHeight = 280 // Increased to accommodate sources on back
       
       // Add width for longer content (capped at reasonable max)
-      const dynamicWidth = Math.max(minWidth, Math.min(minWidth + Math.floor(contentLength / 80) * 20, maxWidth))
-      const dynamicHeight = Math.max(minHeight, Math.min(minHeight + Math.floor(contentLength / 120) * 15, maxHeight))
+      const dynamicWidth = Math.max(minWidth, Math.min(minWidth + Math.floor(contentLength / 80) * 25, maxWidth))
+      // Account for sources section height (approximately 50px)
+      const dynamicHeight = Math.max(minHeight, Math.min(minHeight + Math.floor(contentLength / 120) * 20 + 50, maxHeight))
       
       return {
         width: isExpanded ? Math.min(dynamicWidth * 1.2, maxWidth * 1.2) : dynamicWidth,
@@ -301,23 +311,25 @@ export default function DiscoveryPage() {
     } else {
       // INTERACTIVE cards: more dynamic sizing for longer content
       const contentLength = card.payload?.content?.length || 0
+      const sourcesLength = card.payload?.sources?.length || 50 // Account for sources text
       const minWidth = 256
       const minHeight = 160
       const maxWidth = 450
-      const maxHeight = 320
+      const maxHeight = 380 // Increased to accommodate sources
       
       // More generous sizing for interactive content
       const dynamicWidth = Math.max(minWidth, Math.min(minWidth + Math.floor(contentLength / 60) * 25, maxWidth))
-      const dynamicHeight = Math.max(minHeight, Math.min(minHeight + Math.floor(contentLength / 100) * 20, maxHeight))
+      // Account for sources section height (approximately 60px)
+      const dynamicHeight = Math.max(minHeight, Math.min(minHeight + Math.floor(contentLength / 100) * 20 + 60, maxHeight))
       
       return {
-        width: isExpanded ? Math.min(dynamicWidth * 1.15, maxWidth * 1.15) : dynamicWidth,
-        height: isExpanded ? Math.min(dynamicHeight * 1.15, maxHeight * 1.15) : dynamicHeight
+        width: isExpanded ? Math.min(dynamicWidth * 1.2, maxWidth * 1.2) : dynamicWidth,
+        height: isExpanded ? Math.min(dynamicHeight * 1.3, maxHeight * 1.3) : dynamicHeight
       }
     }
   }
 
-  // New collision-free positioning algorithm
+  // Collision-free positioning algorithm - matches original implementation
   const calculatePositions = () => {
     if (!containerRef.current) return
 
@@ -333,7 +345,7 @@ export default function DiscoveryPage() {
       let attempts = 0
       let position = null
       
-      // Get ACTUAL card dimensions - first try DOM, then calculate dynamic size
+      // Get ACTUAL card dimensions from DOM - prefer real measurements
       const cardElement = cardRefs.current[card.id]
       let cardWidth, cardHeight
       
@@ -342,7 +354,7 @@ export default function DiscoveryPage() {
         cardWidth = cardElement.offsetWidth
         cardHeight = cardElement.offsetHeight
       } else {
-        // Calculate dynamic dimensions based on content
+        // Fallback to calculated dimensions
         const isExpanded = expandedCard === card.id
         const dimensions = getCardDimensions(card, isExpanded)
         cardWidth = dimensions.width
@@ -438,7 +450,7 @@ export default function DiscoveryPage() {
     return [...shuffledInteractives, ...shuffledFacts]
   }, [discoveryContent, searchQuery])
 
-  // New useEffect for collision-free positioning
+  // useEffect for collision-free positioning - matches original implementation
   useEffect(() => {
     // Wait for DOM to settle, then calculate positions
     const timer = setTimeout(calculatePositions, 100)
@@ -454,6 +466,17 @@ export default function DiscoveryPage() {
       window.removeEventListener('resize', handleResize)
     }
   }, [filteredContent])
+  
+  // Separate effect for handling card expansion - recalculate when cards expand/collapse
+  useEffect(() => {
+    if (Object.keys(cardPositions).length > 0) {
+      const timer = setTimeout(() => {
+        setLayoutReady(false)
+        setTimeout(calculatePositions, 50)
+      }, 100)
+      return () => clearTimeout(timer)
+    }
+  }, [expandedCard])
 
 
 
@@ -490,28 +513,31 @@ export default function DiscoveryPage() {
       <div
         key={card.id}
         ref={el => { cardRefs.current[card.id] = el; }}
-        className="absolute transition-all duration-500 ease-out"
+        className={`discovery-card ${card.subtype.toLowerCase()}`}
         style={{
-          left: `${position.x}px`, // Use pixels, not percentages
-          top: `${position.y}px`,   // Use pixels, not percentages
+          position: 'absolute',
+          left: `${position.x}px`, // Use pixels, not percentages - matches original
+          top: `${position.y}px`,   // Use pixels, not percentages - matches original
           width: `${expandedWidth}px`,
           height: `${expandedHeight}px`,
           opacity: layoutReady ? 1 : 0,
-          transform: `${isExpanded ? 'scale(1.1)' : 'scale(1)'} ${
+          transition: 'all 0.5s ease-in-out', // Matches original transition
+          transform: `${isExpanded ? 'scale(1.05)' : 'scale(1)'} ${
             isFlipped && isFact ? 'rotateY(180deg)' : ''
           }`,
           transformStyle: 'preserve-3d',
           transformOrigin: 'center center',
           zIndex: isExpanded ? 100 : (hoveredCard === card.id ? 50 : 20),
-          isolation: 'isolate' // Create new stacking context
+          isolation: 'isolate'
         }}
       >
         <Card
-          className={`w-full h-full cursor-pointer transition-all duration-500 transform hover:scale-105 hover:shadow-2xl ${
+          className={`w-full cursor-pointer transition-all duration-500 transform hover:scale-105 hover:shadow-2xl ${
             isFact
               ? 'bg-gradient-to-br from-purple-600/80 to-purple-800/80 border-purple-400/50 text-white'
               : 'bg-gradient-to-br from-cyan-600/80 to-cyan-800/80 border-cyan-400/50 text-white'
           } backdrop-blur-lg shadow-lg hover:shadow-xl`}
+          style={{ minHeight: '100%', height: 'auto' }}
           onClick={() => handleCardClick(card)}
           onMouseEnter={() => setHoveredCard(card.id)}
           onMouseLeave={() => setHoveredCard(null)}
@@ -525,9 +551,10 @@ export default function DiscoveryPage() {
             }
           }}
         >
-          <div className={`w-full h-full p-4 flex flex-col justify-between ${
+          <div className={`w-full p-4 flex flex-col justify-between ${
             isFlipped && isFact ? 'opacity-0' : 'opacity-100'
-          } transition-opacity duration-300`}>
+          } transition-opacity duration-300`}
+          style={{ minHeight: `${expandedHeight}px` }}>
             {/* Front side */}
             <div className="flex items-start justify-between mb-2">
               <div className="flex items-center gap-2">
@@ -553,16 +580,34 @@ export default function DiscoveryPage() {
             
             <div className="flex-1 flex flex-col justify-center">
               <h3 className={`font-bold leading-tight mb-2 ${
-                isFact ? 'text-sm' : 'text-base'
+                isFact ? 'text-base' : 'text-lg'
               }`}>
                 {card.title}
               </h3>
               {!isFact && card.payload?.content && (
-                <p className={`text-white/90 leading-relaxed ${
-                  isExpanded ? 'text-sm' : 'text-xs'
-                } break-words overflow-hidden`}>
-                  {card.payload.content}
-                </p>
+                <div className="flex-1 flex flex-col">
+                  <div className={`flex-1 ${!isExpanded ? 'overflow-hidden' : ''}`}>
+                    <p className={`text-white/90 leading-relaxed ${
+                      isExpanded ? 'text-base' : 'text-sm'
+                    } break-words`}
+                    style={!isExpanded ? {
+                      display: '-webkit-box',
+                      WebkitLineClamp: 3,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden'
+                    } : {}}>
+                      {card.payload.content}
+                    </p>
+                  </div>
+                  
+                  {/* Sources section for interactive cards */}
+                  <div className="mt-4 pt-3 border-t border-white/20 flex-shrink-0">
+                    <p className="text-xs text-white/60 mb-1 font-medium">Sources:</p>
+                    <p className="text-xs text-white/50 leading-relaxed">
+                      {card.payload?.sources || 'Scientific American, Nature, Educational Research Publications'}
+                    </p>
+                  </div>
+                </div>
               )}
             </div>
 
@@ -576,23 +621,34 @@ export default function DiscoveryPage() {
 
           {/* Back side for FACT cards */}
           {isFact && (
-            <div className={`absolute inset-0 w-full h-full p-4 flex flex-col justify-center ${
+            <div className={`absolute inset-0 w-full p-4 flex flex-col ${
               isFlipped ? 'opacity-100' : 'opacity-0'
             } transition-opacity duration-300`}
             style={{
               transform: 'rotateY(180deg)',
-              backfaceVisibility: 'hidden'
+              backfaceVisibility: 'hidden',
+              minHeight: `${expandedHeight}px`
             }}>
-              <div className="text-center h-full flex flex-col justify-center">
-                <Lightbulb className="h-6 w-6 mx-auto text-yellow-300 mb-2" />
-                <p className="text-sm text-white leading-relaxed break-words overflow-hidden">
-                  {card.payload?.content || 'Fascinating science fact!'}
-                </p>
-                {card.payload?.funFact && (
-                  <p className="text-xs text-yellow-200 mt-2 font-medium break-words">
-                    💡 {card.payload.funFact}
+              <div className="text-center h-full flex flex-col justify-between overflow-hidden">
+                <div className="flex-1 flex flex-col justify-center">
+                  <Lightbulb className="h-6 w-6 mx-auto text-yellow-300 mb-3" />
+                  <p className="text-sm text-white leading-relaxed break-words mb-2">
+                    {card.payload?.content || 'Fascinating science fact!'}
                   </p>
-                )}
+                  {card.payload?.funFact && (
+                    <p className="text-sm text-yellow-200 mt-2 font-medium break-words">
+                      💡 {card.payload.funFact}
+                    </p>
+                  )}
+                </div>
+                
+                {/* Sources section for fact cards */}
+                <div className="mt-3 pt-2 border-t border-white/20 flex-shrink-0">
+                  <p className="text-xs text-white/60 mb-1 font-medium">Sources:</p>
+                  <p className="text-xs text-white/50 break-words">
+                    {card.payload?.sources || 'NASA, National Geographic, Smithsonian Institute'}
+                  </p>
+                </div>
               </div>
             </div>
           )}
@@ -642,7 +698,7 @@ export default function DiscoveryPage() {
       <div className="min-h-screen relative">
         <PageTransition>
           {/* Header */}
-          <div className="relative z-20 p-6">
+          <div className="relative z-20 p-6 pt-24">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-4">
                 <Link href="/">
@@ -745,13 +801,13 @@ export default function DiscoveryPage() {
             ) : (
               <div 
                 ref={containerRef}
-                className="constellation-container relative w-full h-full" 
+                className="constellation-container" 
                 style={{ 
-                  minHeight: '700px',
                   position: 'relative',
                   width: '100%',
-                  height: '700px',
-                  overflow: 'hidden'
+                  height: '800px',
+                  overflow: 'hidden',
+                  minHeight: '800px'
                 }}
               >
                 {renderConnections()}

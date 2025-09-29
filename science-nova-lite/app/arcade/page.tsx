@@ -934,7 +934,7 @@ export default function ArcadePage() {
     <VantaBackground>
       <div className="flex h-screen overflow-hidden">
         {/* Left Sidebar - 320px width */}
-        <div className="w-80 bg-black/30 backdrop-blur-lg border-r border-white/20 p-6 overflow-y-auto">
+        <div className="w-80 bg-black/30 backdrop-blur-lg border-r border-white/20 p-6 pt-24 overflow-y-auto">
           <PageTransition>
             {/* Header */}
             <div className="mb-8">
@@ -1087,7 +1087,7 @@ export default function ArcadePage() {
         </div>
 
         {/* Main Content Area */}
-        <div className="flex-1 p-6 overflow-y-auto">
+        <div className="flex-1 p-6 pt-24 overflow-y-auto">
           <PageTransition>
             {renderGameContent()}
           </PageTransition>
