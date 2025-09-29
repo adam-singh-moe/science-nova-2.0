@@ -1,11 +1,8 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
-import { Modal } from '@/components/ui/modal'
 import Link from 'next/link'
 import { 
   Search, 
@@ -14,24 +11,14 @@ import {
   RefreshCw,
   Filter,
   Eye,
-  Calendar,
-  User,
-  Star,
-  ChevronLeft,
-  ChevronRight,
+  ArrowLeft,
+  Sparkles,
   Info
 } from 'lucide-react'
 import { useAuth } from '@/contexts/auth-context'
 import { supabase } from '@/lib/supabase'
 import { VantaBackground } from '@/components/vanta-background'
 import { PageTransition } from '@/components/layout/page-transition'
-
-interface SearchResult {
-  id: string
-  content: string
-  metadata: any
-  similarity: number
-}
 
 interface DiscoveryEntry {
   id: string
@@ -47,67 +34,376 @@ interface DiscoveryEntry {
       name: string
     }[]
   }[]
+  connections?: string[]
 }
 
-interface FactViewer {
-  title: string
-  content: string
-  imageUrl?: string
-  funFact?: string
-  moreInfo?: string
+interface CardPosition {
+  x: number
+  y: number
+  id: string
 }
+
+interface LayoutPattern {
+  name: string
+  positions: (cards: DiscoveryEntry[]) => CardPosition[]
+}
+
+// Mock data for discovery content
+const mockDiscoveryContent: DiscoveryEntry[] = [
+  {
+    id: 'fact-1',
+    topic_id: 'physics-1',
+    subtype: 'FACT',
+    title: 'Gravity Facts',
+    payload: {
+      content: 'Did you know that if you could dig a tunnel through the center of the Earth and jump in, it would take about 42 minutes to fall to the other side?',
+      funFact: 'You would be weightless at the center!'
+    },
+    difficulty: 'easy',
+    topics: [{
+      title: 'Forces and Motion',
+      grade_level: 4,
+      study_areas: [{ name: 'Physics' }]
+    }],
+    connections: ['info-1', 'fact-2']
+  },
+  {
+    id: 'info-1',
+    topic_id: 'physics-2',
+    subtype: 'INTERACTIVE',
+    title: 'Solar System Scale',
+    payload: {
+      content: 'If Earth were the size of a marble, the Sun would be about 3 feet wide and located about 300 feet away. This incredible scale helps us understand just how vast our solar system really is. The nearest star would be over 15,000 miles away!'
+    },
+    difficulty: 'medium',
+    topics: [{
+      title: 'Space Science',
+      grade_level: 5,
+      study_areas: [{ name: 'Astronomy' }]
+    }],
+    connections: ['fact-3']
+  },
+  {
+    id: 'fact-2',
+    topic_id: 'chemistry-1',
+    subtype: 'FACT',
+    title: 'Water Molecule',
+    payload: {
+      content: 'A single drop of water contains approximately 1.7 sextillion molecules. That\'s 1,700,000,000,000,000,000,000 molecules!',
+      funFact: 'If you could count one molecule per second, it would take 54 billion years!'
+    },
+    difficulty: 'medium',
+    topics: [{
+      title: 'Matter and Molecules',
+      grade_level: 6,
+      study_areas: [{ name: 'Chemistry' }]
+    }],
+    connections: ['info-2']
+  },
+  {
+    id: 'info-2',
+    topic_id: 'biology-1',
+    subtype: 'INTERACTIVE',
+    title: 'Ocean Depths',
+    payload: {
+      content: 'The deepest part of the ocean, the Mariana Trench, is so deep that if Mount Everest were placed at the bottom, its peak would still be over a mile underwater. The pressure there is over 1,000 times greater than at sea level, crushing anything that isn\'t specially adapted.'
+    },
+    difficulty: 'hard',
+    topics: [{
+      title: 'Marine Biology',
+      grade_level: 7,
+      study_areas: [{ name: 'Biology' }]
+    }],
+    connections: ['fact-4']
+  },
+  {
+    id: 'fact-3',
+    topic_id: 'biology-2',
+    subtype: 'FACT',
+    title: 'Heart Beats',
+    payload: {
+      content: 'Your heart beats about 100,000 times per day, pumping roughly 2,000 gallons of blood through your body.',
+      funFact: 'In a lifetime, your heart will beat over 2.5 billion times!'
+    },
+    difficulty: 'easy',
+    topics: [{
+      title: 'Human Body',
+      grade_level: 4,
+      study_areas: [{ name: 'Biology' }]
+    }],
+    connections: ['info-3']
+  },
+  {
+    id: 'info-3',
+    topic_id: 'chemistry-2',
+    subtype: 'INTERACTIVE',
+    title: 'States of Matter',
+    payload: {
+      content: 'Matter exists in many more states than just solid, liquid, and gas. Scientists have identified at least 15 different states of matter, including plasma (found in stars), Bose-Einstein condensates (created in ultra-cold laboratories), and superfluids that can flow without friction.'
+    },
+    difficulty: 'medium',
+    topics: [{
+      title: 'Physical Science',
+      grade_level: 5,
+      study_areas: [{ name: 'Chemistry' }]
+    }],
+    connections: ['fact-5']
+  },
+  {
+    id: 'fact-4',
+    topic_id: 'biology-3',
+    subtype: 'FACT',
+    title: 'Tree Age',
+    payload: {
+      content: 'The oldest living tree is over 4,800 years old! It\'s a Great Basin bristlecone pine named Methuselah.',
+      funFact: 'This tree was already ancient when the pyramids were built!'
+    },
+    difficulty: 'easy',
+    topics: [{
+      title: 'Plant Biology',
+      grade_level: 3,
+      study_areas: [{ name: 'Biology' }]
+    }],
+    connections: ['info-4']
+  },
+  {
+    id: 'info-4',
+    topic_id: 'physics-3',
+    subtype: 'INTERACTIVE',
+    title: 'Light Speed',
+    payload: {
+      content: 'Light travels so fast that it could circle the Earth\'s equator 7.5 times in just one second! This incredible speed means that when you look at the stars, you\'re actually seeing them as they were years ago because the light takes time to reach us.'
+    },
+    difficulty: 'hard',
+    topics: [{
+      title: 'Light and Energy',
+      grade_level: 6,
+      study_areas: [{ name: 'Physics' }]
+    }],
+    connections: ['fact-1']
+  },
+  {
+    id: 'fact-5',
+    topic_id: 'chemistry-3',
+    subtype: 'FACT',
+    title: 'Diamond Formation',
+    payload: {
+      content: 'Diamonds form deep in Earth\'s mantle under extreme pressure and temperature, then are brought to the surface by volcanic eruptions.',
+      funFact: 'Most diamonds are over 1 billion years old!'
+    },
+    difficulty: 'medium',
+    topics: [{
+      title: 'Earth Science',
+      grade_level: 5,
+      study_areas: [{ name: 'Geology' }]
+    }],
+    connections: ['info-1']
+  }
+]
 
 export default function DiscoveryPage() {
-  const [discoveryContent, setDiscoveryContent] = useState<DiscoveryEntry[]>([])
-  const [filteredContent, setFilteredContent] = useState<DiscoveryEntry[]>([])
-  const [selectedContent, setSelectedContent] = useState<DiscoveryEntry | null>(null)
+  const [discoveryContent, setDiscoveryContent] = useState<DiscoveryEntry[]>(mockDiscoveryContent)
   const [loading, setLoading] = useState(true)
+  const [selectedCard, setSelectedCard] = useState<DiscoveryEntry | null>(null)
+  const [expandedCard, setExpandedCard] = useState<string | null>(null)
+  const [flippedCards, setFlippedCards] = useState<Set<string>>(new Set())
   const [searchQuery, setSearchQuery] = useState('')
-  const [currentPage, setCurrentPage] = useState(1)
-  const [gradeFilter, setGradeFilter] = useState<number | null>(null)
-  const [subtypeFilter, setSubtypeFilter] = useState<string | null>(null)
-  const [semanticSearchResults, setSemanticSearchResults] = useState<SearchResult[]>([])
-  const [showSemanticSearch, setShowSemanticSearch] = useState(false)
+  const [layoutPattern, setLayoutPattern] = useState(0)
+  const [hoveredCard, setHoveredCard] = useState<string | null>(null)
   
-  const itemsPerPage = 9
+  // New collision-free positioning state
+  const containerRef = useRef<HTMLDivElement>(null)
+  const cardRefs = useRef<{[key: string]: HTMLDivElement | null}>({})
+  const [cardPositions, setCardPositions] = useState<{[key: string]: {x: number, y: number}}>({})
+  const [layoutReady, setLayoutReady] = useState(false)
+  
   const { session } = useAuth()
 
-  const fetchDiscoveryContent = async (forceRefresh = false) => {
+  // STRUCTURED PREDEFINED LAYOUTS - Web-friendly with guaranteed no overlaps
+  // Based on actual card dimensions: INTERACTIVE(22x18%), FACT(18x15%)
+  const PREDEFINED_LAYOUTS = [
+    // Layout 1: Clean two-column layout
+    [
+      { type: 'INTERACTIVE', x: 5, y: 8 },     // Left top
+      { type: 'FACT', x: 5, y: 35 },           // Left middle
+      { type: 'INTERACTIVE', x: 5, y: 65 },    // Left bottom
+      { type: 'FACT', x: 55, y: 8 },           // Right top
+      { type: 'INTERACTIVE', x: 55, y: 35 },   // Right middle
+      { type: 'FACT', x: 55, y: 65 }           // Right bottom
+    ],
+    // Layout 2: Three-row layout with alternating sides
+    [
+      { type: 'INTERACTIVE', x: 8, y: 5 },     // Top left
+      { type: 'FACT', x: 70, y: 5 },           // Top right
+      { type: 'INTERACTIVE', x: 65, y: 35 },   // Middle right
+      { type: 'FACT', x: 10, y: 35 },          // Middle left
+      { type: 'INTERACTIVE', x: 8, y: 70 },    // Bottom left
+      { type: 'FACT', x: 65, y: 70 }           // Bottom right
+    ],
+    // Layout 3: Wide spread horizontal
+    [
+      { type: 'INTERACTIVE', x: 2, y: 15 },    // Far left
+      { type: 'FACT', x: 28, y: 8 },           // Left center
+      { type: 'INTERACTIVE', x: 50, y: 20 },   // Center
+      { type: 'FACT', x: 76, y: 12 },          // Right center
+      { type: 'INTERACTIVE', x: 25, y: 55 },   // Lower left
+      { type: 'FACT', x: 65, y: 65 }           // Lower right
+    ],
+    // Layout 4: Diagonal cascade
+    [
+      { type: 'INTERACTIVE', x: 5, y: 10 },    // Top left
+      { type: 'FACT', x: 25, y: 25 },          // Step right/down
+      { type: 'INTERACTIVE', x: 45, y: 40 },   // Step right/down
+      { type: 'FACT', x: 70, y: 15 },          // Top right
+      { type: 'INTERACTIVE', x: 15, y: 70 },   // Bottom left
+      { type: 'FACT', x: 60, y: 75 }           // Bottom right
+    ],
+    // Layout 5: Corner positions with center
+    [
+      { type: 'INTERACTIVE', x: 3, y: 5 },     // Top left corner
+      { type: 'FACT', x: 75, y: 8 },           // Top right corner
+      { type: 'INTERACTIVE', x: 40, y: 35 },   // Center
+      { type: 'FACT', x: 8, y: 75 },           // Bottom left corner
+      { type: 'INTERACTIVE', x: 70, y: 70 },   // Bottom right corner
+      { type: 'FACT', x: 45, y: 15 }           // Top center
+    ],
+    // Layout 6: Asymmetric organic
+    [
+      { type: 'INTERACTIVE', x: 12, y: 12 },   // Upper left
+      { type: 'FACT', x: 65, y: 20 },          // Upper right
+      { type: 'INTERACTIVE', x: 35, y: 45 },   // Center
+      { type: 'FACT', x: 8, y: 55 },           // Mid left
+      { type: 'INTERACTIVE', x: 75, y: 55 },   // Mid right
+      { type: 'FACT', x: 40, y: 78 }           // Bottom center
+    ]
+  ]
+
+  // Helper function to calculate dynamic card dimensions
+  const getCardDimensions = (card: DiscoveryEntry, isExpanded = false) => {
+    const isFact = card.subtype === 'FACT'
+    
+    if (isFact) {
+      // FACT cards: base size + small adjustment for content
+      const contentLength = card.payload?.content?.length || 0
+      const minWidth = 160
+      const minHeight = 112
+      const maxWidth = 280
+      const maxHeight = 200
+      
+      // Add width for longer content (capped at reasonable max)
+      const dynamicWidth = Math.max(minWidth, Math.min(minWidth + Math.floor(contentLength / 80) * 20, maxWidth))
+      const dynamicHeight = Math.max(minHeight, Math.min(minHeight + Math.floor(contentLength / 120) * 15, maxHeight))
+      
+      return {
+        width: isExpanded ? Math.min(dynamicWidth * 1.2, maxWidth * 1.2) : dynamicWidth,
+        height: isExpanded ? Math.min(dynamicHeight * 1.2, maxHeight * 1.2) : dynamicHeight
+      }
+    } else {
+      // INTERACTIVE cards: more dynamic sizing for longer content
+      const contentLength = card.payload?.content?.length || 0
+      const minWidth = 256
+      const minHeight = 160
+      const maxWidth = 450
+      const maxHeight = 320
+      
+      // More generous sizing for interactive content
+      const dynamicWidth = Math.max(minWidth, Math.min(minWidth + Math.floor(contentLength / 60) * 25, maxWidth))
+      const dynamicHeight = Math.max(minHeight, Math.min(minHeight + Math.floor(contentLength / 100) * 20, maxHeight))
+      
+      return {
+        width: isExpanded ? Math.min(dynamicWidth * 1.15, maxWidth * 1.15) : dynamicWidth,
+        height: isExpanded ? Math.min(dynamicHeight * 1.15, maxHeight * 1.15) : dynamicHeight
+      }
+    }
+  }
+
+  // New collision-free positioning algorithm
+  const calculatePositions = () => {
+    if (!containerRef.current) return
+
+    const container = containerRef.current.getBoundingClientRect()
+    const positions: {[key: string]: {x: number, y: number}} = {}
+    const placedCards: {left: number, top: number, right: number, bottom: number}[] = []
+    
+    // Safety margins
+    const MARGIN = 20
+    const MIN_DISTANCE = 30
+
+    filteredContent.forEach((card, index) => {
+      let attempts = 0
+      let position = null
+      
+      // Get ACTUAL card dimensions - first try DOM, then calculate dynamic size
+      const cardElement = cardRefs.current[card.id]
+      let cardWidth, cardHeight
+      
+      if (cardElement && cardElement.offsetWidth > 0) {
+        // Use actual DOM dimensions if available
+        cardWidth = cardElement.offsetWidth
+        cardHeight = cardElement.offsetHeight
+      } else {
+        // Calculate dynamic dimensions based on content
+        const isExpanded = expandedCard === card.id
+        const dimensions = getCardDimensions(card, isExpanded)
+        cardWidth = dimensions.width
+        cardHeight = dimensions.height
+      }
+      
+      // Try random positions until we find one without overlap
+      while (attempts < 50 && !position) {
+        const x = MARGIN + Math.random() * (container.width - cardWidth - MARGIN * 2)
+        const y = MARGIN + Math.random() * (container.height - cardHeight - MARGIN * 2)
+        
+        const candidateRect = {
+          left: x,
+          top: y,
+          right: x + cardWidth,
+          bottom: y + cardHeight
+        }
+        
+        // Check if this position overlaps with any existing card
+        const hasOverlap = placedCards.some(placedRect => 
+          !(candidateRect.right + MIN_DISTANCE < placedRect.left ||
+            candidateRect.left > placedRect.right + MIN_DISTANCE ||
+            candidateRect.bottom + MIN_DISTANCE < placedRect.top ||
+            candidateRect.top > placedRect.bottom + MIN_DISTANCE)
+        )
+        
+        if (!hasOverlap) {
+          position = { x, y }
+          placedCards.push(candidateRect)
+        }
+        
+        attempts++
+      }
+      
+      // Fallback to safe grid position if random placement fails
+      if (!position) {
+        const gridCols = Math.floor(container.width / (cardWidth + MIN_DISTANCE))
+        const gridRow = Math.floor(index / gridCols)
+        const gridCol = index % gridCols
+        
+        position = {
+          x: gridCol * (cardWidth + MIN_DISTANCE) + MARGIN,
+          y: gridRow * (cardHeight + MIN_DISTANCE) + MARGIN
+        }
+      }
+      
+      positions[card.id] = position
+    })
+    
+    setCardPositions(positions)
+    setLayoutReady(true)
+  }
+
+
+
+  const fetchDiscoveryContent = async () => {
     try {
       setLoading(true)
       
-      // Get today's date for deterministic content selection
-      const today = new Date().toISOString().split('T')[0]
-      
-      const { data, error } = await supabase
-        .from('topic_content_entries')
-        .select(`
-          id,
-          topic_id,
-          subtype,
-          title,
-          payload,
-          difficulty,
-          topics (
-            title,
-            grade_level,
-            study_areas (
-              name
-            )
-          )
-        `)
-        .eq('category', 'DISCOVERY')
-        .eq('status', 'published')
-        .order('created_at', { ascending: false })
-        .limit(50) // Get recent content for variety
-
-      if (error) {
-        console.error('Error fetching discovery content:', error)
-        return
-      }
-
-      setDiscoveryContent((data as DiscoveryEntry[]) || [])
-      setFilteredContent((data as DiscoveryEntry[]) || [])
+      // Use mock data for now
+      setDiscoveryContent(mockDiscoveryContent)
     } catch (error) {
       console.error('Error fetching discovery content:', error)
     } finally {
@@ -115,628 +411,368 @@ export default function DiscoveryPage() {
     }
   }
 
-  // Filter content based on search and filters
-  useEffect(() => {
-    let filtered = discoveryContent
-
-    // Search filter
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase()
-      filtered = filtered.filter(content => 
-        content.title?.toLowerCase().includes(query) ||
-        content.topics?.[0]?.title?.toLowerCase().includes(query) ||
-        content.topics?.[0]?.study_areas?.[0]?.name?.toLowerCase().includes(query) ||
-        content.payload?.content?.toLowerCase().includes(query)
-      )
-    }
-
-    // Grade level filter
-    if (gradeFilter !== null) {
-      filtered = filtered.filter(content => 
-        content.topics?.[0]?.grade_level === gradeFilter
-      )
-    }
-
-    // Subtype filter
-    if (subtypeFilter) {
-      filtered = filtered.filter(content => 
-        content.subtype === subtypeFilter
-      )
-    }
-
-    setFilteredContent(filtered)
-    setCurrentPage(1) // Reset to first page when filtering
-  }, [searchQuery, gradeFilter, subtypeFilter, discoveryContent])
-
-  const handleSemanticSearch = async () => {
-    if (!searchQuery.trim()) return
-
-    try {
-      const params = new URLSearchParams({
-        q: searchQuery,
-        threshold: '0.7',
-        limit: '5'
-      })
-
-      if (gradeFilter) {
-        params.append('grade', gradeFilter.toString())
-      }
-
-      const response = await fetch(`/api/embeddings?${params}`)
-      const result = await response.json()
-
-      if (response.ok) {
-        setSemanticSearchResults(result.results || [])
-        setShowSemanticSearch(true)
-      }
-    } catch (error) {
-      console.error('Semantic search error:', error)
-    }
-  }
-
-  const trackEngagement = async (entryId: string, action: string) => {
-    try {
-      // Log engagement for analytics
-      console.log(`Discovery engagement: ${action} on ${entryId}`)
-    } catch (error) {
-      console.error('Error tracking engagement:', error)
-    }
-  }
-
-  const handleViewContent = (content: DiscoveryEntry) => {
-    setSelectedContent(content)
-    trackEngagement(content.id, 'open')
-  }
-
-  const handleCloseContent = () => {
-    if (selectedContent) {
-      trackEngagement(selectedContent.id, 'close')
-    }
-    setSelectedContent(null)
-  }
-
   useEffect(() => {
     fetchDiscoveryContent()
   }, [])
 
-  const getDifficultyColor = (difficulty?: string) => {
-    switch (difficulty?.toLowerCase()) {
-      case 'easy': return 'bg-green-500/20 text-green-300 border-green-400/30'
-      case 'medium': return 'bg-yellow-500/20 text-yellow-300 border-yellow-400/30'
-      case 'hard': return 'bg-red-500/20 text-red-300 border-red-400/30'
-      default: return 'bg-gray-500/20 text-gray-300 border-gray-400/30'
+  const filteredContent = useMemo(() => {
+    // Apply search filter first
+    let content = discoveryContent
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase()
+      content = discoveryContent.filter(content => 
+        content.title?.toLowerCase().includes(query) ||
+        content.topics?.[0]?.title?.toLowerCase().includes(query) ||
+        content.payload?.content?.toLowerCase().includes(query)
+      )
     }
-  }
-
-  const getSubtypeIcon = (subtype: string) => {
-    switch (subtype) {
-      case 'FACT': return <Lightbulb className="h-5 w-5" />
-      case 'DOCUMENT': return <BookOpen className="h-5 w-5" />
-      case 'INTERACTIVE': return <Star className="h-5 w-5" />
-      default: return <Eye className="h-5 w-5" />
-    }
-  }
-
-  const getSubtypeColor = (subtype: string) => {
-    switch (subtype) {
-      case 'FACT': return 'bg-yellow-500/20 text-yellow-300 border-yellow-400/30'
-      case 'DOCUMENT': return 'bg-blue-500/20 text-blue-300 border-blue-400/30'
-      case 'INTERACTIVE': return 'bg-purple-500/20 text-purple-300 border-purple-400/30'
-      default: return 'bg-gray-500/20 text-gray-300 border-gray-400/30'
-    }
-  }
-
-  // Helper function to create engaging fact previews
-  const getFactPreview = (content: DiscoveryEntry) => {
-    const payload = content.payload
-    if (content.subtype === 'FACT' && payload?.content) {
-      // Extract first sentence or first 120 characters
-      const fullText = payload.content
-      const firstSentence = fullText.split('.')[0] + '.'
-      const preview = firstSentence.length <= 120 ? firstSentence : fullText.substring(0, 120) + '...'
-      
-      // Add engaging elements
-      const hasImage = payload.imageUrl
-      const hasFunFact = payload.funFact
-      
-      return {
-        preview,
-        hasImage,
-        hasFunFact,
-        engaging: hasImage || hasFunFact,
-        imageUrl: payload.imageUrl
-      }
-    }
-    return {
-      preview: 'Discover something fascinating...',
-      hasImage: false,
-      hasFunFact: false,
-      engaging: false
-    }
-  }
-
-  // Pagination
-  const totalPages = Math.ceil(filteredContent.length / itemsPerPage)
-  const startIndex = (currentPage - 1) * itemsPerPage
-  const endIndex = startIndex + itemsPerPage
-  const currentContent = filteredContent.slice(startIndex, endIndex)
-
-  const renderFactModal = (content: DiscoveryEntry) => {
-    // Handle different payload structures more defensively
-    const fact = content.payload as FactViewer
-    const factContent = fact?.content || (content.payload as any)?.text || 'No content available'
-    const factTitle = content.title || fact?.title || 'Untitled Fact'
-    const factImage = fact?.imageUrl || (content.payload as any)?.image_url
-    const factFunFact = fact?.funFact || (content.payload as any)?.fun_fact
-    const factMoreInfo = fact?.moreInfo || (content.payload as any)?.more_info
     
+    // Limit to exactly 3 INTERACTIVE and 3 FACT cards
+    const factCards = content.filter(card => card.subtype === 'FACT').slice(0, 3)
+    const interactiveCards = content.filter(card => card.subtype === 'INTERACTIVE').slice(0, 3)
+    
+    // Shuffle for variety each time
+    const shuffledFacts = [...factCards].sort(() => Math.random() - 0.5)
+    const shuffledInteractives = [...interactiveCards].sort(() => Math.random() - 0.5)
+    
+    return [...shuffledInteractives, ...shuffledFacts]
+  }, [discoveryContent, searchQuery])
+
+  // New useEffect for collision-free positioning
+  useEffect(() => {
+    // Wait for DOM to settle, then calculate positions
+    const timer = setTimeout(calculatePositions, 100)
+    
+    const handleResize = () => {
+      setLayoutReady(false)
+      setTimeout(calculatePositions, 100)
+    }
+    
+    window.addEventListener('resize', handleResize)
+    return () => {
+      clearTimeout(timer)
+      window.removeEventListener('resize', handleResize)
+    }
+  }, [filteredContent])
+
+
+
+  const handleCardClick = (card: DiscoveryEntry) => {
+    if (card.subtype === 'FACT') {
+      // Flip the card
+      setFlippedCards(prev => {
+        const newSet = new Set(prev)
+        if (newSet.has(card.id)) {
+          newSet.delete(card.id)
+        } else {
+          newSet.add(card.id)
+        }
+        return newSet
+      })
+    } else {
+      // Expand the card
+      setExpandedCard(expandedCard === card.id ? null : card.id)
+    }
+  }
+
+  const renderCard = (card: DiscoveryEntry) => {
+    const isFlipped = flippedCards.has(card.id)
+    const isExpanded = expandedCard === card.id
+    const isFact = card.subtype === 'FACT'
+
+    // Use the helper function to get dynamic dimensions
+    const { width: expandedWidth, height: expandedHeight } = getCardDimensions(card, isExpanded)
+
+    const position = cardPositions[card.id]
+    if (!position) return null
+
     return (
-      <div className="relative overflow-hidden">
-        {/* Subtly Enhanced Header with Better Structure */}
-        <div className="relative bg-gradient-to-br from-slate-900/95 via-slate-800/90 to-slate-900/95 border-b border-white/15">
-          {/* Background decoration with subtle enhancement */}
-          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/8 via-cyan-500/12 to-blue-500/8"></div>
-          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-emerald-400/15 to-cyan-400/15 rounded-full blur-3xl"></div>
-          
-          <div className="relative p-8">
-            {/* Topic and Grade Info - Enhanced Colors */}
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <div className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500/25 to-cyan-500/25 border border-emerald-400/40 backdrop-blur-sm shadow-lg">
-                  <span className="text-emerald-200 font-bold text-lg">
-                    {content.topics?.[0]?.title || 'Science'}
-                  </span>
-                </div>
-                <div className="px-3 py-1.5 rounded-lg bg-white/15 border border-white/25 backdrop-blur-sm shadow-lg">
-                  <span className="text-white/90 font-semibold">
-                    Grade {content.topics?.[0]?.grade_level || 'K-12'}
-                  </span>
-                </div>
-              </div>
-              
-              {/* Content Type and Difficulty */}
+      <div
+        key={card.id}
+        ref={el => { cardRefs.current[card.id] = el; }}
+        className="absolute transition-all duration-500 ease-out"
+        style={{
+          left: `${position.x}px`, // Use pixels, not percentages
+          top: `${position.y}px`,   // Use pixels, not percentages
+          width: `${expandedWidth}px`,
+          height: `${expandedHeight}px`,
+          opacity: layoutReady ? 1 : 0,
+          transform: `${isExpanded ? 'scale(1.1)' : 'scale(1)'} ${
+            isFlipped && isFact ? 'rotateY(180deg)' : ''
+          }`,
+          transformStyle: 'preserve-3d',
+          transformOrigin: 'center center',
+          zIndex: isExpanded ? 100 : (hoveredCard === card.id ? 50 : 20),
+          isolation: 'isolate' // Create new stacking context
+        }}
+      >
+        <Card
+          className={`w-full h-full cursor-pointer transition-all duration-500 transform hover:scale-105 hover:shadow-2xl ${
+            isFact
+              ? 'bg-gradient-to-br from-purple-600/80 to-purple-800/80 border-purple-400/50 text-white'
+              : 'bg-gradient-to-br from-cyan-600/80 to-cyan-800/80 border-cyan-400/50 text-white'
+          } backdrop-blur-lg shadow-lg hover:shadow-xl`}
+          onClick={() => handleCardClick(card)}
+          onMouseEnter={() => setHoveredCard(card.id)}
+          onMouseLeave={() => setHoveredCard(null)}
+          role="button"
+          tabIndex={0}
+          aria-label={`${card.subtype} card: ${card.title}. Click to ${isFact ? 'flip' : 'expand'}`}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              handleCardClick(card)
+            }
+          }}
+        >
+          <div className={`w-full h-full p-4 flex flex-col justify-between ${
+            isFlipped && isFact ? 'opacity-0' : 'opacity-100'
+          } transition-opacity duration-300`}>
+            {/* Front side */}
+            <div className="flex items-start justify-between mb-2">
               <div className="flex items-center gap-2">
-                <Badge className="bg-gradient-to-r from-blue-500/35 to-indigo-500/35 border-blue-400/50 text-blue-100 backdrop-blur-sm shadow-lg">
-                  <div className="flex items-center gap-1.5">
-                    <div className="text-lg">{getSubtypeIcon(content.subtype)}</div>
-                    <span className="font-semibold">{content.subtype}</span>
-                  </div>
-                </Badge>
-                {content.difficulty && (
-                  <Badge className={`backdrop-blur-sm shadow-lg ${getDifficultyColor(content.difficulty)}`}>
-                    {content.difficulty}
-                  </Badge>
+                {isFact ? (
+                  <Lightbulb className="h-4 w-4 text-yellow-300" />
+                ) : (
+                  <Info className="h-4 w-4 text-cyan-300" />
+                )}
+                <span className="text-xs font-medium px-2 py-1 rounded-full bg-white/20">
+                  {card.subtype}
+                </span>
+              </div>
+              {card.difficulty && (
+                <span className={`text-xs px-2 py-1 rounded-full ${
+                  card.difficulty === 'easy' ? 'bg-green-500/30 text-green-200' :
+                  card.difficulty === 'medium' ? 'bg-yellow-500/30 text-yellow-200' :
+                  'bg-red-500/30 text-red-200'
+                }`}>
+                  {card.difficulty}
+                </span>
+              )}
+            </div>
+            
+            <div className="flex-1 flex flex-col justify-center">
+              <h3 className={`font-bold leading-tight mb-2 ${
+                isFact ? 'text-sm' : 'text-base'
+              }`}>
+                {card.title}
+              </h3>
+              {!isFact && card.payload?.content && (
+                <p className={`text-white/90 leading-relaxed ${
+                  isExpanded ? 'text-sm' : 'text-xs'
+                } break-words overflow-hidden`}>
+                  {card.payload.content}
+                </p>
+              )}
+            </div>
+
+            {isFact && (
+              <div className="text-center">
+                <Sparkles className="h-4 w-4 mx-auto text-yellow-300" />
+                <p className="text-xs text-white/80 mt-1">Click to reveal</p>
+              </div>
+            )}
+          </div>
+
+          {/* Back side for FACT cards */}
+          {isFact && (
+            <div className={`absolute inset-0 w-full h-full p-4 flex flex-col justify-center ${
+              isFlipped ? 'opacity-100' : 'opacity-0'
+            } transition-opacity duration-300`}
+            style={{
+              transform: 'rotateY(180deg)',
+              backfaceVisibility: 'hidden'
+            }}>
+              <div className="text-center h-full flex flex-col justify-center">
+                <Lightbulb className="h-6 w-6 mx-auto text-yellow-300 mb-2" />
+                <p className="text-sm text-white leading-relaxed break-words overflow-hidden">
+                  {card.payload?.content || 'Fascinating science fact!'}
+                </p>
+                {card.payload?.funFact && (
+                  <p className="text-xs text-yellow-200 mt-2 font-medium break-words">
+                    💡 {card.payload.funFact}
+                  </p>
                 )}
               </div>
             </div>
-
-            {/* Title Section - Enhanced Prominence */}
-            <div className="space-y-3">
-              <h2 className="text-3xl font-bold text-white leading-tight tracking-wide drop-shadow-lg">
-                {factTitle}
-              </h2>
-              <div className="w-28 h-1.5 bg-gradient-to-r from-emerald-400 via-cyan-400 to-blue-400 rounded-full shadow-lg"></div>
-            </div>
-          </div>
-        </div>
-
-        {/* Subtly Enhanced Content Area */}
-        <div className="p-8 space-y-8 bg-gradient-to-b from-slate-900/60 to-slate-800/40">
-          {/* Image Section - Subtle Enhancement */}
-          {factImage && (
-            <div className="relative group">
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-500/25 to-purple-500/25 rounded-2xl blur-xl opacity-70 group-hover:opacity-90 transition-opacity duration-500"></div>
-              <div className="relative overflow-hidden rounded-2xl border border-white/25 shadow-2xl bg-white/8 backdrop-blur-sm">
-                <img 
-                  src={factImage} 
-                  alt={factTitle}
-                  className="w-full h-80 object-cover transition-transform duration-700 group-hover:scale-[1.02]"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent"></div>
-              </div>
-            </div>
           )}
-          
-          {/* Main Content - Enhanced Typography */}
-          <div className="relative">
-            <div className="bg-gradient-to-r from-white/8 to-white/12 rounded-2xl p-8 border border-white/15 backdrop-blur-sm shadow-xl">
-              <div className="flex items-start gap-4">
-                <div className="flex-shrink-0 mt-1">
-                  <div className="w-3 h-3 bg-gradient-to-r from-emerald-400 via-cyan-400 to-blue-400 rounded-full shadow-lg"></div>
-                </div>
-                <div className="flex-1">
-                  <p className="text-white/95 leading-relaxed text-xl font-light tracking-wide">
-                    {factContent}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Enhanced Information Sections */}
-          <div className="grid gap-6">
-            {/* Fun Fact - Redesigned */}
-            {factFunFact && (
-              <div className="relative group">
-                <div className="absolute inset-0 bg-gradient-to-r from-yellow-500/10 to-amber-500/10 rounded-2xl blur-lg opacity-50"></div>
-                <div className="relative p-6 bg-gradient-to-br from-yellow-500/15 via-amber-500/10 to-orange-500/15 border border-yellow-400/30 rounded-2xl backdrop-blur-sm shadow-xl">
-                  <div className="flex items-start gap-6">
-                    <div className="flex-shrink-0">
-                      <div className="relative">
-                        <div className="absolute inset-0 bg-yellow-400 rounded-2xl blur-lg opacity-40"></div>
-                        <div className="relative bg-gradient-to-r from-yellow-400 to-amber-400 p-4 rounded-2xl shadow-lg">
-                          <Lightbulb className="h-8 w-8 text-white drop-shadow-[0_0_15px_rgba(251,191,36,0.8)]" />
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex-1 space-y-3">
-                      <h3 className="font-bold text-2xl bg-gradient-to-r from-yellow-200 to-amber-200 bg-clip-text text-transparent">
-                        Fun Fact
-                      </h3>
-                      <p className="text-yellow-100/90 leading-relaxed text-lg font-light">
-                        {factFunFact}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* More Information - Redesigned */}
-            {factMoreInfo && (
-              <div className="relative group">
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-cyan-500/10 rounded-2xl blur-lg opacity-50"></div>
-                <div className="relative p-6 bg-gradient-to-br from-blue-500/15 via-cyan-500/10 to-indigo-500/15 border border-blue-400/30 rounded-2xl backdrop-blur-sm shadow-xl">
-                  <div className="flex items-start gap-6">
-                    <div className="flex-shrink-0">
-                      <div className="relative">
-                        <div className="absolute inset-0 bg-blue-400 rounded-2xl blur-lg opacity-40"></div>
-                        <div className="relative bg-gradient-to-r from-blue-400 to-cyan-400 p-4 rounded-2xl shadow-lg">
-                          <Info className="h-8 w-8 text-white drop-shadow-[0_0_15px_rgba(59,130,246,0.8)]" />
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex-1 space-y-3">
-                      <h3 className="font-bold text-2xl bg-gradient-to-r from-blue-200 to-cyan-200 bg-clip-text text-transparent">
-                        Learn More
-                      </h3>
-                      <p className="text-blue-100/90 leading-relaxed text-lg font-light">
-                        {factMoreInfo}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+        </Card>
       </div>
     )
   }
 
-  // Get title for the modal
-  const getModalTitle = (content: DiscoveryEntry) => {
-    const fact = content.payload as FactViewer
-    return content.title || fact?.title || 'Untitled Fact'
+  const renderConnections = () => {
+    return (
+      <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 5 }}>
+        <defs>
+          <linearGradient id="connectionGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.6" />
+            <stop offset="100%" stopColor="#06b6d4" stopOpacity="0.6" />
+          </linearGradient>
+        </defs>
+        {filteredContent.map(card => {
+          const cardPos = cardPositions[card.id]
+          if (!cardPos || !card.connections) return null
+
+          return card.connections.map(connectionId => {
+            const targetPos = cardPositions[connectionId]
+            if (!targetPos) return null
+
+            return (
+              <line
+                key={`${card.id}-${connectionId}`}
+                x1={`${cardPos.x}`}
+                y1={`${cardPos.y}`}
+                x2={`${targetPos.x}`}
+                y2={`${targetPos.y}`}
+                stroke="url(#connectionGradient)"
+                strokeWidth="2"
+                strokeDasharray="5,5"
+                className="animate-pulse"
+              />
+            )
+          })
+        })}
+      </svg>
+    )
   }
 
   return (
     <VantaBackground>
-      <main className="container mx-auto px-4 py-8">
+      <div className="min-h-screen relative">
         <PageTransition>
           {/* Header */}
-          <div className="text-center mb-8">
-            <div className="flex items-center justify-center gap-3 mb-4">
-              <div className="rounded-full bg-gradient-to-r from-green-500/80 to-blue-500/80 p-3 backdrop-blur-sm border border-green-400/30 shadow-lg">
-                <BookOpen className="h-8 w-8 text-white drop-shadow-[0_0_15px_rgba(34,197,94,0.6)]" />
-              </div>
-              <h1 className="text-4xl font-bold text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] tracking-tight">
-                Discovery Zone
-              </h1>
-            </div>
-            <p className="text-lg text-white/80 max-w-2xl mx-auto drop-shadow-[0_1px_4px_rgba(0,0,0,0.6)]">
-              Explore fascinating facts, documents, and interactive content to expand your knowledge!
-            </p>
-          </div>
-
-          {/* Search and Filters */}
-          <div className="mb-8">
-            <div className="max-w-2xl mx-auto mb-6">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5 drop-shadow-sm" />
-                <Input
-                  type="text"
-                  placeholder="Search discoveries..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 pr-4 py-3 text-lg rounded-2xl border border-white/25 bg-white/12 backdrop-blur-lg shadow-lg text-white placeholder:text-white/60"
-                />
-              </div>
-            </div>
-
-            <div className="flex flex-wrap justify-center gap-4 mb-6">
-              <div className="flex items-center gap-2">
-                <Filter className="h-4 w-4 text-green-400 drop-shadow-sm" />
-                <span className="text-sm font-medium text-white/80 drop-shadow-[0_1px_4px_rgba(0,0,0,0.6)]">Filters:</span>
+          <div className="relative z-20 p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-4">
+                <Link href="/">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-white/80 border border-white/30 bg-white/10 hover:bg-white/20"
+                  >
+                    <ArrowLeft className="h-4 w-4 mr-2" />
+                    Back to Home
+                  </Button>
+                </Link>
+                <div className="flex items-center gap-3">
+                  <div className="rounded-full bg-gradient-to-r from-cyan-500/80 to-purple-500/80 p-3 backdrop-blur-sm border border-cyan-400/30 shadow-lg">
+                    <Eye className="h-6 w-6 text-white drop-shadow-[0_0_15px_rgba(6,182,212,0.6)]" />
+                  </div>
+                  <h1 className="text-3xl font-bold text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
+                    Discovery Zone
+                  </h1>
+                </div>
               </div>
               
-              <select
-                value={gradeFilter || ''}
-                onChange={(e) => setGradeFilter(e.target.value ? parseInt(e.target.value) : null)}
-                className="px-3 py-1.5 rounded-full border border-green-400/40 bg-green-400/20 text-green-200 backdrop-blur-sm hover:bg-green-400/30 hover:border-green-300/60 transition-all duration-300 text-sm"
-              >
-                <option value="" className="bg-gray-800 text-white">All Grades</option>
-                {[3, 4, 5, 6, 7, 8].map(grade => (
-                  <option key={grade} value={grade} className="bg-gray-800 text-white">Grade {grade}</option>
-                ))}
-              </select>
-
-              <select
-                value={subtypeFilter || ''}
-                onChange={(e) => setSubtypeFilter(e.target.value || null)}
-                className="px-3 py-1.5 rounded-full border border-blue-400/40 bg-blue-400/20 text-blue-200 backdrop-blur-sm hover:bg-blue-400/30 hover:border-blue-300/60 transition-all duration-300 text-sm"
-              >
-                <option value="" className="bg-gray-800 text-white">All Types</option>
-                <option value="FACT" className="bg-gray-800 text-white">Facts</option>
-                <option value="DOCUMENT" className="bg-gray-800 text-white">Documents</option>
-                <option value="INTERACTIVE" className="bg-gray-800 text-white">Interactive</option>
-              </select>
-
-              {(searchQuery || gradeFilter || subtypeFilter) && (
+              <div className="flex items-center gap-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white/60" />
+                  <input
+                    type="text"
+                    placeholder="Search discoveries..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10 pr-4 py-2 bg-white/10 border border-white/30 rounded-full text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-cyan-400/50 focus:border-cyan-400/50 min-w-[250px]"
+                  />
+                </div>
                 <Button
+                  onClick={() => {
+                    setLayoutReady(false)
+                    setTimeout(calculatePositions, 100)
+                  }}
                   variant="outline"
                   size="sm"
-                  onClick={() => {
-                    setSearchQuery('')
-                    setGradeFilter(null)
-                    setSubtypeFilter(null)
-                  }}
-                  className="text-gray-300 border-gray-400 hover:bg-white/10"
-                >
-                  Clear Filters
-                </Button>
-              )}
-            </div>
-
-            <div className="text-center text-sm text-gray-300">
-              Showing {filteredContent.length} discoveries
-              {searchQuery && ` for "${searchQuery}"`}
-            </div>
-          </div>
-
-          {/* Content Grid */}
-          {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[1, 2, 3, 4, 5, 6].map((i) => (
-                <Card key={i} className="p-6 animate-pulse rounded-2xl border border-white/25 bg-white/12 backdrop-blur-lg shadow-lg">
-                  <div className="h-4 bg-white/20 rounded mb-2"></div>
-                  <div className="h-3 bg-white/20 rounded mb-4"></div>
-                  <div className="h-10 bg-white/20 rounded"></div>
-                </Card>
-              ))}
-            </div>
-          ) : currentContent.length === 0 ? (
-            <Card className="p-12 text-center rounded-2xl border border-white/25 bg-white/12 backdrop-blur-lg shadow-lg">
-              <BookOpen className="h-16 w-16 mx-auto text-green-400/60 mb-4 drop-shadow-[0_0_15px_rgba(34,197,94,0.4)]" />
-              <h3 className="text-xl font-semibold text-white mb-2 drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] tracking-tight">
-                {searchQuery || gradeFilter || subtypeFilter ? 'No Results Found' : 'No Discovery Content Available'}
-              </h3>
-              <p className="text-white/80 mb-6 drop-shadow-[0_1px_4px_rgba(0,0,0,0.6)]">
-                {searchQuery || gradeFilter || subtypeFilter 
-                  ? 'Try adjusting your search or filters'
-                  : 'Check back later for new discoveries!'
-                }
-              </p>
-              <div className="flex gap-4 justify-center">
-                {(searchQuery || gradeFilter || subtypeFilter) && (
-                  <Button 
-                    variant="outline"
-                    onClick={() => {
-                      setSearchQuery('')
-                      setGradeFilter(null)
-                      setSubtypeFilter(null)
-                    }}
-                    className="px-4 py-2 rounded-full border border-blue-400/40 bg-blue-400/20 text-blue-200 backdrop-blur-sm hover:bg-blue-400/30 hover:border-blue-300/60 transition-all duration-300"
-                  >
-                    Clear Filters
-                  </Button>
-                )}
-                <Button 
-                  onClick={() => fetchDiscoveryContent(true)}
-                  className="bg-gradient-to-r from-green-600/80 to-blue-600/80 hover:from-green-600 hover:to-blue-600 text-white rounded-lg border border-green-400/30 backdrop-blur-sm transition-all duration-300"
+                  className="text-white/80 border border-white/30 bg-white/10 hover:bg-white/20"
                 >
                   <RefreshCw className="h-4 w-4 mr-2" />
-                  Refresh
+                  Shuffle Layout
                 </Button>
               </div>
-            </Card>
-          ) : (
-            <>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-                {currentContent.map((content) => {
-                  const factPreview = getFactPreview(content)
-                  return (
-                    <Card 
-                      key={content.id} 
-                      className="group relative overflow-hidden rounded-2xl border border-white/25 bg-black/20 backdrop-blur-lg shadow-lg transition-all duration-500 hover:shadow-[0_20px_40px_rgba(34,197,94,0.4)] hover:-translate-y-2 hover:scale-105 transform-gpu hover:bg-black/30 cursor-pointer"
-                    >
-                    {/* Image background for facts with images */}
-                    {factPreview.hasImage && (
-                      <div className="absolute inset-0 opacity-25 group-hover:opacity-40 transition-opacity duration-500">
-                        <img 
-                          src={factPreview.imageUrl} 
-                          alt=""
-                          className="w-full h-full object-cover"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"></div>
-                      </div>
-                    )}
-                    
-                    {/* Subtle energy ripples on hover */}
-                    <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-all duration-500 pointer-events-none">
-                      <div className="absolute inset-0 rounded-2xl border-2 border-green-400/20 animate-ping"></div>
-                      <div className="absolute inset-2 rounded-2xl border border-blue-400/30 animate-ping delay-200"></div>
-                    </div>
-                    
-                    {/* Engaging visual indicator */}
-                    {factPreview.engaging && (
-                      <div className="absolute top-3 right-3 z-20">
-                        <div className="bg-yellow-500/30 backdrop-blur-sm border border-yellow-400/50 rounded-full p-1.5 shadow-lg">
-                          <Star className="h-4 w-4 text-yellow-400 drop-shadow-[0_0_10px_rgba(250,204,21,0.6)]" fill="currentColor" />
-                        </div>
-                      </div>
-                    )}
-                    
-                    <div className="relative p-6 z-10">
-                      {/* Header */}
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-3">
-                            <Badge className={`text-xs px-2 py-0.5 rounded-full backdrop-blur-sm transition-all duration-300 ${getSubtypeColor(content.subtype)}`}>
-                              <div className="flex items-center gap-1">
-                                <div className="drop-shadow-[0_0_10px_rgba(34,197,94,0.4)]">
-                                  {getSubtypeIcon(content.subtype)}
-                                </div>
-                                <span className="font-medium">
-                                  {content.subtype}
-                                </span>
-                              </div>
-                            </Badge>
-                            {content.difficulty && (
-                              <Badge className={`text-xs px-2 py-0.5 rounded-full backdrop-blur-sm transition-all duration-300 ${getDifficultyColor(content.difficulty)}`}>
-                                {content.difficulty}
-                              </Badge>
-                            )}
-                          </div>
-                          <h3 className="text-xl font-semibold tracking-tight text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] group-hover:text-green-200 transition-colors duration-300 mb-3 leading-tight line-clamp-2">
-                            {content.title}
-                          </h3>
-                        </div>
-                      </div>
-
-                      {/* Enhanced Content Preview */}
-                      <div className="mb-4">
-                        <p className="text-white/80 text-sm leading-relaxed drop-shadow-[0_1px_4px_rgba(0,0,0,0.6)] group-hover:text-white/90 transition-colors duration-300">
-                          {factPreview.preview}
-                        </p>
-                        
-                        {/* Preview indicators */}
-                        <div className="flex items-center gap-2 mt-3">
-                          {factPreview.hasImage && (
-                            <span className="text-xs px-2 py-1 rounded-full border border-blue-400/40 bg-blue-400/20 text-blue-200 backdrop-blur-sm">
-                              📸 Visual
-                            </span>
-                          )}
-                          {factPreview.hasFunFact && (
-                            <span className="text-xs px-2 py-1 rounded-full border border-yellow-400/40 bg-yellow-400/20 text-yellow-200 backdrop-blur-sm">
-                              💡 Fun Fact
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Metadata */}
-                      <div className="flex items-center gap-4 text-xs text-white/80 mb-4 drop-shadow-[0_1px_4px_rgba(0,0,0,0.6)] group-hover:text-white/90 transition-colors duration-300">
-                        <div className="flex items-center gap-1">
-                          <BookOpen className="h-3 w-3" />
-                          <span>{content.topics?.[0]?.title}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <User className="h-3 w-3" />
-                          <span>Grade {content.topics?.[0]?.grade_level}</span>
-                        </div>
-                      </div>
-
-                      {/* Action Button */}
-                      <div className="flex justify-end">
-                        <Button
-                          onClick={() => handleViewContent(content)}
-                          className="px-4 py-2 bg-green-600/60 hover:bg-green-600/80 transition-all duration-300 text-white text-sm rounded-full border border-green-400/40 backdrop-blur-sm shadow-md hover:shadow-green-500/30"
-                          size="sm"
-                        >
-                          <Eye className="h-3 w-3 mr-1" />
-                          Explore
-                        </Button>
-                      </div>
-                    </div>
-                  </Card>
-                )
-              })}
             </div>
 
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <Card className="p-6 bg-white/12 backdrop-blur-lg border border-white/25 rounded-2xl shadow-lg">
-                <div className="flex items-center justify-between">
-                  <Button
-                    variant="outline"
-                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                    disabled={currentPage === 1}
-                    className="px-4 py-2 rounded-full border border-blue-400/40 bg-blue-400/20 text-blue-200 backdrop-blur-sm hover:bg-blue-400/30 hover:border-blue-300/60 transition-all duration-300 disabled:opacity-50 disabled:hover:bg-blue-400/20"
-                  >
-                    <ChevronLeft className="h-4 w-4 mr-2" />
-                    Previous
-                  </Button>
-                  
-                  <div className="flex items-center space-x-2">
-                    {[...Array(totalPages)].map((_, index) => {
-                      const page = index + 1
-                      const isActive = page === currentPage
-                      return (
-                        <Button
-                          key={page}
-                          variant={isActive ? "default" : "outline"}
-                          onClick={() => setCurrentPage(page)}
-                          className={
-                            isActive
-                              ? "w-10 h-10 rounded-full bg-gradient-to-r from-green-600/80 to-blue-600/80 text-white border border-green-400/30 backdrop-blur-sm shadow-lg drop-shadow-[0_0_15px_rgba(34,197,94,0.4)]"
-                              : "w-10 h-10 rounded-full border border-white/30 bg-white/10 text-white/80 backdrop-blur-sm hover:bg-white/20 hover:border-white/40 transition-all duration-300"
-                          }
-                        >
-                          {page}
-                        </Button>
-                      )
-                    })}
-                  </div>
-                  
-                  <Button
-                    variant="outline"
-                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                    disabled={currentPage === totalPages}
-                    className="px-4 py-2 rounded-full border border-blue-400/40 bg-blue-400/20 text-blue-200 backdrop-blur-sm hover:bg-blue-400/30 hover:border-blue-300/60 transition-all duration-300 disabled:opacity-50 disabled:hover:bg-blue-400/20"
-                  >
-                    Next
-                    <ChevronRight className="h-4 w-4 ml-2" />
-                  </Button>
+            {/* Legend */}
+            <Card className="mb-6 p-4 bg-white/12 backdrop-blur-lg border border-white/25 rounded-xl shadow-lg">
+              <div className="flex items-center justify-center gap-8 text-sm">
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-3 bg-gradient-to-r from-purple-600 to-purple-800 rounded border border-purple-400/50"></div>
+                  <span className="text-white/80">Purple FACT cards flip to reveal details</span>
                 </div>
-              </Card>
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-4 bg-gradient-to-r from-cyan-600 to-cyan-800 rounded border border-cyan-400/50"></div>
+                  <span className="text-white/80">Cyan INFO cards expand for more content</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <svg width="20" height="8">
+                    <line x1="0" y1="4" x2="20" y2="4" stroke="url(#legendGradient)" strokeWidth="2" strokeDasharray="3,2" />
+                    <defs>
+                      <linearGradient id="legendGradient">
+                        <stop offset="0%" stopColor="#8b5cf6" />
+                        <stop offset="100%" stopColor="#06b6d4" />
+                      </linearGradient>
+                    </defs>
+                  </svg>
+                  <span className="text-white/80">Lines show connections</span>
+                </div>
+              </div>
+            </Card>
+          </div>
+
+          {/* Discovery Area */}
+          <div className="relative min-h-[calc(100vh-200px)] overflow-hidden">
+            {loading ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-400 mx-auto mb-4"></div>
+                  <p className="text-white/80">Discovering amazing content...</p>
+                </div>
+              </div>
+            ) : filteredContent.length === 0 ? (
+              <div className="flex items-center justify-center h-full">
+                <Card className="p-8 bg-white/12 backdrop-blur-lg border border-white/25 rounded-xl shadow-lg text-center">
+                  <Eye className="h-16 w-16 mx-auto text-cyan-400/60 mb-4" />
+                  <h3 className="text-xl font-semibold text-white mb-2">No discoveries found</h3>
+                  <p className="text-white/80 mb-4">Try adjusting your search or explore different topics</p>
+                  <Button 
+                    onClick={fetchDiscoveryContent}
+                    className="bg-gradient-to-r from-cyan-600/80 to-purple-600/80 hover:from-cyan-600 hover:to-purple-600 text-white"
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Refresh Content
+                  </Button>
+                </Card>
+              </div>
+            ) : (
+              <div 
+                ref={containerRef}
+                className="constellation-container relative w-full h-full" 
+                style={{ 
+                  minHeight: '700px',
+                  position: 'relative',
+                  width: '100%',
+                  height: '700px',
+                  overflow: 'hidden'
+                }}
+              >
+                {renderConnections()}
+                {filteredContent.map((card) => renderCard(card))}
+              </div>
             )}
-          </>
-        )}
+          </div>
 
-        {/* Navigation */}
-        <div className="mt-12 text-center">
-          <Link href="/arcade">
-            <Button 
-              variant="outline" 
-              className="mx-2 px-6 py-3 rounded-full border border-purple-400/40 bg-purple-400/20 text-purple-200 backdrop-blur-sm hover:bg-purple-400/30 hover:border-purple-300/60 transition-all duration-300"
-            >
-              Try Knowledge Arcade
-            </Button>
-          </Link>
-        </div>
+          {/* Navigation */}
+          <div className="relative z-20 text-center py-6">
+            <Link href="/arcade">
+              <Button 
+                variant="outline" 
+                className="px-6 py-3 rounded-full border border-purple-400/40 bg-purple-400/20 text-purple-200 backdrop-blur-sm hover:bg-purple-400/30 hover:border-purple-300/60 transition-all duration-300"
+              >
+                Try Knowledge Arcade
+              </Button>
+            </Link>
+          </div>
         </PageTransition>
-      </main>
-
-      {/* Fact Modal */}
-      <Modal
-        isOpen={!!selectedContent}
-        onClose={handleCloseContent}
-        title={selectedContent ? getModalTitle(selectedContent) : ''}
-        size="lg"
-      >
-        {selectedContent && renderFactModal(selectedContent)}
-      </Modal>
+      </div>
     </VantaBackground>
   )
 }
