@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search')
 
     let query = supabase
-      .from('topic_content_entries')
+      .from('discovery_content')
       .select(`
         *,
         topics:topic_id (
@@ -36,22 +36,21 @@ export async function GET(request: NextRequest) {
           full_name
         )
       `)
-      .eq('category', 'DISCOVERY')
       .eq('status', status)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)
 
     if (subtype) {
-      query = query.eq('subtype', subtype)
+      query = query.eq('content_type', subtype)
     }
     if (topic_id) {
       query = query.eq('topic_id', topic_id)
     }
     if (grade) {
-      query = query.eq('topics.grade_level', parseInt(grade))
+      query = query.eq('grade_level', parseInt(grade))
     }
     if (search) {
-      query = query.or(`title.ilike.%${search}%,payload->>preview_text.ilike.%${search}%`)
+      query = query.or(`title.ilike.%${search}%,preview_text.ilike.%${search}%`)
     }
 
     const { data, error, count } = await query
@@ -78,9 +77,13 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const {
       topic_id,
-      subtype = 'FACT', // FACT or INFO
+      content_type = 'FACT', // FACT or INFO
       title,
-      payload,
+      preview_text, // Will map to fact_text
+      full_text,    // Will map to detail_explanation
+      image_url,
+      tags = [],
+      difficulty_level,
       status = 'draft',
       created_by,
       ai_generated = false,
@@ -88,42 +91,36 @@ export async function POST(request: NextRequest) {
     } = body
 
     // Validate required fields
-    if (!topic_id || !payload || !created_by) {
+    if (!topic_id || !preview_text || !full_text || !created_by) {
       return NextResponse.json(
-        { error: 'Missing required fields: topic_id, payload, created_by' },
+        { error: 'Missing required fields: topic_id, preview_text, full_text, created_by' },
         { status: 400 }
       )
     }
 
-    // Validate discovery subtypes
-    const validSubtypes = ['FACT', 'INFO']
-    if (!validSubtypes.includes(subtype)) {
+    // Validate content types
+    const validContentTypes = ['FACT', 'INFO']
+    if (!validContentTypes.includes(content_type)) {
       return NextResponse.json(
-        { error: `Invalid subtype ${subtype} for discovery content` },
-        { status: 400 }
-      )
-    }
-
-    // Validate payload structure for discovery content
-    if (!payload.preview_text || !payload.full_text) {
-      return NextResponse.json(
-        { error: 'Discovery payload must include preview_text and full_text' },
+        { error: `Invalid content_type ${content_type} for discovery content` },
         { status: 400 }
       )
     }
 
     const { data, error } = await supabase
-      .from('topic_content_entries')
+      .from('discovery_content')
       .insert({
         topic_id,
-        category: 'DISCOVERY',
-        subtype,
+        content_type,
         title,
-        payload,
+        fact_text: preview_text,  // Map to correct column
+        detail_explanation: full_text,  // Map to correct column
+        image_url,
+        tags,
+        reading_level: difficulty_level,  // Map to correct column name
         status,
         created_by,
-        ai_generated,
-        meta
+        ai_generated
       })
       .select(`
         *,
@@ -160,15 +157,13 @@ export async function PUT(request: NextRequest) {
     // Remove fields that shouldn't be updated directly
     delete updateData.created_at
     delete updateData.created_by
-    delete updateData.category
 
     updateData.updated_at = new Date().toISOString()
 
     const { data, error } = await supabase
-      .from('topic_content_entries')
+      .from('discovery_content')
       .update(updateData)
       .eq('id', id)
-      .eq('category', 'DISCOVERY')
       .select(`
         *,
         topics:topic_id (
@@ -205,15 +200,11 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Discovery content ID is required' }, { status: 400 })
     }
 
-    // Soft delete by updating status to 'deleted'
+    // Hard delete - actually remove from database
     const { data, error } = await supabase
-      .from('topic_content_entries')
-      .update({ 
-        status: 'deleted',
-        updated_at: new Date().toISOString()
-      })
+      .from('discovery_content')
+      .delete()
       .eq('id', id)
-      .eq('category', 'DISCOVERY')
       .select('id, title')
       .single()
 

@@ -43,7 +43,7 @@ interface CrosswordClue {
 }
 
 interface ArcadeEditorProps {
-  subtype: 'QUIZ' | 'FLASHCARDS' | 'GAME'
+  game_type: 'QUIZ' | 'FLASHCARDS' | 'GAME'
   initialData?: any
   topicId?: string
   onSave: (data: any) => void
@@ -51,7 +51,7 @@ interface ArcadeEditorProps {
   open: boolean
 }
 
-export function ArcadeEditor({ subtype, initialData, topicId, onSave, onCancel, open }: ArcadeEditorProps) {
+export function ArcadeEditor({ game_type, initialData, topicId, onSave, onCancel, open }: ArcadeEditorProps) {
   const { session } = useAuth()
   const [currentTab, setCurrentTab] = useState('content')
   const [title, setTitle] = useState('')
@@ -76,25 +76,29 @@ export function ArcadeEditor({ subtype, initialData, topicId, onSave, onCancel, 
   useEffect(() => {
     if (initialData) {
       setTitle(initialData.title || '')
-      setDifficulty(initialData.difficulty || 'MEDIUM')
+      // Handle both old and new field names for backward compatibility
+      setDifficulty(initialData.difficulty_level || initialData.difficulty || 'MEDIUM')
       setSelectedTopicId(initialData.topic_id || topicId || '')
       
-      if (subtype === 'QUIZ' && initialData.payload?.questions) {
+      // Check both new (game_data) and old (payload) field names
+      const gameData = initialData.game_data || initialData.payload
+      
+      if (game_type === 'QUIZ' && gameData?.questions) {
         // Ensure each question has proper structure
-        const validatedQuestions = initialData.payload.questions.map((q: any) => ({
+        const validatedQuestions = gameData.questions.map((q: any) => ({
           question: q.question || '',
           options: q.options || ['', '', '', ''],
           correct: q.correct || 0,
           explanation: q.explanation || ''
         }))
         setQuestions(validatedQuestions)
-      } else if (subtype === 'FLASHCARDS' && initialData.payload?.cards) {
-        setFlashcards(initialData.payload.cards)
-      } else if (subtype === 'GAME' && initialData.payload?.clues) {
-        setCrosswordClues(initialData.payload.clues)
+      } else if (game_type === 'FLASHCARDS' && gameData?.cards) {
+        setFlashcards(gameData.cards)
+      } else if (game_type === 'GAME' && gameData?.clues) {
+        setCrosswordClues(gameData.clues)
       }
     }
-  }, [initialData, subtype, topicId])
+  }, [initialData, game_type, topicId])
 
   useEffect(() => {
     fetchTopics()
@@ -129,9 +133,9 @@ export function ArcadeEditor({ subtype, initialData, topicId, onSave, onCancel, 
         },
         body: JSON.stringify({
           topic_id: selectedTopicId,
-          subtype,
+          game_type,
           description: aiDescription,
-          difficulty,
+          difficulty_level: difficulty,
           count: 5
         })
       })
@@ -143,19 +147,19 @@ export function ArcadeEditor({ subtype, initialData, topicId, onSave, onCancel, 
 
       setTitle(generatedData.title)
       
-      if (subtype === 'QUIZ' && generatedData.payload?.questions) {
+      if (game_type === 'QUIZ' && generatedData.game_data?.questions) {
         // Ensure each question has proper structure
-        const validatedQuestions = generatedData.payload.questions.map((q: any) => ({
+        const validatedQuestions = generatedData.game_data.questions.map((q: any) => ({
           question: q.question || '',
           options: q.options || ['', '', '', ''],
           correct: q.correct || 0,
           explanation: q.explanation || ''
         }))
         setQuestions(validatedQuestions)
-      } else if (subtype === 'FLASHCARDS' && generatedData.payload?.cards) {
-        setFlashcards(generatedData.payload.cards)
-      } else if (subtype === 'GAME' && generatedData.payload?.clues) {
-        setCrosswordClues(generatedData.payload.clues)
+      } else if (game_type === 'FLASHCARDS' && generatedData.game_data?.cards) {
+        setFlashcards(generatedData.game_data.cards)
+      } else if (game_type === 'GAME' && generatedData.game_data?.clues) {
+        setCrosswordClues(generatedData.game_data.clues)
       }
 
       setCurrentTab('content')
@@ -169,21 +173,21 @@ export function ArcadeEditor({ subtype, initialData, topicId, onSave, onCancel, 
   const handleSave = async () => {
     if (!title || !selectedTopicId) return
 
-    let payload
-    if (subtype === 'QUIZ') {
-      payload = { questions, type: 'multiple_choice' }
-    } else if (subtype === 'FLASHCARDS') {
-      payload = { cards: flashcards, type: 'flashcards' }
-    } else if (subtype === 'GAME') {
-      payload = { clues: crosswordClues, type: 'crossword' }
+    let game_data
+    if (game_type === 'QUIZ') {
+      game_data = { questions, type: 'multiple_choice' }
+    } else if (game_type === 'FLASHCARDS') {
+      game_data = { cards: flashcards, type: 'flashcards' }
+    } else if (game_type === 'GAME') {
+      game_data = { clues: crosswordClues, type: 'crossword' }
     }
 
     const data = {
       topic_id: selectedTopicId,
-      subtype,
+      game_type,
       title,
-      payload,
-      difficulty,
+      game_data,
+      difficulty_level: difficulty,
       status: 'draft',
       created_by: session?.user?.id,
       ai_generated: false
@@ -474,7 +478,7 @@ export function ArcadeEditor({ subtype, initialData, topicId, onSave, onCancel, 
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Gamepad2 className="h-5 w-5" />
-            {initialData ? 'Edit' : 'Create'} {subtype}
+            {initialData ? 'Edit' : 'Create'} {game_type}
           </DialogTitle>
         </DialogHeader>
 
@@ -582,9 +586,9 @@ export function ArcadeEditor({ subtype, initialData, topicId, onSave, onCancel, 
               </div>
             </Card>
 
-            {subtype === 'QUIZ' && renderQuizEditor()}
-            {subtype === 'FLASHCARDS' && renderFlashcardsEditor()}
-            {subtype === 'GAME' && renderGameEditor()}
+            {game_type === 'QUIZ' && renderQuizEditor()}
+            {game_type === 'FLASHCARDS' && renderFlashcardsEditor()}
+            {game_type === 'GAME' && renderGameEditor()}
           </TabsContent>
         </Tabs>
 
@@ -594,7 +598,7 @@ export function ArcadeEditor({ subtype, initialData, topicId, onSave, onCancel, 
           </Button>
           <Button onClick={handleSave} disabled={!title || !selectedTopicId}>
             <Save className="h-4 w-4 mr-2" />
-            Save {subtype}
+            Save {game_type}
           </Button>
         </div>
       </DialogContent>

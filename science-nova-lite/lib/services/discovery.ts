@@ -9,9 +9,8 @@ export interface DiscoveryFactMeta {
 
 export async function fetchDiscoveryTopicCandidateIds(): Promise<string[]> {
   const { data, error } = await supabase
-    .from('topic_content_entries')
+    .from('discovery_content')
     .select('topic_id')
-    .eq('category', 'DISCOVERY')
     .eq('status', 'published')
   if (error) return []
   const set = new Set<string>()
@@ -27,10 +26,9 @@ export function pickDeterministicDiscovery(topics: string[], userId: string, dat
 
 export async function fetchFactsForTopic(topicId: string): Promise<DiscoveryFactMeta[]> {
   const { data } = await supabase
-    .from('topic_content_entries')
-    .select('id, topic_id, payload')
+    .from('discovery_content')
+    .select('id, topic_id, fact_text')
     .eq('topic_id', topicId)
-    .eq('category', 'DISCOVERY')
     .eq('status', 'published')
-  return (data || []).map((r: any) => ({ id: r.id, topic_id: r.topic_id, text: r.payload?.text || '' }))
+  return (data || []).map((r: any) => ({ id: r.id, topic_id: r.topic_id, text: r.fact_text || '' }))
 }

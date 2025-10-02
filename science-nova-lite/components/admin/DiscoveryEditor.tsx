@@ -45,12 +45,18 @@ export function DiscoveryEditor({ subtype = 'FACT', initialData, topicId, onSave
     if (initialData) {
       setTitle(initialData.title || '')
       setSelectedTopicId(initialData.topic_id || topicId || '')
-      setSelectedSubtype(initialData.subtype || subtype)
+      setSelectedSubtype(initialData.subtype || initialData.content_type || subtype)
       
+      // Handle both old payload structure and new direct fields
       if (initialData.payload) {
         setPreviewText(initialData.payload.preview_text || '')
         setFullText(initialData.payload.full_text || '')
         setSource(initialData.payload.source || '')
+      } else {
+        // New structure with direct fields
+        setPreviewText(initialData.preview_text || '')
+        setFullText(initialData.full_text || '')
+        setSource(initialData.source || '')
       }
     }
   }, [initialData, subtype, topicId])
@@ -101,10 +107,15 @@ export function DiscoveryEditor({ subtype = 'FACT', initialData, topicId, onSave
 
       setTitle(generatedData.title)
       
+      // Handle both old (payload) and new (direct fields) response formats
       if (generatedData.payload) {
         setPreviewText(generatedData.payload.preview_text || '')
         setFullText(generatedData.payload.full_text || '')
         setSource(generatedData.payload.source || '')
+      } else {
+        setPreviewText(generatedData.preview_text || '')
+        setFullText(generatedData.full_text || '')
+        setSource(generatedData.source || '')
       }
 
       setCurrentTab('content')
@@ -118,21 +129,22 @@ export function DiscoveryEditor({ subtype = 'FACT', initialData, topicId, onSave
   const handleSave = async () => {
     if (!title || !selectedTopicId || !previewText || !fullText) return
 
-    const payload = {
-      preview_text: previewText,
-      full_text: fullText,
-      source: source || 'Educational Content',
-      type: selectedSubtype.toLowerCase()
-    }
-
+    // Use new field structure for the restructured API
     const data = {
       topic_id: selectedTopicId,
-      subtype: selectedSubtype,
+      content_type: selectedSubtype,
       title,
-      payload,
+      preview_text: previewText,
+      full_text: fullText,
+      tags: [], // Add tags support later
+      difficulty_level: 'MEDIUM', // Default difficulty
       status: 'draft',
       created_by: session?.user?.id,
-      ai_generated: false
+      ai_generated: false,
+      meta: {
+        source: source || 'Educational Content',
+        type: selectedSubtype.toLowerCase()
+      }
     }
 
     onSave(data)

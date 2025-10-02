@@ -9,8 +9,8 @@ const supabase = createClient(
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const category = searchParams.get('category') // ARCADE or DISCOVERY
-    const subtype = searchParams.get('subtype') // QUIZ, FLASHCARDS, GAME, FACT, INFO
+    const category = searchParams.get('category') // DISCOVERY, ARCADE, LESSONS
+    const subtype = searchParams.get('subtype') // Content type/game type/lesson type
     const status = searchParams.get('status') || 'published'
     const grade = searchParams.get('grade')
     const topic_id = searchParams.get('topic_id')
@@ -18,55 +18,97 @@ export async function GET(request: NextRequest) {
     const offset = parseInt(searchParams.get('offset') || '0')
     const search = searchParams.get('search')
 
-    let query = supabase
-      .from('topic_content_entries')
-      .select(`
-        *,
-        topics:topic_id (
-          id,
-          title,
-          grade_level,
-          study_area_id,
-          study_areas:study_area_id (
+    let allResults: any[] = []
+    let totalCount = 0
+
+    // Query each table based on category filter or query all if no category specified
+    const categoriesToQuery = category ? [category] : ['DISCOVERY', 'ARCADE', 'LESSONS']
+
+    for (const cat of categoriesToQuery) {
+      let query: any
+      let table: string
+      let subtypeField: string
+
+      switch (cat) {
+        case 'DISCOVERY':
+          table = 'discovery_content'
+          subtypeField = 'content_type'
+          break
+        case 'ARCADE':
+          table = 'arcade_games'
+          subtypeField = 'game_type'
+          break
+        case 'LESSONS':
+          table = 'lessons'
+          subtypeField = 'lesson_type'
+          break
+        default:
+          continue
+      }
+
+      query = supabase
+        .from(table)
+        .select(`
+          *,
+          topics:topic_id (
             id,
-            name
+            title,
+            grade_level,
+            study_area_id,
+            study_areas:study_area_id (
+              id,
+              name
+            )
+          ),
+          profiles:created_by (
+            id,
+            full_name
           )
-        ),
-        profiles:created_by (
-          id,
-          full_name
-        )
-      `)
-      .eq('status', status)
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1)
+        `)
+        .eq('status', status)
+        .order('created_at', { ascending: false })
 
-    if (category) {
-      query = query.eq('category', category)
-    }
-    if (subtype) {
-      query = query.eq('subtype', subtype)
-    }
-    if (topic_id) {
-      query = query.eq('topic_id', topic_id)
-    }
-    if (grade) {
-      query = query.eq('topics.grade_level', parseInt(grade))
-    }
-    if (search) {
-      query = query.ilike('title', `%${search}%`)
+      if (subtype) {
+        query = query.eq(subtypeField, subtype)
+      }
+      if (topic_id) {
+        query = query.eq('topic_id', topic_id)
+      }
+      if (grade) {
+        query = query.eq('topics.grade_level', parseInt(grade))
+      }
+      if (search) {
+        query = query.ilike('title', `%${search}%`)
+      }
+
+      const { data, error, count } = await query
+
+      if (error) {
+        console.error(`${cat} content fetch error:`, error)
+        continue // Skip this category on error
+      }
+
+      if (data) {
+        // Add category field to each result for frontend identification
+        const categorizedData = data.map((item: any) => ({
+          ...item,
+          category: cat,
+          subtype: item[subtypeField]
+        }))
+        allResults.push(...categorizedData)
+        totalCount += count || 0
+      }
     }
 
-    const { data, error, count } = await query
+    // Sort all results by created_at descending
+    allResults.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
-    if (error) {
-      console.error('Content fetch error:', error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
-    }
+    // Apply pagination to combined results
+    const paginatedResults = allResults.slice(offset, offset + limit)
 
     return NextResponse.json({
-      data: data || [],
-      total: count || 0,
+      data: paginatedResults,
+      total: totalCount,
       limit,
       offset
     })
@@ -79,71 +121,52 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const {
-      topic_id,
-      category, // ARCADE or DISCOVERY
-      subtype, // QUIZ, FLASHCARDS, GAME, FACT, INFO
-      title,
-      payload,
-      difficulty,
-      status = 'draft',
-      created_by,
-      ai_generated = false,
-      meta = {}
-    } = body
+    const { category, ...contentData } = body
 
     // Validate required fields
-    if (!topic_id || !category || !subtype || !payload || !created_by) {
+    if (!category) {
       return NextResponse.json(
-        { error: 'Missing required fields: topic_id, category, subtype, payload, created_by' },
+        { error: 'Missing required field: category' },
         { status: 400 }
       )
     }
 
-    // Validate category and subtype combinations
-    const validCombinations = {
-      ARCADE: ['QUIZ', 'FLASHCARDS', 'GAME'],
-      DISCOVERY: ['FACT', 'INFO']
-    }
-
-    if (!validCombinations[category as keyof typeof validCombinations]?.includes(subtype)) {
-      return NextResponse.json(
-        { error: `Invalid subtype ${subtype} for category ${category}` },
-        { status: 400 }
-      )
-    }
-
-    const { data, error } = await supabase
-      .from('topic_content_entries')
-      .insert({
-        topic_id,
-        category,
-        subtype,
-        title,
-        payload,
-        difficulty,
-        status,
-        created_by,
-        ai_generated,
-        meta
-      })
-      .select(`
-        *,
-        topics:topic_id (
-          id,
-          title,
-          grade_level,
-          study_area_id
+    // Route to appropriate endpoint based on category
+    let apiEndpoint: string
+    switch (category) {
+      case 'DISCOVERY':
+        apiEndpoint = '/api/admin/discovery'
+        break
+      case 'ARCADE':
+        apiEndpoint = '/api/admin/arcade'
+        break
+      case 'LESSONS':
+        apiEndpoint = '/api/admin/lessons'
+        break
+      default:
+        return NextResponse.json(
+          { error: `Invalid category ${category}. Valid categories: DISCOVERY, ARCADE, LESSONS` },
+          { status: 400 }
         )
-      `)
-      .single()
-
-    if (error) {
-      console.error('Content creation error:', error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    return NextResponse.json({ data }, { status: 201 })
+    // Forward the request to the appropriate specialized endpoint
+    const baseUrl = new URL(request.url).origin
+    const response = await fetch(`${baseUrl}${apiEndpoint}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(contentData)
+    })
+
+    const result = await response.json()
+    
+    if (!response.ok) {
+      return NextResponse.json(result, { status: response.status })
+    }
+
+    return NextResponse.json(result, { status: 201 })
   } catch (error) {
     console.error('Content creation API error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -153,45 +176,52 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json()
-    const { id, ...updateData } = body
+    const { id, category, ...updateData } = body
 
     if (!id) {
       return NextResponse.json({ error: 'Content ID is required' }, { status: 400 })
     }
 
-    // Remove fields that shouldn't be updated directly
-    delete updateData.created_at
-    delete updateData.created_by
-    delete updateData.version
+    if (!category) {
+      return NextResponse.json({ error: 'Category is required for updates' }, { status: 400 })
+    }
 
-    // Set updated timestamp
-    updateData.updated_at = new Date().toISOString()
-
-    const { data, error } = await supabase
-      .from('topic_content_entries')
-      .update(updateData)
-      .eq('id', id)
-      .select(`
-        *,
-        topics:topic_id (
-          id,
-          title,
-          grade_level,
-          study_area_id
+    // Route to appropriate endpoint based on category
+    let apiEndpoint: string
+    switch (category) {
+      case 'DISCOVERY':
+        apiEndpoint = '/api/admin/discovery'
+        break
+      case 'ARCADE':
+        apiEndpoint = '/api/admin/arcade'
+        break
+      case 'LESSONS':
+        apiEndpoint = '/api/admin/lessons'
+        break
+      default:
+        return NextResponse.json(
+          { error: `Invalid category ${category}. Valid categories: DISCOVERY, ARCADE, LESSONS` },
+          { status: 400 }
         )
-      `)
-      .single()
-
-    if (error) {
-      console.error('Content update error:', error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    if (!data) {
-      return NextResponse.json({ error: 'Content not found' }, { status: 404 })
+    // Forward the request to the appropriate specialized endpoint
+    const baseUrl = new URL(request.url).origin
+    const response = await fetch(`${baseUrl}${apiEndpoint}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ id, ...updateData })
+    })
+
+    const result = await response.json()
+    
+    if (!response.ok) {
+      return NextResponse.json(result, { status: response.status })
     }
 
-    return NextResponse.json({ data })
+    return NextResponse.json(result)
   } catch (error) {
     console.error('Content update API error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -202,35 +232,48 @@ export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
+    const category = searchParams.get('category')
 
     if (!id) {
       return NextResponse.json({ error: 'Content ID is required' }, { status: 400 })
     }
 
-    // Soft delete by updating status to 'deleted'
-    const { data, error } = await supabase
-      .from('topic_content_entries')
-      .update({ 
-        status: 'deleted',
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', id)
-      .select('id, title')
-      .single()
-
-    if (error) {
-      console.error('Content deletion error:', error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
+    if (!category) {
+      return NextResponse.json({ error: 'Category is required for deletion' }, { status: 400 })
     }
 
-    if (!data) {
-      return NextResponse.json({ error: 'Content not found' }, { status: 404 })
+    // Route to appropriate endpoint based on category
+    let apiEndpoint: string
+    switch (category) {
+      case 'DISCOVERY':
+        apiEndpoint = '/api/admin/discovery'
+        break
+      case 'ARCADE':
+        apiEndpoint = '/api/admin/arcade'
+        break
+      case 'LESSONS':
+        apiEndpoint = '/api/admin/lessons'
+        break
+      default:
+        return NextResponse.json(
+          { error: `Invalid category ${category}. Valid categories: DISCOVERY, ARCADE, LESSONS` },
+          { status: 400 }
+        )
     }
 
-    return NextResponse.json({ 
-      message: 'Content deleted successfully',
-      data: { id: data.id, title: data.title }
+    // Forward the request to the appropriate specialized endpoint
+    const baseUrl = new URL(request.url).origin
+    const response = await fetch(`${baseUrl}${apiEndpoint}?id=${id}`, {
+      method: 'DELETE'
     })
+
+    const result = await response.json()
+    
+    if (!response.ok) {
+      return NextResponse.json(result, { status: response.status })
+    }
+
+    return NextResponse.json(result)
   } catch (error) {
     console.error('Content deletion API error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

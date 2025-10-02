@@ -1,12 +1,57 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { RoleGuard } from "@/components/layout/role-guard"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Gamepad2, Search, Settings, BarChart3, FileText, Plus, Rocket, BookOpen, Users, Eye } from "lucide-react"
+import { useAuth } from "@/contexts/auth-context"
 
 export default function ContentManagerPage() {
+  const { session } = useAuth()
+  const [stats, setStats] = useState({
+    arcadeGames: 0,
+    discoveryContent: 0,
+    totalInteractions: 0,
+    totalContent: 0
+  })
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      if (!session) return
+      
+      try {
+        // Fetch arcade games count
+        const arcadeResponse = await fetch('/api/admin/content?category=ARCADE&limit=1', {
+          headers: { 'Authorization': `Bearer ${session.access_token}` }
+        })
+        const arcadeData = await arcadeResponse.json()
+        const arcadeCount = arcadeData.total || 0
+
+        // Fetch discovery content count
+        const discoveryResponse = await fetch('/api/admin/content?category=DISCOVERY&limit=1', {
+          headers: { 'Authorization': `Bearer ${session.access_token}` }
+        })
+        const discoveryData = await discoveryResponse.json()
+        const discoveryCount = discoveryData.total || 0
+
+        setStats({
+          arcadeGames: arcadeCount,
+          discoveryContent: discoveryCount,
+          totalInteractions: 0, // TODO: Implement interactions tracking
+          totalContent: arcadeCount + discoveryCount
+        })
+      } catch (error) {
+        console.error('Error fetching content stats:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchStats()
+  }, [session])
   return (
     <div
       className="min-h-screen bg-gradient-to-br from-sky-50 via-violet-50 to-fuchsia-50"
@@ -47,19 +92,27 @@ export default function ContentManagerPage() {
                 {/* Quick Stats */}
                 <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="rounded-2xl bg-white/60 backdrop-blur p-4 shadow-lg">
-                    <div className="text-2xl font-bold text-purple-900">0</div>
+                    <div className="text-2xl font-bold text-purple-900">
+                      {loading ? "..." : stats.arcadeGames}
+                    </div>
                     <div className="text-sm text-purple-700">Arcade Games</div>
                   </div>
                   <div className="rounded-2xl bg-white/60 backdrop-blur p-4 shadow-lg">
-                    <div className="text-2xl font-bold text-green-900">0</div>
+                    <div className="text-2xl font-bold text-green-900">
+                      {loading ? "..." : stats.discoveryContent}
+                    </div>
                     <div className="text-sm text-green-700">Discovery Content</div>
                   </div>
                   <div className="rounded-2xl bg-white/60 backdrop-blur p-4 shadow-lg">
-                    <div className="text-2xl font-bold text-blue-900">0</div>
+                    <div className="text-2xl font-bold text-blue-900">
+                      {loading ? "..." : stats.totalInteractions}
+                    </div>
                     <div className="text-sm text-blue-700">Total Interactions</div>
                   </div>
                   <div className="rounded-2xl bg-white/60 backdrop-blur p-4 shadow-lg">
-                    <div className="text-2xl font-bold text-orange-900">0</div>
+                    <div className="text-2xl font-bold text-orange-900">
+                      {loading ? "..." : stats.totalContent}
+                    </div>
                     <div className="text-sm text-orange-700">Content Items</div>
                   </div>
                 </div>

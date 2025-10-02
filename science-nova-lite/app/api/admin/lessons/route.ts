@@ -9,7 +9,7 @@ const supabase = createClient(
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const subtype = searchParams.get('subtype') // QUIZ, FLASHCARDS, GAME
+    const lesson_type = searchParams.get('lesson_type') // INTERACTIVE, VIDEO, TEXT
     const status = searchParams.get('status') || 'published'
     const grade = searchParams.get('grade')
     const topic_id = searchParams.get('topic_id')
@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search')
 
     let query = supabase
-      .from('arcade_games')
+      .from('lessons')
       .select(`
         *,
         topics:topic_id (
@@ -40,8 +40,8 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)
 
-    if (subtype) {
-      query = query.eq('game_type', subtype)
+    if (lesson_type) {
+      query = query.eq('lesson_type', lesson_type)
     }
     if (topic_id) {
       query = query.eq('topic_id', topic_id)
@@ -50,13 +50,13 @@ export async function GET(request: NextRequest) {
       query = query.eq('grade_level', parseInt(grade))
     }
     if (search) {
-      query = query.ilike('title', `%${search}%`)
+      query = query.or(`title.ilike.%${search}%,description.ilike.%${search}%`)
     }
 
     const { data, error, count } = await query
 
     if (error) {
-      console.error('Arcade fetch error:', error)
+      console.error('Lessons fetch error:', error)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
       offset
     })
   } catch (error) {
-    console.error('Arcade API error:', error)
+    console.error('Lessons API error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -77,48 +77,51 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const {
       topic_id,
-      game_type, // QUIZ, CROSSWORD, WORDSEARCH, MEMORY
+      lesson_type, // INTERACTIVE, VIDEO, TEXT
       title,
       description,
-      game_data,
+      content,
       difficulty_level,
-      estimated_play_time = 300, // Default 5 minutes if not provided
+      estimated_duration,
+      learning_objectives = [],
       status = 'draft',
       created_by,
-      ai_generated = false
+      ai_generated = false,
+      meta = {}
     } = body
 
     // Validate required fields
-    if (!topic_id || !game_type || !game_data || !created_by) {
+    if (!topic_id || !lesson_type || !title || !content || !created_by) {
       return NextResponse.json(
-        { error: 'Missing required fields: topic_id, game_type, game_data, created_by' },
+        { error: 'Missing required fields: topic_id, lesson_type, title, content, created_by' },
         { status: 400 }
       )
     }
 
-    // Validate arcade game types - accept both uppercase and lowercase, but store lowercase
-    const validGameTypes = ['quiz', 'crossword', 'wordsearch', 'memory']
-    const normalizedGameType = game_type.toLowerCase()
-    if (!validGameTypes.includes(normalizedGameType)) {
+    // Validate lesson types
+    const validLessonTypes = ['INTERACTIVE', 'VIDEO', 'TEXT']
+    if (!validLessonTypes.includes(lesson_type)) {
       return NextResponse.json(
-        { error: `Invalid game_type ${game_type} for arcade content. Valid types: ${validGameTypes.join(', ')}` },
+        { error: `Invalid lesson_type ${lesson_type} for lessons. Valid types: ${validLessonTypes.join(', ')}` },
         { status: 400 }
       )
     }
 
     const { data, error } = await supabase
-      .from('arcade_games')
+      .from('lessons')
       .insert({
         topic_id,
-        game_type: normalizedGameType, // Store as lowercase to match existing data
+        lesson_type,
         title,
         description,
-        game_data,
+        content,
         difficulty_level,
-        estimated_play_time, // Use correct column name
+        estimated_duration,
+        learning_objectives,
         status,
         created_by,
-        ai_generated
+        ai_generated,
+        meta
       })
       .select(`
         *,
@@ -132,13 +135,13 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
-      console.error('Arcade creation error:', error)
+      console.error('Lesson creation error:', error)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
     return NextResponse.json({ data }, { status: 201 })
   } catch (error) {
-    console.error('Arcade creation API error:', error)
+    console.error('Lesson creation API error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -149,36 +152,18 @@ export async function PUT(request: NextRequest) {
     const { id, ...updateData } = body
 
     if (!id) {
-      return NextResponse.json({ error: 'Arcade content ID is required' }, { status: 400 })
+      return NextResponse.json({ error: 'Lesson ID is required' }, { status: 400 })
     }
 
     // Remove fields that shouldn't be updated directly
     delete updateData.created_at
     delete updateData.created_by
 
-    // Transform data to match database schema (same as POST method)
-    const transformedData: any = { ...updateData }
-    
-    // Fix column name: estimated_duration -> estimated_play_time
-    if (transformedData.estimated_duration !== undefined) {
-      transformedData.estimated_play_time = transformedData.estimated_duration
-      delete transformedData.estimated_duration
-    }
-
-    // Normalize game_type to lowercase to match existing data
-    if (transformedData.game_type) {
-      const validGameTypes = ['quiz', 'crossword', 'wordsearch', 'memory']
-      const normalizedGameType = transformedData.game_type.toLowerCase()
-      if (validGameTypes.includes(normalizedGameType)) {
-        transformedData.game_type = normalizedGameType
-      }
-    }
-
-    transformedData.updated_at = new Date().toISOString()
+    updateData.updated_at = new Date().toISOString()
 
     const { data, error } = await supabase
-      .from('arcade_games')
-      .update(transformedData)
+      .from('lessons')
+      .update(updateData)
       .eq('id', id)
       .select(`
         *,
@@ -192,17 +177,17 @@ export async function PUT(request: NextRequest) {
       .single()
 
     if (error) {
-      console.error('Arcade update error:', error)
+      console.error('Lesson update error:', error)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
     if (!data) {
-      return NextResponse.json({ error: 'Arcade content not found' }, { status: 404 })
+      return NextResponse.json({ error: 'Lesson not found' }, { status: 404 })
     }
 
     return NextResponse.json({ data })
   } catch (error) {
-    console.error('Arcade update API error:', error)
+    console.error('Lesson update API error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -213,32 +198,35 @@ export async function DELETE(request: NextRequest) {
     const id = searchParams.get('id')
 
     if (!id) {
-      return NextResponse.json({ error: 'Arcade content ID is required' }, { status: 400 })
+      return NextResponse.json({ error: 'Lesson ID is required' }, { status: 400 })
     }
 
-    // Hard delete - actually remove from database
+    // Soft delete by updating status to 'deleted'
     const { data, error } = await supabase
-      .from('arcade_games')
-      .delete()
+      .from('lessons')
+      .update({ 
+        status: 'deleted',
+        updated_at: new Date().toISOString()
+      })
       .eq('id', id)
       .select('id, title')
       .single()
 
     if (error) {
-      console.error('Arcade deletion error:', error)
+      console.error('Lesson deletion error:', error)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
     if (!data) {
-      return NextResponse.json({ error: 'Arcade content not found' }, { status: 404 })
+      return NextResponse.json({ error: 'Lesson not found' }, { status: 404 })
     }
 
     return NextResponse.json({ 
-      message: 'Arcade content deleted successfully',
+      message: 'Lesson deleted successfully',
       data: { id: data.id, title: data.title }
     })
   } catch (error) {
-    console.error('Arcade deletion API error:', error)
+    console.error('Lesson deletion API error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

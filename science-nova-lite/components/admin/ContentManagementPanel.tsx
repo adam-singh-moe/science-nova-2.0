@@ -34,10 +34,17 @@ interface ContentEntry {
   id: string
   topic_id: string
   category: 'ARCADE' | 'DISCOVERY'
-  subtype: string
+  // Support both old and new field names for compatibility
+  subtype?: string // Old field name
+  game_type?: string // New field name for arcade
+  content_type?: string // New field name for discovery
   title: string
-  payload: any
-  difficulty?: string
+  payload?: any // Old field name
+  game_data?: any // New field name for arcade
+  preview_text?: string // New field name for discovery
+  full_text?: string // New field name for discovery
+  difficulty?: string // Old field name
+  difficulty_level?: string // New field name
   status: 'draft' | 'published' | 'deleted'
   created_by: string
   ai_generated: boolean
@@ -95,7 +102,14 @@ export function ContentManagementPanel({ initialCategory = 'ARCADE', fixedCatego
       
       if (search) params.append('search', search)
       if (gradeFilter && gradeFilter !== 'all') params.append('grade', gradeFilter)
-      if (subtypeFilter && subtypeFilter !== 'all') params.append('subtype', subtypeFilter)
+      if (subtypeFilter && subtypeFilter !== 'all') {
+        // Use the appropriate parameter name based on category
+        if (activeTab === 'ARCADE') {
+          params.append('game_type', subtypeFilter)
+        } else {
+          params.append('content_type', subtypeFilter)
+        }
+      }
 
       const response = await fetch(`/api/admin/content?${params}`, {
         headers: {
@@ -183,7 +197,7 @@ export function ContentManagementPanel({ initialCategory = 'ARCADE', fixedCatego
             <div className="flex items-center gap-4">
               <span className="flex items-center gap-1">
                 <Target className="h-3 w-3" />
-                {entry.subtype}
+                {entry.game_type || entry.content_type || entry.subtype}
               </span>
               {entry.topics && (
                 <span className="flex items-center gap-1">
@@ -191,9 +205,9 @@ export function ContentManagementPanel({ initialCategory = 'ARCADE', fixedCatego
                   Grade {entry.topics.grade_level}
                 </span>
               )}
-              {entry.difficulty && (
+              {(entry.difficulty_level || entry.difficulty) && (
                 <Badge variant="outline" className="text-xs">
-                  {entry.difficulty}
+                  {entry.difficulty_level || entry.difficulty}
                 </Badge>
               )}
             </div>

@@ -9,6 +9,8 @@ import {
   MoreHorizontal, Calendar, Tag, Archive, CheckCircle, ArrowRight, ArrowLeft
 } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
+import { toast } from "@/hooks/use-toast"
+import { Toaster } from "@/components/ui/toaster"
 
 interface DiscoveryContent {
   id: string
@@ -29,39 +31,78 @@ export default function DiscoveryManagerPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState<'all' | 'draft' | 'published'>('all')
   const [typeFilter, setTypeFilter] = useState<'all' | 'fun-fact' | 'info'>('all')
+  const [viewModalOpen, setViewModalOpen] = useState(false)
+  const [selectedItem, setSelectedItem] = useState<DiscoveryContent | null>(null)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [itemToDelete, setItemToDelete] = useState<DiscoveryContent | null>(null)
 
-  // Mock data for now - replace with actual API call
+  // Fetch discovery content from API
   useEffect(() => {
-    setLoading(true)
-    // Simulate API call
-    setTimeout(() => {
-      setDiscoveryItems([
-        {
-          id: '1',
-          title: 'Ocean Facts: Amazing Marine Life',
-          type: 'fun-fact',
-          status: 'published',
-          category: 'Marine Biology',
-          tags: ['ecosystems', 'marine-life'],
-          created_at: '2025-09-20T10:00:00Z',
-          updated_at: '2025-09-21T15:30:00Z',
-          created_by: 'teacher@example.com'
-        },
-        {
-          id: '2',
-          title: 'Wildlife Information Guide',
-          type: 'info',
-          status: 'draft',
-          category: 'Environmental Science',
-          tags: ['wildlife', 'observation'],
-          created_at: '2025-09-22T09:15:00Z',
-          updated_at: '2025-09-22T09:15:00Z',
-          created_by: 'teacher@example.com'
+    const fetchDiscoveryContent = async () => {
+      if (!session) return
+      
+      setLoading(true)
+      try {
+        const params = new URLSearchParams({
+          category: 'DISCOVERY',
+          limit: '100'
+        })
+        
+        if (statusFilter !== 'all') params.append('status', statusFilter)
+        if (typeFilter !== 'all') params.append('content_type', typeFilter.toUpperCase())
+        
+        const response = await fetch(`/api/admin/content?${params}`, {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`
+          }
+        })
+        
+        if (!response.ok) throw new Error('Failed to fetch discovery content')
+        
+        const data = await response.json()
+        const content = (data.data || []).map((item: any) => ({
+          id: item.id,
+          title: item.title,
+          type: (item.content_type || item.subtype || '').toLowerCase().replace('_', '-'),
+          status: item.status,
+          category: item.topics?.title || 'Unknown',
+          tags: [], // TODO: Add tags support if needed
+          created_at: item.created_at,
+          updated_at: item.updated_at,
+          created_by: item.profiles?.full_name || item.created_by
+        }))
+        
+        setDiscoveryItems(content)
+        
+        // Show success toast only on initial load (when there's no existing data)
+        if (content.length > 0 && discoveryItems.length === 0) {
+          toast({
+            title: "Content Loaded",
+            description: `Successfully loaded ${content.length} discovery item${content.length === 1 ? '' : 's'}`,
+            variant: "default"
+          })
+        } else if (content.length === 0 && discoveryItems.length === 0) {
+          toast({
+            title: "No Content Found",
+            description: "No discovery content found. Create your first content to get started!",
+            variant: "default"
+          })
         }
-      ])
-      setLoading(false)
-    }, 1000)
-  }, [])
+      } catch (error) {
+        console.error('Error fetching discovery content:', error)
+        setDiscoveryItems([])
+        toast({
+          title: "Loading Error",
+          description: "Failed to load discovery content. Please refresh the page.",
+          variant: "destructive"
+        })
+      } finally {
+        setLoading(false)
+      }
+    }
+    
+    fetchDiscoveryContent()
+  }, [session, statusFilter, typeFilter])
 
   const filteredItems = discoveryItems.filter(item => {
     const matchesSearch = item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -93,6 +134,79 @@ export default function DiscoveryManagerPage() {
       case 'fun-fact': return 'bg-blue-100 text-blue-700'
       case 'info': return 'bg-green-100 text-green-700'
       default: return 'bg-gray-100 text-gray-700'
+    }
+  }
+
+  // Handle view item
+  const handleViewItem = (item: DiscoveryContent) => {
+    setSelectedItem(item)
+    setViewModalOpen(true)
+  }
+
+  // Handle edit item
+  const handleEditItem = (item: DiscoveryContent) => {
+    // Navigate to edit page with item data
+    const editUrl = `/admin/content/discovery/create?type=${item.type}&edit=${item.id}`
+    toast({
+      title: "Redirecting to Editor",
+      description: `Opening "${item.title}" for editing...`,
+      variant: "default"
+    })
+    window.location.href = editUrl
+  }
+
+  // Handle delete item
+  const handleDeleteItem = (item: DiscoveryContent) => {
+    if (!session) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to perform this action",
+        variant: "destructive"
+      })
+      return
+    }
+
+    // Show custom confirmation dialog
+    setItemToDelete(item)
+    setDeleteConfirmOpen(true)
+  }
+
+  // Confirm delete action
+  const confirmDelete = async () => {
+    if (!itemToDelete || !session) return
+
+    try {
+      const response = await fetch(`/api/admin/content?id=${itemToDelete.id}&category=DISCOVERY`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to delete item')
+      }
+
+      // Remove item from local state
+      setDiscoveryItems(prev => prev.filter(i => i.id !== itemToDelete.id))
+      
+      // Show success message
+      toast({
+        title: "Success",
+        description: `"${itemToDelete.title}" has been deleted successfully`,
+        variant: "default"
+      })
+      
+      // Close confirmation dialog
+      setDeleteConfirmOpen(false)
+      setItemToDelete(null)
+    } catch (error) {
+      console.error('Error deleting item:', error)
+      toast({
+        title: "Delete Failed",
+        description: "Failed to delete item. Please try again.",
+        variant: "destructive"
+      })
     }
   }
 
@@ -330,13 +444,25 @@ export default function DiscoveryManagerPage() {
                           )}
                         </span>
                         <div className="flex items-center gap-1">
-                          <button className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600">
+                          <button 
+                            onClick={() => handleViewItem(item)}
+                            className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                            title="View content"
+                          >
                             <Eye className="h-4 w-4" />
                           </button>
-                          <button className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600">
+                          <button 
+                            onClick={() => handleEditItem(item)}
+                            className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                            title="Edit content"
+                          >
                             <Edit className="h-4 w-4" />
                           </button>
-                          <button className="rounded-lg p-2 text-gray-400 hover:bg-red-100 hover:text-red-600">
+                          <button 
+                            onClick={() => handleDeleteItem(item)}
+                            className="rounded-lg p-2 text-gray-400 hover:bg-red-100 hover:text-red-600"
+                            title="Delete content"
+                          >
                             <Trash2 className="h-4 w-4" />
                           </button>
                         </div>
@@ -358,8 +484,170 @@ export default function DiscoveryManagerPage() {
               Back to Content Manager
             </Link>
           </div>
+
+          {/* Delete Confirmation Dialog */}
+          {deleteConfirmOpen && itemToDelete && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+              <div className="max-w-md w-full mx-4 bg-white rounded-2xl shadow-2xl">
+                {/* Dialog Header */}
+                <div className="bg-gradient-to-r from-red-500 to-pink-500 p-6 text-white rounded-t-2xl">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-white/20 rounded-lg">
+                      <Trash2 className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold">Confirm Delete</h3>
+                      <p className="text-red-100 text-sm">This action cannot be undone</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Dialog Content */}
+                <div className="p-6">
+                  <p className="text-gray-700 mb-2">
+                    Are you sure you want to delete this discovery activity?
+                  </p>
+                  <div className="bg-gray-50 p-4 rounded-lg border">
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">{getTypeIcon(itemToDelete.type)}</span>
+                      <div>
+                        <h4 className="font-medium text-gray-900">{itemToDelete.title}</h4>
+                        <p className="text-sm text-gray-500">{itemToDelete.type.replace('-', ' ')} • {itemToDelete.category}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Dialog Footer */}
+                <div className="bg-gray-50 px-6 py-4 flex items-center justify-end gap-3 rounded-b-2xl">
+                  <button
+                    onClick={() => {
+                      setDeleteConfirmOpen(false)
+                      setItemToDelete(null)
+                    }}
+                    className="px-4 py-2 text-gray-600 hover:text-gray-900 font-medium"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={confirmDelete}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Delete Activity
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* View Modal */}
+          {viewModalOpen && selectedItem && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+              <div className="max-w-2xl w-full mx-4 bg-white rounded-2xl shadow-2xl max-h-[90vh] overflow-hidden">
+                {/* Modal Header */}
+                <div className="bg-gradient-to-r from-green-500 to-emerald-500 p-6 text-white">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">{getTypeIcon(selectedItem.type)}</span>
+                      <div>
+                        <h3 className="text-xl font-bold">{selectedItem.title}</h3>
+                        <p className="text-green-100 text-sm">
+                          {selectedItem.type.replace('-', ' ')} • {selectedItem.category}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setViewModalOpen(false)}
+                      className="text-white/80 hover:text-white text-2xl font-bold"
+                    >
+                      ×
+                    </button>
+                  </div>
+                </div>
+
+                {/* Modal Content */}
+                <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">Status</label>
+                        <div className={`mt-1 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                          selectedItem.status === 'published' 
+                            ? 'bg-green-100 text-green-700' 
+                            : 'bg-yellow-100 text-yellow-700'
+                        }`}>
+                          {selectedItem.status === 'published' ? (
+                            <>
+                              <CheckCircle className="h-3 w-3 mr-1" />
+                              Published
+                            </>
+                          ) : (
+                            <>
+                              <Archive className="h-3 w-3 mr-1" />
+                              Draft
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">Type</label>
+                        <div className={`mt-1 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getTypeColor(selectedItem.type)}`}>
+                          {selectedItem.type.replace('-', ' ')}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Category</label>
+                      <p className="mt-1 text-gray-900">{selectedItem.category}</p>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">Created</label>
+                        <p className="mt-1 text-gray-900">{new Date(selectedItem.created_at).toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">Created By</label>
+                        <p className="mt-1 text-gray-900">{selectedItem.created_by}</p>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Last Updated</label>
+                      <p className="mt-1 text-gray-900">{new Date(selectedItem.updated_at).toLocaleString()}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Modal Footer */}
+                <div className="bg-gray-50 px-6 py-4 flex items-center justify-between rounded-b-2xl">
+                  <button
+                    onClick={() => setViewModalOpen(false)}
+                    className="px-4 py-2 text-gray-600 hover:text-gray-900"
+                  >
+                    Close
+                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        setViewModalOpen(false)
+                        handleEditItem(selectedItem)
+                      }}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                    >
+                      <Edit className="h-4 w-4" />
+                      Edit
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </main>
       </RoleGuard>
+      <Toaster />
     </div>
   )
 }

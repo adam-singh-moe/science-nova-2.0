@@ -23,7 +23,7 @@ import { PageTransition } from '@/components/layout/page-transition'
 interface DiscoveryEntry {
   id: string
   topic_id: string
-  subtype: 'FACT' | 'DOCUMENT' | 'INTERACTIVE'
+  subtype: 'FACT' | 'DOCUMENT' | 'INFO'
   title: string
   payload: any
   difficulty?: string
@@ -71,7 +71,7 @@ const mockDiscoveryContent: DiscoveryEntry[] = [
   {
     id: 'info-1',
     topic_id: 'physics-2',
-    subtype: 'INTERACTIVE',
+    subtype: 'INFO',
     title: 'Solar System Scale',
     payload: {
       content: 'If Earth were the size of a marble, the Sun would be about 3 feet wide and located about 300 feet away. This incredible scale helps us understand just how vast our solar system really is. The nearest star would be over 15,000 miles away!',
@@ -106,7 +106,7 @@ const mockDiscoveryContent: DiscoveryEntry[] = [
   {
     id: 'info-2',
     topic_id: 'biology-1',
-    subtype: 'INTERACTIVE',
+    subtype: 'INFO',
     title: 'Ocean Depths',
     payload: {
       content: 'The deepest part of the ocean, the Mariana Trench, is so deep that if Mount Everest were placed at the bottom, its peak would still be over a mile underwater. The pressure there is over 1,000 times greater than at sea level, crushing anything that isn\'t specially adapted.',
@@ -141,7 +141,7 @@ const mockDiscoveryContent: DiscoveryEntry[] = [
   {
     id: 'info-3',
     topic_id: 'chemistry-2',
-    subtype: 'INTERACTIVE',
+    subtype: 'INFO',
     title: 'States of Matter',
     payload: {
       content: 'Matter exists in many more states than just solid, liquid, and gas. Scientists have identified at least 15 different states of matter, including plasma (found in stars), Bose-Einstein condensates (created in ultra-cold laboratories), and superfluids that can flow without friction.',
@@ -176,7 +176,7 @@ const mockDiscoveryContent: DiscoveryEntry[] = [
   {
     id: 'info-4',
     topic_id: 'physics-3',
-    subtype: 'INTERACTIVE',
+    subtype: 'INFO',
     title: 'Light Speed',
     payload: {
       content: 'Light travels so fast that it could circle the Earth\'s equator 7.5 times in just one second! This incredible speed means that when you look at the stars, you\'re actually seeing them as they were years ago because the light takes time to reach us.',
@@ -226,14 +226,36 @@ export default function DiscoveryPage() {
   const [cardPositions, setCardPositions] = useState<{[key: string]: {x: number, y: number}}>({})
   const [layoutReady, setLayoutReady] = useState(false)
   
-  const { session } = useAuth()
+  // Custom scrollbar styles as an object to apply to scrollable areas
+  const scrollbarStyle = {
+    scrollbarWidth: 'thin' as 'thin', // for Firefox
+    scrollbarColor: 'rgba(255,255,255,0.3) rgba(0,0,0,0)', // for Firefox
+    msOverflowStyle: '-ms-autohiding-scrollbar' as '-ms-autohiding-scrollbar', // for IE/Edge
+    '&::-webkit-scrollbar': {
+      width: '6px',
+      height: '6px',
+    },
+    '&::-webkit-scrollbar-track': {
+      background: 'rgba(0,0,0,0.1)',
+      borderRadius: '3px',
+    },
+    '&::-webkit-scrollbar-thumb': {
+      background: 'rgba(255,255,255,0.3)',
+      borderRadius: '3px',
+      '&:hover': {
+        background: 'rgba(255,255,255,0.5)',
+      }
+    }
+  }
+  
+  const { user, profile } = useAuth()
 
   // STRUCTURED PREDEFINED LAYOUTS - Web-friendly with guaranteed no overlaps
-  // Based on actual card dimensions: INTERACTIVE(22x18%), FACT(18x15%)
+  // Based on actual card dimensions: INFO(22x18%), FACT(18x15%)
   const PREDEFINED_LAYOUTS = [
     // Layout 1: Clean two-column layout
     [
-      { type: 'INTERACTIVE', x: 5, y: 8 },     // Left top
+      { type: 'INFO', x: 5, y: 8 },     // Left top
       { type: 'FACT', x: 5, y: 35 },           // Left middle
       { type: 'INTERACTIVE', x: 5, y: 65 },    // Left bottom
       { type: 'FACT', x: 55, y: 8 },           // Right top
@@ -292,17 +314,18 @@ export default function DiscoveryPage() {
     const isFact = card.subtype === 'FACT'
     
     if (isFact) {
-      // FACT cards: larger size but still smaller than interactive cards
+      // FACT cards: adaptive sizing like INFO cards
       const contentLength = card.payload?.content?.length || 0
-      const minWidth = 200
-      const minHeight = 140
-      const maxWidth = 350
-      const maxHeight = 280 // Increased to accommodate sources on back
+      const sourcesLength = card.payload?.sources?.length || 50 // Account for sources text
+      const minWidth = 220
+      const minHeight = 160
+      const maxWidth = 400 // Increased max width
+      const maxHeight = 350 // Significantly increased to accommodate sources
       
-      // Add width for longer content (capped at reasonable max)
-      const dynamicWidth = Math.max(minWidth, Math.min(minWidth + Math.floor(contentLength / 80) * 25, maxWidth))
-      // Account for sources section height (approximately 50px)
-      const dynamicHeight = Math.max(minHeight, Math.min(minHeight + Math.floor(contentLength / 120) * 20 + 50, maxHeight))
+      // More generous sizing for fact content with sources
+      const dynamicWidth = Math.max(minWidth, Math.min(minWidth + Math.floor(contentLength / 70) * 25, maxWidth))
+      // Account for sources section height (approximately 70px) and icon/padding
+      const dynamicHeight = Math.max(minHeight, Math.min(minHeight + Math.floor(contentLength / 100) * 25 + 70, maxHeight))
       
       return {
         width: isExpanded ? Math.min(dynamicWidth * 1.2, maxWidth * 1.2) : dynamicWidth,
@@ -414,18 +437,82 @@ export default function DiscoveryPage() {
     try {
       setLoading(true)
       
-      // Use mock data for now
-      setDiscoveryContent(mockDiscoveryContent)
+      // Call API to fetch real discovery content
+
+      // Fetch real discovery content from API
+      let response = await fetch(`/api/discovery?userId=${user?.id || 'default'}&grade=${profile?.grade_level || 4}`)
+      let result: any = {}
+
+      if (response.ok) {
+        result = await response.json()
+      }
+
+      // If no daily content, try random content
+      if (!result.data || result.data.length === 0) {
+        response = await fetch('/api/discovery', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            userId: user?.id || 'default', 
+            gradeLevel: profile?.grade_level || 4 
+          })
+        })
+        
+        if (response.ok) {
+          const randomResult = await response.json()
+          if (randomResult.data) {
+            result.data = [randomResult.data] // Wrap single result in array
+          }
+        }
+      }
+      
+      // Transform data to match expected interface
+      const transformedContent: DiscoveryEntry[] = (result.data || []).map((item: any) => {
+        // Map content appropriately for fact vs info cards
+        
+        return {
+          id: item.id,
+          topic_id: item.topic_id,
+          subtype: item.content_type === 'fact' ? 'FACT' : 'INFO',
+          title: item.title,
+          payload: {
+            // For FACT cards: use fact_text for flipping content
+            // For INTERACTIVE cards: use detail_explanation as full content
+            content: item.content_type === 'fact' 
+              ? (item.fact_text || 'No fact content available')
+              : (item.detail_explanation || 'No detail content available'),
+            // For INTERACTIVE cards: use fact_text as preview (shorter content)
+            preview: item.content_type === 'info' 
+              ? (item.fact_text || item.detail_explanation || 'No preview available')
+              : null,
+            funFact: item.fun_fact_points?.[0] || null,
+            sources: item.source_citation || 'Educational Research Publications'
+          },
+          difficulty: 'medium',
+          topics: item.topics ? [item.topics] : [{
+            title: 'Science Discovery',
+            grade_level: profile?.grade_level || 4,
+            study_areas: [{ name: 'Science' }]
+          }],
+          connections: []
+        }
+      })
+      
+      setDiscoveryContent(transformedContent)
     } catch (error) {
       console.error('Error fetching discovery content:', error)
+      // Fallback to empty array if API fails
+      setDiscoveryContent([])
     } finally {
       setLoading(false)
     }
   }
 
   useEffect(() => {
-    fetchDiscoveryContent()
-  }, [])
+    if (user?.id) {
+      fetchDiscoveryContent()
+    }
+  }, [user?.id, profile?.grade_level])
 
   const filteredContent = useMemo(() => {
     // Apply search filter first
@@ -439,15 +526,15 @@ export default function DiscoveryPage() {
       )
     }
     
-    // Limit to exactly 3 INTERACTIVE and 3 FACT cards
+    // Limit to exactly 3 INFO and 3 FACT cards
     const factCards = content.filter(card => card.subtype === 'FACT').slice(0, 3)
-    const interactiveCards = content.filter(card => card.subtype === 'INTERACTIVE').slice(0, 3)
+    const infoCards = content.filter(card => card.subtype === 'INFO').slice(0, 3)
     
     // Shuffle for variety each time
     const shuffledFacts = [...factCards].sort(() => Math.random() - 0.5)
-    const shuffledInteractives = [...interactiveCards].sort(() => Math.random() - 0.5)
+    const shuffledInfos = [...infoCards].sort(() => Math.random() - 0.5)
     
-    return [...shuffledInteractives, ...shuffledFacts]
+    return [...shuffledInfos, ...shuffledFacts]
   }, [discoveryContent, searchQuery])
 
   // useEffect for collision-free positioning - matches original implementation
@@ -467,16 +554,9 @@ export default function DiscoveryPage() {
     }
   }, [filteredContent])
   
-  // Separate effect for handling card expansion - recalculate when cards expand/collapse
-  useEffect(() => {
-    if (Object.keys(cardPositions).length > 0) {
-      const timer = setTimeout(() => {
-        setLayoutReady(false)
-        setTimeout(calculatePositions, 50)
-      }, 100)
-      return () => clearTimeout(timer)
-    }
-  }, [expandedCard])
+  // Note: Removed automatic repositioning on card expansion to prevent unwanted reshuffling
+  // Cards now maintain their positions when expanded/collapsed
+  // Only reshuffle on initial load, content changes, or manual shuffle button
 
 
 
@@ -522,11 +602,7 @@ export default function DiscoveryPage() {
           height: `${expandedHeight}px`,
           opacity: layoutReady ? 1 : 0,
           transition: 'all 0.5s ease-in-out', // Matches original transition
-          transform: `${isExpanded ? 'scale(1.05)' : 'scale(1)'} ${
-            isFlipped && isFact ? 'rotateY(180deg)' : ''
-          }`,
-          transformStyle: 'preserve-3d',
-          transformOrigin: 'center center',
+          transform: `${isExpanded ? 'scale(1.05)' : 'scale(1)'}`,
           zIndex: isExpanded ? 100 : (hoveredCard === card.id ? 50 : 20),
           isolation: 'isolate'
         }}
@@ -584,9 +660,13 @@ export default function DiscoveryPage() {
               }`}>
                 {card.title}
               </h3>
-              {!isFact && card.payload?.content && (
+              {!isFact && (card.payload?.preview || card.payload?.content) && (
                 <div className="flex-1 flex flex-col">
-                  <div className={`flex-1 ${!isExpanded ? 'overflow-hidden' : ''}`}>
+                  <div className={`flex-1 ${!isExpanded ? 'overflow-hidden' : 'overflow-y-auto'}`}
+                       style={isExpanded ? {
+                         maxHeight: `${expandedHeight - 100}px`,
+                         ...scrollbarStyle
+                       } : {}}>
                     <p className={`text-white/90 leading-relaxed ${
                       isExpanded ? 'text-base' : 'text-sm'
                     } break-words`}
@@ -596,7 +676,10 @@ export default function DiscoveryPage() {
                       WebkitBoxOrient: 'vertical',
                       overflow: 'hidden'
                     } : {}}>
-                      {card.payload.content}
+                      {isExpanded 
+                        ? (card.payload.content || card.payload.preview)
+                        : (card.payload.preview || card.payload.content)
+                      }
                     </p>
                   </div>
                   
@@ -625,12 +708,15 @@ export default function DiscoveryPage() {
               isFlipped ? 'opacity-100' : 'opacity-0'
             } transition-opacity duration-300`}
             style={{
-              transform: 'rotateY(180deg)',
-              backfaceVisibility: 'hidden',
               minHeight: `${expandedHeight}px`
             }}>
-              <div className="text-center h-full flex flex-col justify-between overflow-hidden">
-                <div className="flex-1 flex flex-col justify-center">
+              <div className="text-center h-full flex flex-col justify-between">
+                <div className="flex-1 flex flex-col py-2" 
+                     style={{
+                       maxHeight: `${expandedHeight - 80}px`, 
+                       overflowY: 'auto',
+                       ...scrollbarStyle
+                     }}>
                   <Lightbulb className="h-6 w-6 mx-auto text-yellow-300 mb-3" />
                   <p className="text-sm text-white leading-relaxed break-words mb-2">
                     {card.payload?.content || 'Fascinating science fact!'}
@@ -645,7 +731,7 @@ export default function DiscoveryPage() {
                 {/* Sources section for fact cards */}
                 <div className="mt-3 pt-2 border-t border-white/20 flex-shrink-0">
                   <p className="text-xs text-white/60 mb-1 font-medium">Sources:</p>
-                  <p className="text-xs text-white/50 break-words">
+                  <p className="text-xs text-white/50 break-words leading-relaxed">
                     {card.payload?.sources || 'NASA, National Geographic, Smithsonian Institute'}
                   </p>
                 </div>
@@ -696,6 +782,7 @@ export default function DiscoveryPage() {
   return (
     <VantaBackground>
       <div className="min-h-screen relative">
+
         <PageTransition>
           {/* Header */}
           <div className="relative z-20 p-6 pt-24">

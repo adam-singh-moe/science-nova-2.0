@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { fetchDiscoveryTopicCandidateIds, pickDeterministicDiscovery, fetchFactsForTopic } from '@/lib/services/discovery'
+// Services no longer needed as we query directly
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
     // If searching, return search results instead of daily content
     if (search) {
       let query = supabase
-        .from('topic_content_entries')
+        .from('discovery_content')
         .select(`
           *,
           topics:topic_id (
@@ -46,9 +46,8 @@ export async function GET(request: NextRequest) {
             )
           )
         `)
-        .eq('category', 'DISCOVERY')
         .eq('status', 'published')
-        .or(`title.ilike.%${search}%,payload->>preview_text.ilike.%${search}%`)
+        .or(`title.ilike.%${search}%,preview_text.ilike.%${search}%`)
         .limit(10)
 
       if (userGrade) {
@@ -69,74 +68,62 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // Get all discovery topic candidates
-    const topicIds = await fetchDiscoveryTopicCandidateIds()
-    
-    if (topicIds.length === 0) {
+    // Instead of picking one topic, get diverse content from multiple topics
+    // Get random discovery content with variety of content types
+    let query = supabase
+      .from('discovery_content')
+      .select(`
+        *,
+        topics:topic_id (
+          id,
+          title,
+          grade_level,
+          study_areas:study_area_id (
+            name
+          )
+        )
+      `)
+      .eq('status', 'published')
+      .limit(20) // Get more items to ensure variety
+
+    if (userGrade) {
+      query = query.eq('topics.grade_level', parseInt(userGrade))
+    }
+
+    const { data: allContent, error } = await query
+
+    if (error) {
+      console.error('Discovery content fetch error:', error)
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    if (!allContent || allContent.length === 0) {
       return NextResponse.json({
         message: 'No discovery content available',
         data: []
       })
     }
 
-    // Filter topics by grade level if specified
-    let filteredTopicIds = topicIds
-    if (userGrade) {
-      const { data: gradeTopics } = await supabase
-        .from('topics')
-        .select('id')
-        .eq('grade_level', parseInt(userGrade))
-        .in('id', topicIds)
-
-      if (gradeTopics && gradeTopics.length > 0) {
-        filteredTopicIds = gradeTopics.map(t => t.id)
-      }
-    }
-
-    // Pick deterministic topic for the day
-    const selectedTopicId = pickDeterministicDiscovery(filteredTopicIds, userId, date)
+    // Separate content by type to ensure variety
+    const factContent = allContent.filter(item => item.content_type === 'fact')
+    const infoContent = allContent.filter(item => item.content_type === 'info')
     
-    if (!selectedTopicId) {
-      return NextResponse.json({
-        message: 'No discovery content available for today',
-        data: []
-      })
-    }
-
-    // Get discovery facts for the selected topic
-    const discoveryFacts = await fetchFactsForTopic(selectedTopicId)
-
-    // Fetch full details for each fact
-    const factDetails = await Promise.all(
-      discoveryFacts.map(async (fact) => {
-        const { data } = await supabase
-          .from('topic_content_entries')
-          .select(`
-            *,
-            topics:topic_id (
-              id,
-              title,
-              grade_level,
-              study_areas:study_area_id (
-                name
-              )
-            )
-          `)
-          .eq('id', fact.id)
-          .single()
-
-        return data
-      })
-    )
-
-    // Filter out any null results
-    const validFacts = factDetails.filter(fact => fact !== null)
+    // Shuffle arrays for randomness
+    const shuffledFacts = factContent.sort(() => Math.random() - 0.5)
+    const shuffledInfo = infoContent.sort(() => Math.random() - 0.5)
+    
+    // Select 3 of each type (or as many as available)
+    const selectedFacts = shuffledFacts.slice(0, 3)
+    const selectedInfo = shuffledInfo.slice(0, 3)
+    
+    const validFacts = [...selectedInfo, ...selectedFacts]
 
     return NextResponse.json({
       data: validFacts,
       selectedDate: date,
-      topicId: selectedTopicId,
-      totalAvailable: validFacts.length
+      totalAvailable: validFacts.length,
+      factCount: selectedFacts.length,
+      infoCount: selectedInfo.length
     })
 
   } catch (error) {
@@ -160,7 +147,7 @@ export async function POST(request: NextRequest) {
 
     // Fetch the specific discovery content
     const { data, error } = await supabase
-      .from('topic_content_entries')
+      .from('discovery_content')
       .select(`
         *,
         topics:topic_id (
@@ -173,7 +160,6 @@ export async function POST(request: NextRequest) {
         )
       `)
       .eq('id', contentId)
-      .eq('category', 'DISCOVERY')
       .eq('status', 'published')
       .single()
 
@@ -189,7 +175,7 @@ export async function POST(request: NextRequest) {
           entry_id: contentId,
           topic_id: data.topic_id,
           category: 'DISCOVERY',
-          subtype: data.subtype,
+          subtype: data.content_type,
           event_type: 'open',
           meta: {
             user_id: userId,
@@ -232,7 +218,7 @@ export async function PATCH(request: NextRequest) {
 
     // Get random discovery content
     let query = supabase
-      .from('topic_content_entries')
+      .from('discovery_content')
       .select(`
         *,
         topics:topic_id (
@@ -244,7 +230,6 @@ export async function PATCH(request: NextRequest) {
           )
         )
       `)
-      .eq('category', 'DISCOVERY')
       .eq('status', 'published')
 
     if (userGrade) {
