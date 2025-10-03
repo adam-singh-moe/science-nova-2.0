@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { generateEducationalContent, getAI } from '@/lib/simple-ai'
+import { generateEmbedding, cosineSimilarity } from '@/lib/openai-embeddings'
 
 export const runtime = 'nodejs'
 let svcClient: SupabaseClient | null = null
@@ -18,23 +19,251 @@ function getSupabase(): SupabaseClient | null {
   return svcClient
 }
 
-async function searchRelevantTextbookContent(query: string, gradeLevel: number) {
+async function searchRelevantTextbookContent(query: string, gradeLevel: number, limit: number = 10) {
   try {
     const client = getSupabase()
-    if (!client) return []
-    const { data: embeddings } = await client
+    if (!client) {
+      console.warn('🚨 Supabase client not available for textbook search')
+      return []
+    }
+
+    console.log(`🔍 Searching textbook content for grade ${gradeLevel}, query: "${query}"`)
+
+    // Generate embedding for the search query
+    let queryEmbedding: number[] | null = null
+    try {
+      queryEmbedding = await generateEmbedding(query)
+      console.log(`✅ Generated query embedding (${queryEmbedding.length} dimensions)`)
+    } catch (embeddingError) {
+      console.error('⚠️ Failed to generate query embedding:', embeddingError)
+      // Fall back to basic text search without vector similarity
+    }
+
+    // Search for textbook embeddings with exact grade match first
+    const { data: exactGradeEmbeddings, error: exactError } = await client
       .from('textbook_embeddings')
-      .select('content, metadata, file_name')
+      .select('content, metadata, file_name, embedding')
       .eq('grade_level', gradeLevel)
-      .limit(10)
-    return embeddings || []
-  } catch { return [] }
+      .order('created_at', { ascending: false })
+      .limit(limit * 2) // Get more to allow for similarity filtering
+
+    if (exactError) {
+      console.error('❌ Error fetching exact grade embeddings:', exactError)
+    }
+
+    let results: any[] = exactGradeEmbeddings || []
+    console.log(`📚 Found ${results.length} textbook entries for grade ${gradeLevel}`)
+
+    // If we have a query embedding and textbook embeddings, calculate similarities
+    if (queryEmbedding && results.length > 0) {
+      const scoredResults = results
+        .filter(item => item.embedding && Array.isArray(item.embedding))
+        .map(item => {
+          try {
+            const similarity = cosineSimilarity(queryEmbedding!, item.embedding)
+            return { ...item, similarity }
+          } catch (simError) {
+            console.warn('⚠️ Error calculating similarity for item:', simError)
+            return { ...item, similarity: 0 }
+          }
+        })
+        .sort((a, b) => b.similarity - a.similarity)
+        .slice(0, limit)
+
+      console.log(`🎯 Top ${Math.min(3, scoredResults.length)} similarity scores:`, 
+        scoredResults.slice(0, 3).map(r => `${r.similarity?.toFixed(3)}`).join(', '))
+      
+      results = scoredResults
+    } else {
+      // Fallback: basic filtering by content relevance (text matching)
+      const queryLower = query.toLowerCase()
+      results = results
+        .map(item => ({
+          ...item,
+          relevanceScore: (item.content?.toLowerCase().includes(queryLower) ? 2 : 0) +
+                         (item.metadata?.title?.toLowerCase().includes(queryLower) ? 1 : 0) +
+                         (item.metadata?.topic?.toLowerCase().includes(queryLower) ? 1 : 0)
+        }))
+        .sort((a, b) => b.relevanceScore - a.relevanceScore)
+        .slice(0, limit)
+      
+      console.log(`📝 Using text-based relevance filtering`)
+    }
+
+    // If we don't have enough results for the exact grade, search adjacent grades
+    if (results.length < limit / 2 && gradeLevel > 1) {
+      console.log(`🔄 Searching adjacent grades for additional content...`)
+      
+      const adjacentGrades = [gradeLevel - 1, gradeLevel + 1].filter(g => g >= 1 && g <= 12)
+      
+      for (const adjGrade of adjacentGrades) {
+        const { data: adjEmbeddings } = await client
+          .from('textbook_embeddings')
+          .select('content, metadata, file_name, embedding')
+          .eq('grade_level', adjGrade)
+          .limit(Math.floor(limit / 2))
+        
+        if (adjEmbeddings?.length) {
+          console.log(`📚 Found ${adjEmbeddings.length} additional entries from grade ${adjGrade}`)
+          
+          if (queryEmbedding) {
+            const adjScored = adjEmbeddings
+              .filter(item => item.embedding && Array.isArray(item.embedding))
+              .map(item => {
+                try {
+                  const similarity = cosineSimilarity(queryEmbedding!, item.embedding)
+                  return { ...item, similarity: similarity * 0.8 } // Slight penalty for adjacent grade
+                } catch {
+                  return { ...item, similarity: 0 }
+                }
+              })
+            
+            results.push(...adjScored)
+          } else {
+            results.push(...adjEmbeddings.map(item => ({ ...item, similarity: 0 })))
+          }
+        }
+      }
+      
+      // Re-sort and limit
+      results = results
+        .sort((a, b) => (b.similarity || 0) - (a.similarity || 0))
+        .slice(0, limit)
+    }
+
+    // Clean up the results (remove embedding data for response size)
+    const cleanResults = results.map(({ embedding, ...rest }) => rest)
+    
+    console.log(`✅ Returning ${cleanResults.length} textbook references`)
+    return cleanResults
+
+  } catch (error) {
+    console.error('❌ Error in searchRelevantTextbookContent:', error)
+    return []
+  }
 }
 
-function formatTextbookContentForPrompt(textbookContent: any[]) {
-  if (!textbookContent?.length) return "No specific textbook content available for this topic."
-  const formatted = textbookContent.slice(0,5).map((c: any, i: number) => `[Textbook Reference ${i+1}]:\n${c.content}\n`).join('\n')
-  return `Use the following textbook content as reference material to create accurate, curriculum-aligned content:\n\n${formatted}\n\nBased on this textbook content and educational guidelines:`
+function formatTextbookContentForPrompt(textbookContent: any[], gradeLevel: number) {
+  if (!textbookContent?.length) {
+    return `No specific textbook content available for this topic. Please generate Grade ${gradeLevel} appropriate content based on standard science curriculum guidelines.`
+  }
+  
+  const formatted = textbookContent.slice(0, 6).map((c: any, i: number) => {
+    const source = c.file_name ? ` (Source: ${c.file_name})` : ''
+    const metadata = c.metadata?.title ? ` - ${c.metadata.title}` : ''
+    const similarity = c.similarity ? ` [Relevance: ${(c.similarity * 100).toFixed(1)}%]` : ''
+    
+    return `[Textbook Reference ${i+1}${source}${metadata}]${similarity}:\n${c.content.slice(0, 500)}${c.content.length > 500 ? '...' : ''}\n`
+  }).join('\n')
+  
+  return `IMPORTANT: You must base your content generation EXCLUSIVELY on the following Grade ${gradeLevel} textbook references. Do not add information that is not supported by these sources:
+
+${formatted}
+
+Instructions:
+- Generate content that directly aligns with the textbook material above
+- Use only information found in these textbook references
+- Maintain Grade ${gradeLevel} appropriate language and complexity
+- Reference specific concepts mentioned in the textbook content
+- Ensure all generated content can be traced back to the provided references
+
+Based strictly on this textbook content:`
+}
+
+async function generateEducationalContentWithTextbooks(
+  topic: string, 
+  gradeLevel: number, 
+  textbookContext: string,
+  adminPrompt: string,
+  options: {
+    type?: 'lesson' | 'discovery' | 'quiz';
+    count?: number;
+    style?: 'fun' | 'serious' | 'curious';
+  } = {}
+) {
+  const ai = getAI()
+  const { type = 'lesson', count = 5, style = 'fun' } = options
+
+  // Build the enhanced prompt with textbook context
+  let prompt = `${textbookContext}\n\n`
+  
+  // Add admin guidance if provided
+  if (adminPrompt?.trim()) {
+    prompt += `ADDITIONAL TEACHER GUIDANCE: ${adminPrompt.trim()}\n\n`
+  }
+
+  if (type === 'lesson') {
+    prompt += `Create comprehensive educational content for Grade ${gradeLevel} about "${topic}".
+
+    CRITICAL REQUIREMENTS:
+    1. Base ALL content exclusively on the textbook references provided above
+    2. Do not invent facts or add information not found in the textbook content
+    3. Directly reference and build upon the concepts mentioned in the textbook materials
+    4. Maintain Grade ${gradeLevel} appropriate language and complexity
+    5. Make connections between different textbook references when applicable
+    
+    Generate content in this exact JSON format:
+    {
+      "lessonContent": "500-800 words explaining the topic using ONLY information from the textbook references above. Include specific references to textbook content and maintain grade-appropriate language.",
+      "contentImagePrompts": ["visual description based on textbook content", "diagram or illustration mentioned in textbook"],
+      "flashcards": [
+        {"id":"1","front":"question based on textbook content","back":"answer directly from textbook material","imagePrompt":"visual related to textbook concept"},
+        {"id":"2","front":"question based on textbook content","back":"answer directly from textbook material","imagePrompt":"visual related to textbook concept"},
+        {"id":"3","front":"question based on textbook content","back":"answer directly from textbook material","imagePrompt":"visual related to textbook concept"},
+        {"id":"4","front":"question based on textbook content","back":"answer directly from textbook material","imagePrompt":"visual related to textbook concept"},
+        {"id":"5","front":"question based on textbook content","back":"answer directly from textbook material","imagePrompt":"visual related to textbook concept"}
+      ],
+      "quiz": [
+        {"id":"1","question":"question about textbook content","options":["A","B","C","D"],"correctAnswer":0,"explanation":"explanation based on textbook material"},
+        {"id":"2","question":"question about textbook content","options":["A","B","C","D"],"correctAnswer":1,"explanation":"explanation based on textbook material"},
+        {"id":"3","question":"question about textbook content","options":["A","B","C","D"],"correctAnswer":2,"explanation":"explanation based on textbook material"},
+        {"id":"4","question":"question about textbook content","options":["A","B","C","D"],"correctAnswer":3,"explanation":"explanation based on textbook material"},
+        {"id":"5","question":"question about textbook content","options":["A","B","C","D"],"correctAnswer":0,"explanation":"explanation based on textbook material"}
+      ]
+    }
+    
+    Remember: Every piece of generated content must be traceable to the textbook references provided above.`
+  }
+
+  const response = await ai.generateText(prompt, {
+    maxTokens: type === 'lesson' ? 3000 : 1500,
+    temperature: 0.6 // Slightly lower temperature for more consistent textbook-based content
+  })
+
+  try {
+    const parsed = JSON.parse(response)
+    
+    // Add metadata about textbook usage
+    parsed._textbookBased = true
+    parsed._textbookReferencesUsed = textbookContext.includes('[Textbook Reference') ? 'yes' : 'no'
+    parsed._gradeLevel = gradeLevel
+    
+    return parsed
+  } catch (parseError) {
+    console.error('❌ Failed to parse AI response as JSON:', parseError)
+    console.log('Raw AI response:', response.substring(0, 500) + '...')
+    
+    // Return fallback that still indicates textbook usage
+    return {
+      lessonContent: `Learning about ${topic} (Grade ${gradeLevel}):\n\n${textbookContext.includes('No specific textbook') ? 'This content is based on standard curriculum guidelines.' : 'This content is based on your uploaded textbook materials.'}\n\n[AI parsing error - using fallback content]`,
+      contentImagePrompts: [`Educational illustration of ${topic}`, `Grade ${gradeLevel} ${topic} concept`],
+      flashcards: Array.from({length: 5}, (_, i) => ({
+        id: String(i + 1),
+        front: `Question ${i + 1} about ${topic}`,
+        back: `Answer based on Grade ${gradeLevel} curriculum for ${topic}`,
+        imagePrompt: `${topic} educational visual ${i + 1}`
+      })),
+      quiz: Array.from({length: 5}, (_, i) => ({
+        id: String(i + 1),
+        question: `Question ${i + 1} about ${topic}?`,
+        options: ["Option A", "Option B", "Option C", "Option D"],
+        correctAnswer: i % 4,
+        explanation: `Explanation based on Grade ${gradeLevel} understanding of ${topic}`
+      })),
+      _textbookBased: false,
+      _parseError: true
+    }
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -96,18 +325,30 @@ export async function POST(request: NextRequest) {
 
     const studyAreaName = 'Science' // Always science since this is a science learning platform
     const gradeLevel = topicData.grade_level
-    const relevantTextbookContent = await searchRelevantTextbookContent(topicData.title, gradeLevel)
     
-    // Use the new simple AI system
+    // Create a more comprehensive search query including admin prompt context
+    const searchQuery = `${topicData.title} ${topicData.admin_prompt || ''}`.trim()
+    const relevantTextbookContent = await searchRelevantTextbookContent(searchQuery, gradeLevel, 8)
+    
+    // Use the new simple AI system with textbook context
     const ai = getAI()
     console.log('AI Status:', ai.getStatus())
     
+    // Format textbook content for the AI prompt
+    const textbookContext = formatTextbookContentForPrompt(relevantTextbookContent, gradeLevel)
+    
     let parsedContent: any
     try {
-      parsedContent = await generateEducationalContent(topicData.title, gradeLevel, {
-        type: 'lesson',
-        style: 'fun'
-      })
+      parsedContent = await generateEducationalContentWithTextbooks(
+        topicData.title, 
+        gradeLevel, 
+        textbookContext,
+        topicData.admin_prompt || '',
+        {
+          type: 'lesson',
+          style: 'fun'
+        }
+      )
     } catch (error) {
       console.error('AI generation error:', error)
       // Fallback content

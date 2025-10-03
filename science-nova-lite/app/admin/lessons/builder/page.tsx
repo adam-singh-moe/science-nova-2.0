@@ -225,11 +225,80 @@ function LeftPalette({ onAdd, onOpenSettings }: { onAdd: (k: ToolKind) => void; 
   )
 }
 
-function AiHelperPanel({ sel, meta, onUpdateSelected }: { sel: PlacedTool; meta: { title: string; topic: string; topicId: string; grade: number; vanta: string; difficulty?: 1|2|3 }; onUpdateSelected: (patch: any) => void }) {
+function AiHelperPanel({ sel, meta, onUpdateSelected, allItems }: { sel: PlacedTool; meta: { title: string; topic: string; topicId: string; grade: number; vanta: string; difficulty?: 1|2|3 }; onUpdateSelected: (patch: any) => void; allItems: PlacedTool[] }) {
   const { session } = useAuth()
   const [systemPrompt, setSystemPrompt] = useState('')
   const [desc, setDesc] = useState('')
   const [loading, setLoading] = useState(false)
+  
+  // State for textbook integration indicators
+  const [textbookStatus, setTextbookStatus] = useState<{
+    isSearching: boolean
+    foundReferences: number
+    sources: Array<{ title: string; similarity: number; grade: number }>
+    contentAnalysis: { existingWords: number; redundancyRisk: 'low' | 'medium' | 'high' } | null
+  }>({
+    isSearching: false,
+    foundReferences: 0,
+    sources: [],
+    contentAnalysis: null
+  })
+
+  // Function to collect all existing lesson content for context
+  const collectExistingContent = (): { textContent: string; flashcards: number; quizQuestions: number; crosswordWords: number; images: number } => {    
+    let textContent = ''
+    let flashcards = 0
+    let quizQuestions = 0
+    let crosswordWords = 0
+    let images = 0
+    
+    allItems.forEach((item: PlacedTool) => {
+      switch (item.kind) {
+        case 'TEXT':
+          if (item.data?.text) {
+            textContent += item.data.text + '\n\n'
+          }
+          break
+        case 'FLASHCARDS':
+          if (Array.isArray(item.data?.cards)) {
+            flashcards += item.data.cards.length
+            item.data.cards.forEach((card: any) => {
+              if (card.q) textContent += `Q: ${card.q}\n`
+              if (card.a) textContent += `A: ${card.a}\n\n`
+            })
+          }
+          break
+        case 'QUIZ':
+          if (Array.isArray(item.data?.items)) {
+            quizQuestions += item.data.items.length
+            item.data.items.forEach((q: any) => {
+              if (q.question) textContent += `Quiz: ${q.question}\n`
+            })
+          }
+          break
+        case 'CROSSWORD':
+          if (Array.isArray(item.data?.words)) {
+            crosswordWords += item.data.words.length
+            item.data.words.forEach((word: any) => {
+              if (word.answer) textContent += `Word: ${word.answer}\n`
+            })
+          }
+          break
+        case 'IMAGE':
+          images++
+          if (item.data?.alt) textContent += `Image: ${item.data.alt}\n`
+          break
+      }
+    })
+    
+    return {
+      textContent: textContent.trim(),
+      flashcards,
+      quizQuestions,
+      crosswordWords,
+      images
+    }
+  }
 
   // --- helpers: sanitize and parse LLM responses ---
   const stripHtml = (s: string) => s.replace(/<[^>]*>/g, '')
@@ -485,7 +554,12 @@ function AiHelperPanel({ sel, meta, onUpdateSelected }: { sel: PlacedTool; meta:
   const [maxWords, setMaxWords] = useState<number | ''>('')
   const doText = async () => {
     setLoading(true)
+    setTextbookStatus(prev => ({ ...prev, isSearching: true, foundReferences: 0, sources: [] }))
+    
     try {
+      // Collect existing content for context analysis
+      const existingContent = collectExistingContent()
+      
       // Combine system prompt with description and lesson context for better AI guidance
       const lessonContext = `Lesson: ${meta.title || ''}, Topic: ${meta.topic || ''}, Grade ${meta.grade}, Difficulty ${meta.difficulty || 2}`
       const fullPrompt = systemPrompt 
@@ -494,7 +568,16 @@ function AiHelperPanel({ sel, meta, onUpdateSelected }: { sel: PlacedTool; meta:
         ? `${desc}\n\n${lessonContext}`
         : lessonContext
         
-      console.log('🚀 Starting AI text generation...', { fullPrompt, meta })
+      console.log('🚀 Starting AI text generation...', { fullPrompt, meta, existingContent })
+      
+      // Set content analysis in textbook status immediately
+      setTextbookStatus(prev => ({
+        ...prev,
+        contentAnalysis: {
+          existingWords: existingContent.textContent.split(/\s+/).filter(w => w.length > 0).length,
+          redundancyRisk: existingContent.textContent.length > 500 ? 'medium' : 'low'
+        }
+      }))
       
       const res = await fetch('/api/ai-helper', {
         method: 'POST',
@@ -507,7 +590,14 @@ function AiHelperPanel({ sel, meta, onUpdateSelected }: { sel: PlacedTool; meta:
           grade: meta.grade, 
           difficulty: meta.difficulty, 
           minWords: typeof minWords==='number'? minWords : undefined, 
-          maxWords: typeof maxWords==='number'? maxWords : undefined 
+          maxWords: typeof maxWords==='number'? maxWords : undefined,
+          existingContent: existingContent.textContent, // Pass existing content for analysis
+          contentStats: {
+            flashcards: existingContent.flashcards,
+            quizQuestions: existingContent.quizQuestions,
+            crosswordWords: existingContent.crosswordWords,
+            images: existingContent.images
+          }
         })
       })
       
@@ -515,6 +605,29 @@ function AiHelperPanel({ sel, meta, onUpdateSelected }: { sel: PlacedTool; meta:
       
       const { ok, status, json: j, raw } = await readSafe(res)
       console.log('📊 AI Helper response data:', { ok, status, json: j, raw })
+      
+      // Extract textbook information from the response if available
+      if (j && typeof j === 'object') {
+        const textbookData = j.textbookData || j.textbook_sources || []
+        const analysisData = j.contentAnalysis || j.analysis
+        
+        setTextbookStatus(prev => ({
+          ...prev,
+          isSearching: false,
+          foundReferences: Array.isArray(textbookData) ? textbookData.length : 0,
+          sources: Array.isArray(textbookData) ? textbookData.map((src: any) => ({
+            title: src.title || src.source || 'Textbook Reference',
+            similarity: src.similarity || src.score || 0,
+            grade: src.grade || meta.grade
+          })) : [],
+          contentAnalysis: analysisData ? {
+            existingWords: analysisData.existingWords || 0,
+            redundancyRisk: analysisData.redundancyRisk || 'low'
+          } : null
+        }))
+      } else {
+        setTextbookStatus(prev => ({ ...prev, isSearching: false }))
+      }
       
       if (!ok) {
         toast({ title: 'AI text error', description: `Status ${status}. Using fallback if available.`, variant: 'warning' })
@@ -540,7 +653,7 @@ function AiHelperPanel({ sel, meta, onUpdateSelected }: { sel: PlacedTool; meta:
       }
     } catch (error) {
       console.error('❌ AI text generation failed:', error)
-      toast({ title: 'AI text error', description: `Error: ${error.message}`, variant: 'destructive' })
+      toast({ title: 'AI text error', description: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`, variant: 'destructive' })
     } finally { 
       setLoading(false) 
       console.log('🔄 AI text generation completed, loading set to false')
@@ -549,11 +662,24 @@ function AiHelperPanel({ sel, meta, onUpdateSelected }: { sel: PlacedTool; meta:
 
   const doFlash = async () => {
     setLoading(true)
+    setTextbookStatus(prev => ({ ...prev, isSearching: true, foundReferences: 0, sources: [] }))
     try {
+      // Collect existing content for context analysis
+      const existingContent = collectExistingContent()
+      
       const lessonContext = `Lesson: ${meta.title || ''}, Topic: ${meta.topic || ''}, Grade ${meta.grade}, Difficulty ${meta.difficulty || 2}`
       const fullPrompt = desc 
         ? `${desc}\n\n${lessonContext}`
         : `Create ${flashCount} concise flashcards about ${meta.topic} for Grade ${meta.grade} (difficulty ${meta.difficulty}).\nReturn JSON with a 'cards' array like [{"q":"question","a":"answer"}].\nDo NOT include markdown fences or code blocks.\n\n${lessonContext}`
+      
+      // Set content analysis in textbook status immediately
+      setTextbookStatus(prev => ({
+        ...prev,
+        contentAnalysis: {
+          existingWords: existingContent.textContent.split(/\s+/).filter(w => w.length > 0).length,
+          redundancyRisk: existingContent.flashcards > 5 ? 'medium' : 'low'
+        }
+      }))
       
       const res = await fetch('/api/ai-helper', {
         method: 'POST',
@@ -566,7 +692,14 @@ function AiHelperPanel({ sel, meta, onUpdateSelected }: { sel: PlacedTool; meta:
           topicId: meta.topicId,
           grade: meta.grade,
           difficulty: meta.difficulty,
-          limit: flashCount
+          limit: flashCount,
+          existingContent: existingContent.textContent, // Pass existing content for analysis
+          contentStats: {
+            flashcards: existingContent.flashcards,
+            quizQuestions: existingContent.quizQuestions,
+            crosswordWords: existingContent.crosswordWords,
+            images: existingContent.images
+          }
         })
       })
       const { ok, status, json: j, raw } = await readSafe(res)
@@ -589,6 +722,29 @@ function AiHelperPanel({ sel, meta, onUpdateSelected }: { sel: PlacedTool; meta:
           }
         })
       }
+      
+      // Extract textbook information from the response if available
+      if (j && typeof j === 'object') {
+        const textbookData = j.textbookData || j.textbook_sources || []
+        const analysisData = j.contentAnalysis || j.analysis
+        
+        setTextbookStatus(prev => ({
+          ...prev,
+          isSearching: false,
+          foundReferences: Array.isArray(textbookData) ? textbookData.length : 0,
+          sources: Array.isArray(textbookData) ? textbookData.map((src: any) => ({
+            title: src.title || src.source || 'Textbook Reference',
+            similarity: src.similarity || src.score || 0,
+            grade: src.grade || meta.grade
+          })) : [],
+          contentAnalysis: analysisData ? {
+            existingWords: analysisData.existingWords || 0,
+            redundancyRisk: analysisData.redundancyRisk || 'low'
+          } : null
+        }))
+      } else {
+        setTextbookStatus(prev => ({ ...prev, isSearching: false }))
+      }
     } finally { setLoading(false) }
   }
 
@@ -596,16 +752,44 @@ function AiHelperPanel({ sel, meta, onUpdateSelected }: { sel: PlacedTool; meta:
   const [mcq, setMcq] = useState(2); const [tf, setTf] = useState(2); const [fib, setFib] = useState(1)
   const doQuiz = async () => {
     setLoading(true)
+    setTextbookStatus(prev => ({ ...prev, isSearching: true, foundReferences: 0, sources: [] }))
     try {
+      // Collect existing content for context analysis
+      const existingContent = collectExistingContent()
+      
       const lessonContext = `Lesson: ${meta.title || ''}, Topic: ${meta.topic || ''}, Grade ${meta.grade}, Difficulty ${meta.difficulty || 2}`
       const fullPrompt = desc 
         ? `${desc}\n\n${lessonContext}`
         : lessonContext
         
+      // Set content analysis in textbook status immediately
+      setTextbookStatus(prev => ({
+        ...prev,
+        contentAnalysis: {
+          existingWords: existingContent.textContent.split(/\s+/).filter(w => w.length > 0).length,
+          redundancyRisk: existingContent.quizQuestions > 10 ? 'high' : existingContent.quizQuestions > 5 ? 'medium' : 'low'
+        }
+      }))
+        
       const res = await fetch('/api/ai-helper', {
         method: 'POST',
         headers: authHeaders,
-        body: JSON.stringify({ tool: 'QUIZ', prompt: fullPrompt, topic: meta.topic, topicId: meta.topicId, grade: meta.grade, difficulty: meta.difficulty, counts: { MCQ: mcq, TF: tf, FIB: fib } })
+        body: JSON.stringify({ 
+          tool: 'QUIZ', 
+          prompt: fullPrompt, 
+          topic: meta.topic, 
+          topicId: meta.topicId, 
+          grade: meta.grade, 
+          difficulty: meta.difficulty, 
+          counts: { MCQ: mcq, TF: tf, FIB: fib },
+          existingContent: existingContent.textContent, // Pass existing content for analysis
+          contentStats: {
+            flashcards: existingContent.flashcards,
+            quizQuestions: existingContent.quizQuestions,
+            crosswordWords: existingContent.crosswordWords,
+            images: existingContent.images
+          }
+        })
       })
       const { ok, status, json: j } = await readSafe(res)
       if (!ok) {
@@ -631,6 +815,29 @@ function AiHelperPanel({ sel, meta, onUpdateSelected }: { sel: PlacedTool; meta:
         items = [...mcqs, ...tfs, ...fibs]
       }
       if (items.length) onUpdateSelected({ data: { ...(sel.data || {}), items: [...(Array.isArray(sel.data?.items) ? sel.data.items : []), ...items] } })
+      
+      // Extract textbook information from the response if available
+      if (j && typeof j === 'object') {
+        const textbookData = j.textbookData || j.textbook_sources || []
+        const analysisData = j.contentAnalysis || j.analysis
+        
+        setTextbookStatus(prev => ({
+          ...prev,
+          isSearching: false,
+          foundReferences: Array.isArray(textbookData) ? textbookData.length : 0,
+          sources: Array.isArray(textbookData) ? textbookData.map((src: any) => ({
+            title: src.title || src.source || 'Textbook Reference',
+            similarity: src.similarity || src.score || 0,
+            grade: src.grade || meta.grade
+          })) : [],
+          contentAnalysis: analysisData ? {
+            existingWords: analysisData.existingWords || 0,
+            redundancyRisk: analysisData.redundancyRisk || 'low'
+          } : null
+        }))
+      } else {
+        setTextbookStatus(prev => ({ ...prev, isSearching: false }))
+      }
     } finally { setLoading(false) }
   }
 
@@ -815,6 +1022,96 @@ function AiHelperPanel({ sel, meta, onUpdateSelected }: { sel: PlacedTool; meta:
         </div>
       )}
       {sel.kind === 'IMAGE' && <Button size="sm" disabled={loading} onClick={doImage}>Generate Image</Button>}
+      
+      {/* Textbook Integration Status */}
+      <div className="mt-3 pt-3 border-t border-gray-200">
+        <div className="text-xs font-medium text-gray-700 mb-2 flex items-center gap-2">
+          <svg className="h-3 w-3 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+          </svg>
+          Textbook Integration
+        </div>
+        
+        {textbookStatus.isSearching && (
+          <div className="flex items-center justify-center py-2 px-3 bg-blue-50 rounded-lg border border-blue-200">
+            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600 mr-2"></div>
+            <span className="text-xs text-blue-700">Searching textbooks...</span>
+          </div>
+        )}
+        
+        {!textbookStatus.isSearching && textbookStatus.foundReferences > 0 && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between py-2 px-3 bg-green-50 rounded-lg border border-green-200">
+              <div className="flex items-center gap-2">
+                <svg className="h-3 w-3 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="text-xs text-green-700 font-medium">
+                  {textbookStatus.foundReferences} textbook reference{textbookStatus.foundReferences !== 1 ? 's' : ''} found
+                </span>
+              </div>
+            </div>
+            
+            {textbookStatus.sources.length > 0 && (
+              <div className="space-y-1">
+                {textbookStatus.sources.slice(0, 3).map((source, idx) => (
+                  <div key={idx} className="flex items-center justify-between py-1 px-2 bg-white/80 rounded border border-gray-200">
+                    <div className="flex items-center gap-2">
+                      <div className="text-xs text-gray-600 truncate flex-1">{source.title}</div>
+                      <div className="text-xs text-blue-600 font-medium">Grade {source.grade}</div>
+                    </div>
+                    <div className="text-xs text-gray-500">{Math.round(source.similarity * 100)}%</div>
+                  </div>
+                ))}
+                {textbookStatus.sources.length > 3 && (
+                  <div className="text-xs text-gray-500 text-center py-1">
+                    +{textbookStatus.sources.length - 3} more
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+        
+        {!textbookStatus.isSearching && textbookStatus.foundReferences === 0 && (
+          <div className="py-2 px-3 bg-amber-50 rounded-lg border border-amber-200">
+            <div className="flex items-center gap-2">
+              <svg className="h-3 w-3 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.728-.833-2.498 0L3.316 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+              <span className="text-xs text-amber-700">No textbook matches - using general knowledge</span>
+            </div>
+          </div>
+        )}
+        
+        {textbookStatus.contentAnalysis && (
+          <div className={`mt-2 py-2 px-3 rounded-lg border ${
+            textbookStatus.contentAnalysis.redundancyRisk === 'high' 
+              ? 'bg-red-50 border-red-200' 
+              : textbookStatus.contentAnalysis.redundancyRisk === 'medium'
+              ? 'bg-yellow-50 border-yellow-200'
+              : 'bg-green-50 border-green-200'
+          }`}>
+            <div className="flex items-center gap-2">
+              <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+              <span className={`text-xs font-medium ${
+                textbookStatus.contentAnalysis.redundancyRisk === 'high' 
+                  ? 'text-red-700' 
+                  : textbookStatus.contentAnalysis.redundancyRisk === 'medium'
+                  ? 'text-yellow-700'
+                  : 'text-green-700'
+              }`}>
+                Content Analysis: {textbookStatus.contentAnalysis.redundancyRisk} redundancy risk
+              </span>
+            </div>
+            <div className="text-xs text-gray-600 mt-1">
+              Existing content: {textbookStatus.contentAnalysis.existingWords} words
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -924,7 +1221,7 @@ function RightInspector({ items, selectedId, onSelect, onSave, onPreview, onPubl
         {!sel ? (
           <div className="text-sm text-gray-500 text-center py-4">Select a layer to use AI.</div>
         ) : (
-          <AiHelperPanel sel={sel} meta={{ ...meta, topicId: meta.topicId, difficulty: (meta as any).difficulty }} onUpdateSelected={onUpdateSelected} />
+          <AiHelperPanel sel={sel} meta={{ ...meta, topicId: meta.topicId, difficulty: (meta as any).difficulty }} onUpdateSelected={onUpdateSelected} allItems={items} />
         )}
       </div>
     </aside>

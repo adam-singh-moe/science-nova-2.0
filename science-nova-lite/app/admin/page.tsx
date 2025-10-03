@@ -137,12 +137,6 @@ export default function AdminHome() {
                 >
                   <Plus className="h-5 w-5" /> Create Lesson
                 </Link>
-                <Link
-                  href="/admin/documents"
-                  className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-tr from-purple-500 to-pink-500 px-6 py-3 text-white shadow-lg hover:brightness-105 transition-all hover:shadow-xl"
-                >
-                  <FileText className="h-5 w-5" /> View Textbooks & Curriculum
-                </Link>
               </div>
             </div>
           </div>
@@ -179,8 +173,8 @@ export default function AdminHome() {
               >
                 <FileText className="h-6 w-6" />
                 <div className="text-left">
-                  <div className="font-medium">Upload Content</div>
-                  <div className="text-sm text-white/90">Add textbooks & curriculum</div>
+                  <div className="font-medium">Upload & Process Content</div>
+                  <div className="text-sm text-white/90">Add textbooks & enable AI processing</div>
                 </div>
               </Link>
               

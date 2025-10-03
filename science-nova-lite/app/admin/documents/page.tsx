@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { RoleGuard } from "@/components/layout/role-guard";
 import { useAuth } from "@/contexts/auth-context";
 import Link from "next/link";
-import { Book, FileText, ChevronLeft, Eye, Loader2, Plus, BarChart2, BookOpen, Users, BarChart3, Upload, CheckCircle } from "lucide-react";
+import { ChevronDown, Upload, Eye, Trash2, FileText, BookOpen, Database, Settings, AlertCircle, Clock, Zap, CheckCircle, BarChart3, Plus, Book, Loader2 } from 'lucide-react';
 import { PDFViewer } from "@/components/admin/pdf-viewer";
 
 interface Document {
@@ -16,6 +16,10 @@ interface Document {
   grade: number;
   path?: string;
   bucket?: string;
+  id?: string; // For processing tracking
+  processed?: boolean;
+  chunks?: number;
+  processingError?: string;
 }
 
 export default function DocumentsPage() {
@@ -33,6 +37,55 @@ export default function DocumentsPage() {
   const [dragActive, setDragActive] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
+  
+  // Processing state
+  const [processing, setProcessing] = useState(false);
+  const [selectedForProcessing, setSelectedForProcessing] = useState<string[]>([]);
+  const [processingProgress, setProcessingProgress] = useState<{[key: string]: { status: 'processing' | 'completed' | 'error', progress: number, message?: string }}>({});
+  const [documentProcessingStatus, setDocumentProcessingStatus] = useState<{[key: string]: { processed: boolean, chunks?: number, error?: string }}>({});
+
+  // Check processing status for documents
+  async function checkProcessingStatus() {
+    if (!session) return;
+    
+    try {
+      console.log("🔍 DEBUGGING: Calling /api/embeddings/status endpoint");
+      const response = await fetch("/api/embeddings/status", {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
+        }
+      });
+      
+      console.log("🔍 DEBUGGING: Response status:", response.status);
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log("🔍 DEBUGGING: Raw response data:", JSON.stringify(data, null, 2));
+        
+        // Convert the new format to the expected format
+        const statusByDocumentName: {[key: string]: { processed: boolean, chunks?: number, error?: string }} = {};
+        
+        if (data.documents && Array.isArray(data.documents)) {
+          console.log("🔍 DEBUGGING: Processing", data.documents.length, "documents");
+          data.documents.forEach((doc: any) => {
+            statusByDocumentName[doc.name] = {
+              processed: doc.processed,
+              chunks: doc.chunkCount,
+              error: doc.error
+            };
+            console.log(`🔍 DEBUGGING: ${doc.name} -> processed: ${doc.processed}, chunks: ${doc.chunkCount}`);
+          });
+        }
+        
+        console.log("🔍 DEBUGGING: Final status object:", JSON.stringify(statusByDocumentName, null, 2));
+        setDocumentProcessingStatus(statusByDocumentName);
+      } else {
+        console.error("🔍 DEBUGGING: Failed response:", response.status, response.statusText);
+      }
+    } catch (err) {
+      console.error("🔍 DEBUGGING: Error checking processing status:", err);
+    }
+  }
 
   useEffect(() => {
     async function fetchDocuments() {
@@ -55,6 +108,9 @@ export default function DocumentsPage() {
 
         const data = await response.json();
         setDocuments(data.documents || []);
+        
+        // Also check processing status
+        await checkProcessingStatus();
       } catch (err) {
         console.error("Error fetching documents:", err);
         setError("Failed to load documents. Please try again later.");
@@ -153,6 +209,131 @@ export default function DocumentsPage() {
         setError("Only PDF files are allowed");
       }
     }
+  }
+
+  // Process selected documents
+  async function handleProcessSelected() {
+    if (selectedForProcessing.length === 0 || !session) return;
+    
+    setProcessing(true);
+    setError(null);
+    
+    try {
+      // Initialize progress for selected documents
+      const initialProgress: {[key: string]: any} = {};
+      selectedForProcessing.forEach(docId => {
+        initialProgress[docId] = { status: 'processing', progress: 0, message: 'Starting processing...' };
+      });
+      setProcessingProgress(initialProgress);
+      
+      const response = await fetch("/api/embeddings/process", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ 
+          documents: selectedForProcessing.map(docId => {
+            const doc = documents.find(d => (d.id || d.path) === docId);
+            return {
+              id: docId,
+              name: doc?.name,
+              path: doc?.path,
+              bucket: doc?.bucket,
+              type: doc?.type,
+              grade: doc?.grade
+            };
+          })
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Processing failed: ${response.status}`);
+      }
+
+      const result = await response.json();
+      
+      // Update progress based on actual results
+      const finalProgress: {[key: string]: any} = {};
+      
+      if (result.results && Array.isArray(result.results)) {
+        result.results.forEach((docResult: any) => {
+          const docId = docResult.id;
+          if (docResult.success) {
+            finalProgress[docId] = { 
+              status: 'completed', 
+              progress: 100, 
+              message: `Successfully processed! Created ${docResult.chunksProcessed || 0} AI chunks.` 
+            };
+          } else {
+            finalProgress[docId] = { 
+              status: 'error', 
+              progress: 0, 
+              message: docResult.error || 'Processing failed. Please try again.' 
+            };
+          }
+        });
+      } else {
+        // Fallback if results format is unexpected
+        selectedForProcessing.forEach(docId => {
+          finalProgress[docId] = { 
+            status: 'error', 
+            progress: 0, 
+            message: 'Unexpected response format. Please try again.' 
+          };
+        });
+      }
+      
+      setProcessingProgress(finalProgress);
+      
+      // Clear selection and refresh
+      setSelectedForProcessing([]);
+      await checkProcessingStatus();
+      
+      // Clear progress after a delay - longer for errors, shorter for success
+      const hasErrors = Object.values(finalProgress).some((progress: any) => progress.status === 'error');
+      const delay = hasErrors ? 30000 : 10000; // 30 seconds for errors, 10 seconds for success
+      
+      setTimeout(() => {
+        setProcessingProgress({});
+      }, delay);
+      
+    } catch (err) {
+      console.error("Error processing documents:", err);
+      setError(err instanceof Error ? err.message : "Failed to process documents");
+      
+      // Update progress to error
+      const errorProgress: {[key: string]: any} = {};
+      selectedForProcessing.forEach(docId => {
+        errorProgress[docId] = { 
+          status: 'error', 
+          progress: 0, 
+          message: 'Processing failed. Please try again.' 
+        };
+      });
+      setProcessingProgress(errorProgress);
+    } finally {
+      setProcessing(false);
+    }
+  }
+
+  // Toggle document selection for processing
+  function toggleDocumentSelection(docId: string) {
+    setSelectedForProcessing(prev => 
+      prev.includes(docId) 
+        ? prev.filter(id => id !== docId)
+        : [...prev, docId]
+    );
+  }
+
+  // Check if document is processed
+  function isDocumentProcessed(doc: Document): boolean {
+    return documentProcessingStatus[doc.name]?.processed || false;
+  }
+
+  // Get processing info for document
+  function getProcessingInfo(doc: Document) {
+    return documentProcessingStatus[doc.name] || { processed: false };
   }
 
   // Delete document function
@@ -360,6 +541,131 @@ export default function DocumentsPage() {
             </div>
           </div>
           
+          {/* AI Processing Section */}
+          {filteredDocuments.length > 0 && (
+            <div className="mb-8 rounded-3xl border bg-gradient-to-r from-purple-100 via-pink-100 to-indigo-100 p-8 shadow-lg">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="rounded-full bg-gradient-to-r from-purple-500 to-pink-500 p-3">
+                  <Database className="h-8 w-8 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-purple-900">AI Content Processing</h2>
+                  <p className="text-purple-900/70">Enable AI-powered content generation by processing your textbooks and curriculum documents.</p>
+                </div>
+              </div>
+              
+              {/* Processing Stats */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div className="rounded-2xl bg-white/60 backdrop-blur p-4">
+                  <div className="text-2xl font-bold text-green-900">
+                    {filteredDocuments.filter(doc => isDocumentProcessed(doc)).length}
+                  </div>
+                  <div className="text-sm text-green-700">Ready for AI</div>
+                </div>
+                <div className="rounded-2xl bg-white/60 backdrop-blur p-4">
+                  <div className="text-2xl font-bold text-orange-900">
+                    {filteredDocuments.filter(doc => !isDocumentProcessed(doc)).length}
+                  </div>
+                  <div className="text-sm text-orange-700">Needs Processing</div>
+                </div>
+                <div className="rounded-2xl bg-white/60 backdrop-blur p-4">
+                  <div className="text-2xl font-bold text-blue-900">
+                    {selectedForProcessing.length}
+                  </div>
+                  <div className="text-sm text-blue-700">Selected</div>
+                </div>
+                <div className="rounded-2xl bg-white/60 backdrop-blur p-4">
+                  <div className="text-2xl font-bold text-purple-900">
+                    {Object.values(documentProcessingStatus).reduce((sum, status) => sum + (status.chunks || 0), 0)}
+                  </div>
+                  <div className="text-sm text-purple-700">Total AI Chunks</div>
+                </div>
+              </div>
+              
+              {/* Processing Controls */}
+              {filteredDocuments.some(doc => !isDocumentProcessed(doc)) && (
+                <div className="rounded-2xl bg-white/60 backdrop-blur p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900">Process Documents for AI</h3>
+                      <p className="text-sm text-gray-600">Select documents below to enable AI content generation</p>
+                    </div>
+                    <button
+                      onClick={handleProcessSelected}
+                      disabled={selectedForProcessing.length === 0 || processing}
+                      className={`inline-flex items-center gap-2 rounded-xl px-6 py-3 font-semibold shadow-lg transition-all ${
+                        selectedForProcessing.length > 0 && !processing
+                          ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:brightness-110 hover:shadow-xl"
+                          : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                      }`}
+                    >
+                      {processing ? (
+                        <>
+                          <Settings className="h-5 w-5 animate-spin" />
+                          Processing...
+                        </>
+                      ) : (
+                        <>
+                          <Zap className="h-5 w-5" />
+                          Process Selected ({selectedForProcessing.length})
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  
+                  {selectedForProcessing.length > 0 && (
+                    <div className="text-sm text-gray-600 bg-indigo-50 rounded-lg p-3">
+                      <p className="flex items-center">
+                        <Clock className="h-4 w-4 mr-2 text-indigo-600" />
+                        Processing will extract text and prepare content for AI integration. This typically takes 1-3 minutes per document.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              {/* Processing Progress */}
+              {Object.keys(processingProgress).length > 0 && (
+                <div className="mt-6 space-y-3">
+                  <h4 className="font-semibold text-gray-900">Processing Status</h4>
+                  {Object.entries(processingProgress).map(([docId, progress]) => {
+                    const doc = documents.find(d => (d.id || d.path) === docId);
+                    return (
+                      <div key={docId} className="rounded-lg bg-white/80 p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-medium text-gray-900">{doc?.name}</span>
+                          <div className="flex items-center gap-2">
+                            {progress.status === 'processing' && <Settings className="h-4 w-4 animate-spin text-blue-500" />}
+                            {progress.status === 'completed' && <CheckCircle className="h-4 w-4 text-green-500" />}
+                            {progress.status === 'error' && <AlertCircle className="h-4 w-4 text-red-500" />}
+                            <span className={`text-sm font-medium ${
+                              progress.status === 'completed' ? 'text-green-600' :
+                              progress.status === 'error' ? 'text-red-600' : 'text-blue-600'
+                            }`}>
+                              {progress.progress}%
+                            </span>
+                          </div>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+                          <div 
+                            className={`h-2 rounded-full transition-all duration-300 ${
+                              progress.status === 'completed' ? 'bg-green-500' :
+                              progress.status === 'error' ? 'bg-red-500' : 'bg-blue-500'
+                            }`}
+                            style={{ width: `${progress.progress}%` }}
+                          ></div>
+                        </div>
+                        {progress.message && (
+                          <p className="text-sm text-gray-600">{progress.message}</p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+          
           {/* Documents grid */}
           {loading ? (
             <div className="flex items-center justify-center py-12">
@@ -443,14 +749,42 @@ export default function DocumentsPage() {
                     className="group relative overflow-hidden rounded-xl border bg-white/80 backdrop-blur p-6 shadow-lg hover:shadow-xl transition-all"
                   >
                     <div className="absolute -right-4 -top-4 rounded-full bg-gray-50 p-8"></div>
-                    <div className={`absolute right-4 top-4 rounded-full p-2 ${
-                      doc.type === "textbook" ? "bg-blue-100" : "bg-green-100"
-                    }`}>
-                      {doc.type === "textbook" 
-                        ? <Book className="h-5 w-5 text-blue-600" /> 
-                        : <FileText className="h-5 w-5 text-green-600" />
-                      }
+                    
+                    {/* Processing Status Badge */}
+                    <div className="absolute right-4 top-4 flex gap-2">
+                      <div className={`rounded-full p-2 ${
+                        doc.type === "textbook" ? "bg-blue-100" : "bg-green-100"
+                      }`}>
+                        {doc.type === "textbook" 
+                          ? <Book className="h-5 w-5 text-blue-600" /> 
+                          : <FileText className="h-5 w-5 text-green-600" />
+                        }
+                      </div>
+                      
+                      {isDocumentProcessed(doc) ? (
+                        <div className="bg-green-500 text-white px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1">
+                          <CheckCircle className="h-3 w-3" />
+                          AI Ready
+                        </div>
+                      ) : (
+                        <div className="bg-orange-500 text-white px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          Needs Processing
+                        </div>
+                      )}
                     </div>
+                    
+                    {/* Selection Checkbox */}
+                    {!isDocumentProcessed(doc) && (doc.id || doc.path) && (
+                      <div className="absolute top-4 left-4 z-10">
+                        <input
+                          type="checkbox"
+                          checked={selectedForProcessing.includes((doc.id || doc.path)!)}
+                          onChange={() => toggleDocumentSelection((doc.id || doc.path)!)}
+                          className="w-5 h-5 text-purple-600 bg-white border-2 border-gray-300 rounded focus:ring-purple-500 focus:ring-2"
+                        />
+                      </div>
+                    )}
                     
                     <div className="mb-4">
                       <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${
@@ -466,6 +800,24 @@ export default function DocumentsPage() {
                     </div>
                     
                     <h3 className="mb-2 text-lg font-medium text-gray-900 line-clamp-2">{doc.name}</h3>
+                    
+                    {/* Processing Info */}
+                    {(() => {
+                      const info = getProcessingInfo(doc);
+                      return (info.chunks || 0) > 0 ? (
+                        <p className="text-sm text-green-700 mb-2">
+                          Ready for AI: {info.chunks} content chunks available
+                        </p>
+                      ) : info.error ? (
+                        <p className="text-sm text-red-700 mb-2">
+                          Processing error: {info.error}
+                        </p>
+                      ) : (
+                        <p className="text-sm text-orange-700 mb-2">
+                          Ready to process for AI integration
+                        </p>
+                      );
+                    })()}
                     
                     <div className="mt-4 flex gap-2">
                       <button 
