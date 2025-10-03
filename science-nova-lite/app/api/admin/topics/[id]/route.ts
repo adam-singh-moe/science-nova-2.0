@@ -126,9 +126,9 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
       }, { status: 400 })
     }
 
-    // Check if topic is being used by content entries
+    // Check if topic is being used by content cache entries
     const { count: contentCount } = await svc
-      .from('topic_content_entries')
+      .from('content_cache')
       .select('id', { count: 'exact', head: true })
       .eq('topic_id', topicId)
 

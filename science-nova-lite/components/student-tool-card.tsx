@@ -101,25 +101,29 @@ export function StudentToolCard({ variant, actions, children, bodyBgColor, accen
   const softAlpha = Math.max(0.06, Math.min(0.25, 0.14 * intensity))
   const softBg = accentRgb ? rgba(accentRgb, softAlpha) : 'transparent'
   return (
-    <div
-      className={`h-full w-full rounded-3xl p-[2px] ${accentRgb ? '' : `bg-gradient-to-br ${defaultFrameGradient[variant]}`} transition-all duration-300 ease-out hover:scale-[1.01] hover:shadow-elevation-3`}
-      style={frameStyle}
-    >
-  <div className="h-full w-full rounded-[1.45rem] flex flex-col overflow-hidden bg-transparent hover-gentle" style={{ ['--sn-accent' as any]: accent || 'transparent', ['--sn-accent-strength' as any]: String(Math.max(0.4, Math.min(1.6, intensity))), ['--sn-accent-soft' as any]: softBg }}>
-        <div className="flex items-center justify-between px-3 py-2">
-          <div className="flex items-center gap-2 drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]" style={{ color: fgHeader }}>
-            <span className="h-8 w-8 rounded-2xl grid place-items-center transition-all duration-300 hover:scale-110" style={{ backgroundColor: accentRgb ? rgba(tint(accentRgb, -0.1), 0.35) : 'rgba(255,255,255,0.15)' }}>
-              <Icon className="h-4 w-4" />
-            </span>
-            <span className="text-sm font-semibold tracking-wide">{label}</span>
+    <div className="h-full w-full rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 ease-out hover:scale-[1.02] bg-white/80 backdrop-blur border border-white/20">
+      <div className="h-full w-full flex flex-col">
+        {/* Header with glassmorphic gradient */}
+        <div 
+          className={`flex items-center justify-between px-4 py-3 ${accentRgb ? '' : `bg-gradient-to-r ${gradientMap[variant]}`} border-b border-white/20`}
+          style={frameStyle}
+        >
+          <div className="flex items-center gap-3">
+            <div className="h-8 w-8 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center transition-all duration-300 hover:scale-110 hover:bg-white/30">
+              <Icon className="h-4 w-4 text-white drop-shadow-sm" />
+            </div>
+            <span className="text-sm font-semibold text-white drop-shadow-sm tracking-wide">{label}</span>
           </div>
           <div className="shrink-0">{actions}</div>
         </div>
-        <div className="flex-1 overflow-auto p-3">
-          <div className="w-full h-full rounded-xl transition-all duration-300" style={{ background: 'transparent', color: fgContent }}>
-            <div className="p-3">
-              {children}
-            </div>
+        
+        {/* Content area with modern styling */}
+        <div className="flex-1 overflow-auto p-4">
+          <div 
+            className="w-full h-full rounded-xl transition-all duration-300" 
+            style={{ color: fgContent }}
+          >
+            {children}
           </div>
         </div>
       </div>

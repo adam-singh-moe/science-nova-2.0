@@ -16,12 +16,42 @@ function normalize(s: string) {
   return (s || "").trim().toLowerCase()
 }
 
-export function QuizViewer({ items, storageKey, initialMode, contentMeta }: { items: QuizItem[]; storageKey?: string; initialMode?: 'practice'|'review'; contentMeta?: { entryId: string; topicId: string; category: string; subtype: string } }) {
+export const QuizViewer = React.memo(function QuizViewer({ items, storageKey, initialMode, contentMeta }: { items: QuizItem[]; storageKey?: string; initialMode?: 'practice'|'review'; contentMeta?: { entryId: string; topicId: string; category: string; subtype: string } }) {
   // Early validation to ensure items is a valid array
-  if (!Array.isArray(items) || items.length === 0) {
+  if (!Array.isArray(items)) {
+    console.warn('QuizViewer: items prop is not an array', items)
+    return (
+      <div className="p-8 text-center">
+        <p className="text-gray-500">Invalid quiz data format.</p>
+      </div>
+    )
+  }
+  
+  if (items.length === 0) {
     return (
       <div className="p-8 text-center">
         <p className="text-gray-500">No quiz questions available.</p>
+      </div>
+    )
+  }
+
+  // Validate each item has required properties
+  const validItems = items.filter((item, index) => {
+    if (!item || typeof item !== 'object') {
+      console.warn(`QuizViewer: Invalid item at index ${index}`, item)
+      return false
+    }
+    if (!['MCQ', 'TF', 'FIB'].includes(item.type)) {
+      console.warn(`QuizViewer: Invalid type at index ${index}`, item.type)
+      return false
+    }
+    return true
+  })
+
+  if (validItems.length === 0) {
+    return (
+      <div className="p-8 text-center">
+        <p className="text-gray-500">No valid quiz questions found.</p>
       </div>
     )
   }
@@ -74,7 +104,7 @@ export function QuizViewer({ items, storageKey, initialMode, contentMeta }: { it
 
     // Count how many explanations are currently visible
     let visibleExplanations = 0
-    items.forEach((q, idx) => {
+    validItems.forEach((q, idx) => {
       const isChecked = checked[idx]
       const r = responses[idx]
       let isCorrect = false
@@ -103,17 +133,12 @@ export function QuizViewer({ items, storageKey, initialMode, contentMeta }: { it
         })
       } catch {}
     }
-  }, [checked, responses, items, storageKey])
+  }, [checked, responses, validItems, storageKey])
 
   const results = useMemo(() => {
-    // Ensure items is an array before processing
-    if (!Array.isArray(items) || items.length === 0) {
-      return { correct: 0, total: 0, totalChecked: 0 }
-    }
-    
     let correct = 0
-    let total = items.length
-    items.forEach((q, i) => {
+    let total = validItems.length
+    validItems.forEach((q, i) => {
       if (!checked[i]) return
       const r = responses[i]
       if (q.type === "MCQ") {
@@ -125,11 +150,11 @@ export function QuizViewer({ items, storageKey, initialMode, contentMeta }: { it
       }
     })
     return { correct, totalChecked: Object.values(checked).filter(Boolean).length, total }
-  }, [items, responses, checked])
+  }, [validItems, responses, checked])
 
   function reviewAll() {
     const next: Record<number, boolean> = {}
-    for (let i = 0; i < items.length; i++) {
+    for (let i = 0; i < validItems.length; i++) {
       next[i] = true
     }
     setChecked(next)
@@ -151,7 +176,7 @@ export function QuizViewer({ items, storageKey, initialMode, contentMeta }: { it
 
   function submitReview() {
     const next: Record<number, boolean> = {}
-    for (let i = 0; i < items.length; i++) next[i] = true
+    for (let i = 0; i < validItems.length; i++) next[i] = true
     setChecked(next)
     setSubmitted(true)
     // emit submit with score
@@ -275,7 +300,7 @@ export function QuizViewer({ items, storageKey, initialMode, contentMeta }: { it
         </div>
       </div>
 
-      {items.map((q, idx) => {
+      {validItems.map((q, idx) => {
         const isChecked = !!checked[idx]
         const r = responses[idx]
         let isCorrect: boolean | undefined
@@ -485,4 +510,4 @@ export function QuizViewer({ items, storageKey, initialMode, contentMeta }: { it
       })}
     </div>
   )
-}
+})

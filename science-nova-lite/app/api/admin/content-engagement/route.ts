@@ -39,15 +39,15 @@ export async function GET(request: NextRequest) {
 
     // Get real content engagement data from database
     try {
-      // Get topics with content counts
+      // Get topics with content counts from discovery_content
       const { data: topicsData, error: topicsError } = await serviceSupabase
         .from('topics')
         .select(`
           id,
           title,
-          topic_content_entries (
+          discovery_content (
             id,
-            category
+            content_type
           )
         `)
 
@@ -56,10 +56,12 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: 'Failed to fetch topics' }, { status: 500 })
       }
 
-      // Process topics to count arcade vs discovery content
+      // Process topics to count different content types
       const topics = (topicsData || []).map((topic: any) => {
-        const arcade_count = topic.topic_content_entries?.filter((entry: any) => entry.category === 'ARCADE').length || 0
-        const discovery_count = topic.topic_content_entries?.filter((entry: any) => entry.category === 'DISCOVERY').length || 0
+        // For discovery content, we'll count by the actual content_type values (info, fact, etc.)
+        const discovery_count = topic.discovery_content?.length || 0
+        const arcade_count = 0 // No arcade content found in tables yet
+        
         return {
           id: topic.id,
           name: topic.title,
@@ -68,16 +70,16 @@ export async function GET(request: NextRequest) {
         }
       })
 
-      // Get recent content entries with topic info
+      // Get recent content entries with topic info from discovery_content
       const { data: entriesData, error: entriesError } = await serviceSupabase
-        .from('topic_content_entries')
+        .from('discovery_content')
         .select(`
           id,
           title,
-          category,
-          subtype,
+          content_type,
           status,
           topic_id,
+          created_at,
           topics (
             grade_level
           )
@@ -94,10 +96,10 @@ export async function GET(request: NextRequest) {
       const entries = (entriesData || []).map((entry: any) => ({
         id: entry.id,
         title: entry.title,
-        category: entry.category,
-        subtype: entry.subtype,
+        category: 'DISCOVERY', // All entries from discovery_content are discovery type
+        subtype: entry.content_type, // Use content_type as subtype (info, fact, etc.)
         grade_level: entry.topics?.grade_level || null,
-        status: entry.status.toUpperCase(),
+        status: entry.status?.toUpperCase() || 'UNKNOWN',
         topic_id: entry.topic_id
       }))
 

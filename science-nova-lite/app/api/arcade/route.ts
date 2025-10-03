@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
     const entryDetails = await Promise.all(
       arcadeEntries.map(async (entry) => {
         const { data } = await supabase
-          .from('topic_content_entries')
+          .from('content_cache')
           .select(`
             *,
             topics:topic_id (
@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
 
     // Fetch the specific arcade content
     const { data, error } = await supabase
-      .from('topic_content_entries')
+      .from('content_cache')
       .select(`
         *,
         topics:topic_id (

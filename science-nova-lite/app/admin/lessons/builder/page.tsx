@@ -1,7 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import type React from "react"
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { RoleGuard } from "@/components/layout/role-guard"
 import { TopicSelect } from "@/components/admin/TopicSelect"
@@ -190,36 +189,36 @@ function RichTextEditor({
 }
 
 function LeftPalette({ onAdd, onOpenSettings }: { onAdd: (k: ToolKind) => void; onOpenSettings: () => void }) {
-  const iconBtn = "w-12 h-12 grid place-items-center rounded-xl border bg-white/80 hover:bg-white transition shadow-sm"
-  const iconWrap = "flex flex-col items-center gap-2"
+  const iconBtn = "group w-14 h-14 grid place-items-center rounded-2xl bg-white/80 backdrop-blur shadow-lg hover:shadow-xl hover:bg-white/90 transition-all duration-200 border border-white/50"
+  const iconWrap = "flex flex-col items-center gap-3"
   return (
-    <aside className="w-16 shrink-0 p-3 bg-white/60 backdrop-blur border-r">
-      <div className="flex flex-col items-center gap-2 mb-4">
-        <Link href="/admin" className="w-9 h-9 grid place-items-center rounded-lg border bg-white/80 hover:bg-white shadow-sm" title="Back to Admin">
-          <ArrowLeft className="h-4 w-4 text-gray-600" />
+    <aside className="w-20 shrink-0 p-4 bg-gradient-to-b from-white/70 to-white/50 backdrop-blur-xl border-r border-white/30 shadow-lg">
+      <div className="flex flex-col items-center gap-3 mb-6">
+        <Link href="/admin" className="w-10 h-10 grid place-items-center rounded-xl bg-white/80 backdrop-blur shadow-lg hover:shadow-xl hover:bg-white/90 transition-all duration-200 border border-white/50" title="Back to Admin">
+          <ArrowLeft className="h-5 w-5 text-gray-700 group-hover:text-gray-900" />
         </Link>
-        <button aria-label="Lesson settings" title="Lesson settings" onClick={onOpenSettings} className="w-9 h-9 grid place-items-center rounded-lg border bg-white/80 hover:bg-white shadow-sm">
-          <Cog className="h-4 w-4 text-indigo-600" />
+        <button aria-label="Lesson settings" title="Lesson settings" onClick={onOpenSettings} className="w-10 h-10 grid place-items-center rounded-xl bg-white/80 backdrop-blur shadow-lg hover:shadow-xl hover:bg-white/90 transition-all duration-200 border border-white/50">
+          <Cog className="h-5 w-5 text-indigo-600 group-hover:text-indigo-700" />
         </button>
       </div>
       <div className={iconWrap}>
         <button className={iconBtn} title="Text" onClick={() => onAdd("TEXT")}>
-          <Type className="h-5 w-5 text-sky-600" />
+          <Type className="h-6 w-6 text-sky-600 group-hover:text-sky-700 transition-colors" />
         </button>
         <button className={iconBtn} title="Flashcards" onClick={() => onAdd("FLASHCARDS")}>
-          <Boxes className="h-5 w-5 text-emerald-600" />
+          <Boxes className="h-6 w-6 text-emerald-600 group-hover:text-emerald-700 transition-colors" />
         </button>
         <button className={iconBtn} title="Quiz" onClick={() => onAdd("QUIZ")}>
-          <HelpCircle className="h-5 w-5 text-violet-600" />
+          <HelpCircle className="h-6 w-6 text-violet-600 group-hover:text-violet-700 transition-colors" />
         </button>
         <button className={iconBtn} title="Crossword" onClick={() => onAdd("CROSSWORD")}>
-          <Grid3X3 className="h-5 w-5 text-amber-600" />
+          <Grid3X3 className="h-6 w-6 text-amber-600 group-hover:text-amber-700 transition-colors" />
         </button>
         <button className={iconBtn} title="Image" onClick={() => onAdd("IMAGE")}>
-          <ImageIcon className="h-5 w-5 text-pink-600" />
+          <ImageIcon className="h-6 w-6 text-pink-600 group-hover:text-pink-700 transition-colors" />
         </button>
         <button className={iconBtn} title="Video" onClick={() => onAdd("VIDEO")}>
-          <Play className="h-5 w-5 text-red-600" />
+          <Play className="h-6 w-6 text-red-600 group-hover:text-red-700 transition-colors" />
         </button>
       </div>
     </aside>
@@ -821,81 +820,109 @@ function AiHelperPanel({ sel, meta, onUpdateSelected }: { sel: PlacedTool; meta:
 }
 
 function RightInspector({ items, selectedId, onSelect, onSave, onPreview, onPublish, onUpdateSelected, meta, onReorder }: { items: PlacedTool[]; selectedId: string | null; onSelect: (id: string) => void; onSave: () => void; onPreview: () => void; onPublish: () => void; onUpdateSelected: (patch: any) => void; meta: { title: string; topic: string; topicId: string; grade: number; vanta: string }; onReorder: (id: string, action: 'up'|'down'|'front'|'back') => void }) {
-  const iconFor = (k: ToolKind) => k==='TEXT'? <Type className="h-3.5 w-3.5 text-sky-600"/> : k==='FLASHCARDS'? <Boxes className="h-3.5 w-3.5 text-emerald-600"/> : k==='QUIZ'? <HelpCircle className="h-3.5 w-3.5 text-violet-600"/> : k==='CROSSWORD'? <Grid3X3 className="h-3.5 w-3.5 text-amber-600"/> : k==='IMAGE'? <ImageIcon className="h-3.5 w-3.5 text-pink-600"/> : <Play className="h-3.5 w-3.5 text-red-600"/>
+  const iconFor = (k: ToolKind) => k==='TEXT'? <Type className="h-4 w-4 text-sky-600"/> : k==='FLASHCARDS'? <Boxes className="h-4 w-4 text-emerald-600"/> : k==='QUIZ'? <HelpCircle className="h-4 w-4 text-violet-600"/> : k==='CROSSWORD'? <Grid3X3 className="h-4 w-4 text-amber-600"/> : k==='IMAGE'? <ImageIcon className="h-4 w-4 text-pink-600"/> : <Play className="h-4 w-4 text-red-600"/>
   const sel = selectedId ? items.find(i=>i.id===selectedId) : null
   return (
-    <aside className="w-72 shrink-0 p-3 bg-white/70 backdrop-blur border-l">
-      <div className="mb-3 flex gap-2">
-        <Button size="sm" variant="outline" onClick={onSave}>Save</Button>
-        <Button size="sm" onClick={onPreview}>Preview</Button>
-        <Button size="sm" variant="ghost" className="ml-auto" onClick={onPublish}>Publish</Button>
+    <aside className="w-80 shrink-0 p-4 bg-gradient-to-b from-white/80 to-white/60 backdrop-blur-xl border-l border-white/30 shadow-xl">
+      <div className="mb-4 flex gap-2">
+        <Button size="sm" variant="outline" className="bg-white/80 backdrop-blur border-white/50 hover:bg-white/90 shadow-md" onClick={onSave}>Save</Button>
+        <Button size="sm" className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 shadow-lg" onClick={onPreview}>Preview</Button>
+        <Button size="sm" variant="ghost" className="ml-auto hover:bg-white/50" onClick={onPublish}>Publish</Button>
       </div>
-      <div className="text-xs font-semibold text-gray-700 mb-1">Layers</div>
-      <div className="space-y-1.5 max-h-[58vh] overflow-y-auto pr-1">
-        {items
-          .slice()
-          .sort((a,b)=> (b.z ?? 0) - (a.z ?? 0))
-          .map(it => (
-          <div key={it.id} className={`w-full px-2 py-1.5 rounded-lg border ${selectedId===it.id? 'bg-indigo-50 border-indigo-200' : 'bg-white/80 hover:bg-white'}`}>
-            <div className="flex items-center gap-2">
-              <div className="shrink-0">{iconFor(it.kind)}</div>
-              <button onClick={() => onSelect(it.id)} className="flex-1 text-left">
-                <div className="text-[12px] font-medium text-gray-800">{it.kind}</div>
-                <div className="text-[10px] text-gray-500">{Math.round(it.x)},{Math.round(it.y)} • z {it.z ?? 0}</div>
-              </button>
-              <div className="flex items-center gap-1">
-                <button title="Forward" className="px-1 py-0.5 border rounded" onClick={()=>onReorder(it.id,'up')}>▲</button>
-                <button title="Backward" className="px-1 py-0.5 border rounded" onClick={()=>onReorder(it.id,'down')}>▼</button>
+      
+      {/* Layers Section */}
+      <div className="bg-white/60 backdrop-blur rounded-2xl p-3 mb-4 shadow-lg border border-white/40">
+        <div className="text-sm font-semibold text-gray-800 mb-3 flex items-center gap-2">
+          <Layers className="h-4 w-4 text-indigo-600" />
+          Layers
+        </div>
+        <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
+          {items
+            .slice()
+            .sort((a,b)=> (b.z ?? 0) - (a.z ?? 0))
+            .map(it => (
+            <div key={it.id} className={`w-full p-3 rounded-xl border transition-all duration-200 ${selectedId===it.id? 'bg-gradient-to-r from-indigo-50 to-purple-50 border-indigo-200 shadow-md' : 'bg-white/70 backdrop-blur hover:bg-white/80 border-white/50 shadow-sm hover:shadow-md'}`}>
+              <div className="flex items-center gap-3">
+                <div className="shrink-0 p-1.5 rounded-lg bg-white/80 shadow-sm">{iconFor(it.kind)}</div>
+                <button onClick={() => onSelect(it.id)} className="flex-1 text-left">
+                  <div className="text-sm font-medium text-gray-800">{it.kind}</div>
+                  <div className="text-xs text-gray-500">{Math.round(it.x)},{Math.round(it.y)} • z {it.z ?? 0}</div>
+                </button>
+                <div className="flex items-center gap-1">
+                  <button title="Forward" className="p-1.5 bg-white/80 backdrop-blur border border-white/50 rounded-lg hover:bg-white/90 shadow-sm transition-all" onClick={()=>onReorder(it.id,'up')}>
+                    <span className="text-xs">▲</span>
+                  </button>
+                  <button title="Backward" className="p-1.5 bg-white/80 backdrop-blur border border-white/50 rounded-lg hover:bg-white/90 shadow-sm transition-all" onClick={()=>onReorder(it.id,'down')}>
+                    <span className="text-xs">▼</span>
+                  </button>
+                </div>
               </div>
+              {selectedId===it.id && (
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  <button className="px-3 py-1.5 bg-white/80 backdrop-blur border border-white/50 rounded-lg hover:bg-white/90 shadow-sm transition-all text-xs font-medium" onClick={()=>onReorder(it.id,'front')}>Front</button>
+                  <button className="px-3 py-1.5 bg-white/80 backdrop-blur border border-white/50 rounded-lg hover:bg-white/90 shadow-sm transition-all text-xs font-medium" onClick={()=>onReorder(it.id,'back')}>Back</button>
+                </div>
+              )}
             </div>
-            {selectedId===it.id && (
-              <div className="mt-1 grid grid-cols-2 gap-1 text-[10px]">
-                <button className="border rounded px-1 py-0.5" onClick={()=>onReorder(it.id,'front')}>Front</button>
-                <button className="border rounded px-1 py-0.5" onClick={()=>onReorder(it.id,'back')}>Back</button>
-              </div>
-            )}
-          </div>
-        ))}
-        {items.length===0 && <div className="text-xs text-gray-500">No tools yet.</div>}
+          ))}
+          {items.length===0 && <div className="text-sm text-gray-500 text-center py-4">No tools yet.</div>}
+        </div>
       </div>
-      <div className="mt-3">
-        <div className="text-xs font-semibold mb-2">Properties</div>
-        {!sel && <div className="text-xs text-gray-500">Select a layer to edit its properties.</div>}
+
+      {/* Properties Section */}
+      <div className="bg-white/60 backdrop-blur rounded-2xl p-3 mb-4 shadow-lg border border-white/40">
+        <div className="text-sm font-semibold text-gray-800 mb-3 flex items-center gap-2">
+          <Cog className="h-4 w-4 text-indigo-600" />
+          Properties
+        </div>
+        {!sel && <div className="text-sm text-gray-500 text-center py-4">Select a layer to edit its properties.</div>}
         {sel && (
-          <div className="space-y-2">
-            <div className="text-[11px] text-gray-600">Most settings are edited directly on the tool on the canvas. Use AI Helper below to generate content.</div>
-            <div className="grid grid-cols-2 gap-2 items-center">
-              <label className="text-xs text-gray-700 col-span-2">Card color</label>
-              <input
-                type="color"
-                className="w-full h-8 border rounded"
-                value={(typeof sel.data?.bgColor === 'string' && /^#([0-9a-fA-F]{6})$/.test(sel.data.bgColor)) ? (sel.data.bgColor as string) : '#0ea5e9'}
-                onChange={(e)=> onUpdateSelected({ data: { ...(sel.data || {}), bgColor: e.target.value } })}
-                title="Pick a background color used behind this tool's content"
-              />
-              <button className="text-[11px] px-2 py-1 border rounded" onClick={()=> onUpdateSelected({ data: { ...(sel.data || {}), bgColor: '' } })}>Clear</button>
-            </div>
-            <div className="grid grid-cols-2 gap-2 items-center">
-              <label className="text-xs text-gray-700 col-span-2">Accent intensity</label>
-              <input
-                type="range"
-                min={0.6}
-                max={1.6}
-                step={0.1}
-                value={Number(sel.data?.accentIntensity ?? 1)}
-                onChange={(e)=> onUpdateSelected({ data: { ...(sel.data || {}), accentIntensity: Number(e.target.value) } })}
-              />
-              <div className="text-[11px] text-gray-600">{Number(sel.data?.accentIntensity ?? 1).toFixed(1)}×</div>
+          <div className="space-y-3">
+            <div className="text-xs text-gray-600 p-2 bg-white/50 rounded-lg">Most settings are edited directly on the tool on the canvas. Use AI Helper below to generate content.</div>
+            <div className="space-y-3">
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">Card color</label>
+                <div className="flex gap-2">
+                  <input
+                    type="color"
+                    className="flex-1 h-10 border border-white/50 rounded-lg bg-white/80 backdrop-blur shadow-sm"
+                    value={(typeof sel.data?.bgColor === 'string' && /^#([0-9a-fA-F]{6})$/.test(sel.data.bgColor)) ? (sel.data.bgColor as string) : '#0ea5e9'}
+                    onChange={(e)=> onUpdateSelected({ data: { ...(sel.data || {}), bgColor: e.target.value } })}
+                    title="Pick a background color used behind this tool's content"
+                  />
+                  <button className="px-3 py-2 bg-white/80 backdrop-blur border border-white/50 rounded-lg hover:bg-white/90 shadow-sm transition-all text-xs font-medium" onClick={()=> onUpdateSelected({ data: { ...(sel.data || {}), bgColor: '' } })}>Clear</button>
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">Accent intensity</label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="range"
+                    min={0.6}
+                    max={1.6}
+                    step={0.1}
+                    className="flex-1"
+                    value={Number(sel.data?.accentIntensity ?? 1)}
+                    onChange={(e)=> onUpdateSelected({ data: { ...(sel.data || {}), accentIntensity: Number(e.target.value) } })}
+                  />
+                  <div className="text-sm font-medium text-gray-600 min-w-[3rem]">{Number(sel.data?.accentIntensity ?? 1).toFixed(1)}×</div>
+                </div>
+              </div>
             </div>
           </div>
         )}
       </div>
 
-      {/* AI Helper moved to inspector */}
-      <div className="mt-4">
-        <div className="text-xs font-semibold mb-2">AI Helper</div>
+      {/* AI Helper Section */}
+      <div className="bg-white/60 backdrop-blur rounded-2xl p-3 shadow-lg border border-white/40">
+        <div className="text-sm font-semibold text-gray-800 mb-3 flex items-center gap-2">
+          <svg className="h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+          </svg>
+          AI Helper
+        </div>
         {!sel ? (
-          <div className="text-xs text-gray-500">Select a layer to use AI.</div>
+          <div className="text-sm text-gray-500 text-center py-4">Select a layer to use AI.</div>
         ) : (
           <AiHelperPanel sel={sel} meta={{ ...meta, topicId: meta.topicId, difficulty: (meta as any).difficulty }} onUpdateSelected={onUpdateSelected} />
         )}
@@ -903,6 +930,114 @@ function RightInspector({ items, selectedId, onSelect, onSave, onPreview, onPubl
     </aside>
   )
 }
+
+// Separate component for Quiz editor to avoid hook issues
+const QuizEditor = React.memo(function QuizEditor({ item, onChange }: { item: PlacedTool; onChange: (p: Partial<PlacedTool>) => void }) {
+  type Q = any
+  const list: Q[] = Array.isArray(item.data?.items) ? item.data.items : []
+  
+  const add = (type: 'MCQ' | 'TF' | 'FIB') => {
+    const base: any = { id: crypto.randomUUID(), type, question: '' }
+    if (type === 'MCQ') { base.options = ['', '']; base.answer = 0 }
+    if (type === 'TF') base.answer = true
+    if (type === 'FIB') base.answer = ''
+    onChange({ data: { ...item.data, items: [...list, base] } })
+  }
+  
+  const set = (idx: number, patch: any) => { 
+    const arr = [...list]; 
+    arr[idx] = { ...arr[idx], ...patch }; 
+    onChange({ data: { ...item.data, items: arr } }) 
+  }
+  
+  const del = (idx: number) => { 
+    const arr = [...list]; 
+    arr.splice(idx, 1); 
+    onChange({ data: { ...item.data, items: arr } }) 
+  }
+  
+  const move = (idx: number, dir: number) => { 
+    const arr = [...list]; 
+    const t = arr[idx + dir]; 
+    arr[idx + dir] = arr[idx]; 
+    arr[idx] = t; 
+    onChange({ data: { ...item.data, items: arr } }) 
+  }
+  
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <div className="font-semibold">Quiz ({list.length})</div>
+        <div className="flex items-center gap-2">
+          <select className="border rounded p-1 text-xs" onChange={(e) => { const t = e.target.value as any; if (t) { add(t); e.currentTarget.selectedIndex = 0 } }}>
+            <option value="">+ Add</option>
+            <option value="MCQ">Multiple choice</option>
+            <option value="TF">True/False</option>
+            <option value="FIB">Fill in blank</option>
+          </select>
+        </div>
+      </div>
+      <div className="grid gap-2">
+        {list.map((q: any, idx: number) => (
+          <div key={q.id || idx} className="border rounded-lg p-2 bg-white/70">
+            <div className="text-xs text-gray-500 flex items-center justify-between">
+              <span>#{idx + 1} [{q.type}]</span>
+              <div className="flex gap-1">
+                <button className="px-1 py-0.5 border rounded" disabled={idx === 0} onClick={() => move(idx, -1)}>Up</button>
+                <button className="px-1 py-0.5 border rounded" disabled={idx === list.length - 1} onClick={() => move(idx, 1)}>Down</button>
+                <button className="px-1 py-0.5 border rounded text-red-600" onClick={() => del(idx)}>Delete</button>
+              </div>
+            </div>
+            <div className="mt-2 space-y-2">
+              <div>
+                <div className="text-xs mb-1">Question</div>
+                <input className="w-full border rounded p-2" value={q.question || ''} onChange={(e) => set(idx, { question: e.target.value })} />
+              </div>
+              {q.type === 'MCQ' && (
+                <div className="space-y-2">
+                  <div className="text-xs">Options</div>
+                  <div className="grid gap-1">
+                    {(Array.isArray(q.options) ? q.options : ['','']).map((opt: string, oi: number) => (
+                      <div key={oi} className="flex items-center gap-2">
+                        <input type="radio" name={`ans-${q.id || idx}`} checked={q.answer === oi} onChange={() => set(idx, { answer: oi })} />
+                        <input className="flex-1 border rounded p-1 text-sm" value={opt} onChange={(e) => { const opts = [...(q.options || [])]; opts[oi] = e.target.value; set(idx, { options: opts }) }} />
+                        <button className="px-2 py-1 border rounded text-xs" onClick={() => { const opts = [...(q.options || [])]; opts.splice(oi,1); set(idx, { options: opts, answer: 0 }) }}>Del</button>
+                      </div>
+                    ))}
+                  </div>
+                  <button className="px-2 py-1 border rounded text-xs" onClick={() => set(idx, { options: [...(q.options || []), ''] })}>+ Option</button>
+                </div>
+              )}
+              {q.type === 'TF' && (
+                <div className="flex items-center gap-2 text-sm">
+                  <label className="flex items-center gap-1"><input type="radio" checked={q.answer === true} onChange={() => set(idx, { answer: true })} /> True</label>
+                  <label className="flex items-center gap-1"><input type="radio" checked={q.answer === false} onChange={() => set(idx, { answer: false })} /> False</label>
+                </div>
+              )}
+              {q.type === 'FIB' && (
+                <div className="grid gap-1">
+                  <div className="text-xs">Answer</div>
+                  <input className="w-full border rounded p-1 text-sm" value={q.answer || ''} onChange={(e) => set(idx, { answer: e.target.value })} />
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+        {list.length === 0 && <div className="text-gray-500">No questions yet. Use + Add or AI.</div>}
+      </div>
+      <div className="border-t pt-2">
+        <div className="text-xs text-gray-500 mb-1">Live preview</div>
+        <div className="max-h-64 overflow-auto">
+          {list.length > 0 ? (
+            <QuizViewer key={`quiz-preview-${item.id}-${list.length}`} items={list} />
+          ) : (
+            <div className="p-8 text-center text-gray-500">No quiz questions available.</div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+})
 
 type GuideLines = { v: number[]; h: number[] }
 function Draggable({ item, onChange, selected, onSelect, onConfigure, onDuplicate, onDelete, onDragState, snap, gridSize, allItems, onGuideChange, onActivate, canvasH, onCanvasNeed }: { item: PlacedTool; onChange: (p: Partial<PlacedTool>) => void; selected: boolean; onSelect: () => void; onConfigure: () => void; onDuplicate: () => void; onDelete: () => void; onDragState: (dragging: boolean) => void; snap: boolean; gridSize: number; allItems: PlacedTool[]; onGuideChange: (g: GuideLines) => void; onActivate: () => void; canvasH: number; onCanvasNeed: (needW: number, needH: number) => void }) {
@@ -1183,89 +1318,7 @@ function Draggable({ item, onChange, selected, onSelect, onConfigure, onDuplicat
               </div>
             )
           })()}
-          {item.kind === "QUIZ" && (() => {
-            type Q = any
-            const list: Q[] = Array.isArray(item.data?.items) ? item.data.items : []
-            const add = (type: 'MCQ' | 'TF' | 'FIB') => {
-              const base: any = { id: crypto.randomUUID(), type, question: '' }
-              if (type === 'MCQ') { base.options = ['', '']; base.answer = 0 }
-              if (type === 'TF') base.answer = true
-              if (type === 'FIB') base.answer = ''
-              onChange({ data: { ...item.data, items: [...list, base] } })
-            }
-            const set = (idx: number, patch: any) => { const arr = [...list]; arr[idx] = { ...arr[idx], ...patch }; onChange({ data: { ...item.data, items: arr } }) }
-            const del = (idx: number) => { const arr = [...list]; arr.splice(idx, 1); onChange({ data: { ...item.data, items: arr } }) }
-            const move = (idx: number, dir: number) => { const arr = [...list]; const t = arr[idx + dir]; arr[idx + dir] = arr[idx]; arr[idx] = t; onChange({ data: { ...item.data, items: arr } }) }
-            return (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="font-semibold">Quiz ({list.length})</div>
-                  <div className="flex items-center gap-2">
-                    <select className="border rounded p-1 text-xs" onChange={(e) => { const t = e.target.value as any; if (t) { add(t); e.currentTarget.selectedIndex = 0 } }}>
-                      <option value="">+ Add</option>
-                      <option value="MCQ">Multiple choice</option>
-                      <option value="TF">True/False</option>
-                      <option value="FIB">Fill in blank</option>
-                    </select>
-                  </div>
-                </div>
-                <div className="grid gap-2">
-                  {list.map((q: any, idx: number) => (
-                    <div key={q.id || idx} className="border rounded-lg p-2 bg-white/70">
-                      <div className="text-xs text-gray-500 flex items-center justify-between">
-                        <span>#{idx + 1} [{q.type}]</span>
-                        <div className="flex gap-1">
-                          <button className="px-1 py-0.5 border rounded" disabled={idx === 0} onClick={() => move(idx, -1)}>Up</button>
-                          <button className="px-1 py-0.5 border rounded" disabled={idx === list.length - 1} onClick={() => move(idx, 1)}>Down</button>
-                          <button className="px-1 py-0.5 border rounded text-red-600" onClick={() => del(idx)}>Delete</button>
-                        </div>
-                      </div>
-                      <div className="mt-2 space-y-2">
-                        <div>
-                          <div className="text-xs mb-1">Question</div>
-                          <input className="w-full border rounded p-2" value={q.question || ''} onChange={(e) => set(idx, { question: e.target.value })} />
-                        </div>
-                        {q.type === 'MCQ' && (
-                          <div className="space-y-2">
-                            <div className="text-xs">Options</div>
-                            <div className="grid gap-1">
-                              {(Array.isArray(q.options) ? q.options : ['','']).map((opt: string, oi: number) => (
-                                <div key={oi} className="flex items-center gap-2">
-                                  <input type="radio" name={`ans-${q.id || idx}`} checked={q.answer === oi} onChange={() => set(idx, { answer: oi })} />
-                                  <input className="flex-1 border rounded p-1 text-sm" value={opt} onChange={(e) => { const opts = [...(q.options || [])]; opts[oi] = e.target.value; set(idx, { options: opts }) }} />
-                                  <button className="px-2 py-1 border rounded text-xs" onClick={() => { const opts = [...(q.options || [])]; opts.splice(oi,1); set(idx, { options: opts, answer: 0 }) }}>Del</button>
-                                </div>
-                              ))}
-                            </div>
-                            <button className="px-2 py-1 border rounded text-xs" onClick={() => set(idx, { options: [...(q.options || []), ''] })}>+ Option</button>
-                          </div>
-                        )}
-                        {q.type === 'TF' && (
-                          <div className="flex items-center gap-2 text-sm">
-                            <label className="flex items-center gap-1"><input type="radio" checked={q.answer === true} onChange={() => set(idx, { answer: true })} /> True</label>
-                            <label className="flex items-center gap-1"><input type="radio" checked={q.answer === false} onChange={() => set(idx, { answer: false })} /> False</label>
-                          </div>
-                        )}
-                        {q.type === 'FIB' && (
-                          <div className="grid gap-1">
-                            <div className="text-xs">Answer</div>
-                            <input className="w-full border rounded p-1 text-sm" value={q.answer || ''} onChange={(e) => set(idx, { answer: e.target.value })} />
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                  {list.length === 0 && <div className="text-gray-500">No questions yet. Use + Add or AI.</div>}
-                </div>
-                <div className="border-t pt-2">
-                  <div className="text-xs text-gray-500 mb-1">Live preview</div>
-                  <div className="max-h-64 overflow-auto">
-                    <QuizViewer items={list} />
-                  </div>
-                </div>
-              </div>
-            )
-          })()}
+          {item.kind === "QUIZ" && <QuizEditor item={item} onChange={onChange} />}
 
           {item.kind === "CROSSWORD" && (() => {
             const rows = Number(item.data?.rows || 10)
@@ -1801,12 +1854,18 @@ export default function LessonBuilder() {
       }}>
             {/* Overlay toolbar: outside canvas, always on top */}
   <div className="pointer-events-none absolute top-6 right-6 z-[40]">
-              <div className="pointer-events-auto flex items-center gap-2 rounded-full border bg-white/90 px-3 py-1 text-xs shadow-lg">
-                <label className="flex items-center gap-1"><input type="checkbox" checked={showGrid} onChange={(e)=>setShowGrid(e.target.checked)} /> Grid</label>
-                <span className="text-gray-300">|</span>
-                <label className="flex items-center gap-1"><input type="checkbox" checked={snapToGrid} onChange={(e)=>setSnapToGrid(e.target.checked)} /> Snap</label>
-                <span className="text-gray-300">|</span>
-                <select className="border rounded px-1 py-0.5" value={gridSize} onChange={(e)=>setGridSize(Number(e.target.value))}>
+              <div className="pointer-events-auto flex items-center gap-3 rounded-2xl bg-white/80 backdrop-blur-xl px-4 py-2 text-sm shadow-xl border border-white/50">
+                <label className="flex items-center gap-2 font-medium text-gray-700">
+                  <input type="checkbox" checked={showGrid} onChange={(e)=>setShowGrid(e.target.checked)} className="w-4 h-4 text-indigo-600 bg-white/80 border-gray-300 rounded focus:ring-indigo-500" /> 
+                  Grid
+                </label>
+                <div className="w-px h-4 bg-gray-300"></div>
+                <label className="flex items-center gap-2 font-medium text-gray-700">
+                  <input type="checkbox" checked={snapToGrid} onChange={(e)=>setSnapToGrid(e.target.checked)} className="w-4 h-4 text-indigo-600 bg-white/80 border-gray-300 rounded focus:ring-indigo-500" /> 
+                  Snap
+                </label>
+                <div className="w-px h-4 bg-gray-300"></div>
+                <select className="bg-white/80 backdrop-blur border border-white/50 rounded-lg px-2 py-1 text-sm font-medium shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" value={gridSize} onChange={(e)=>setGridSize(Number(e.target.value))}>
                   {[10,20,40].map(gs => <option key={gs} value={gs}>{gs}px</option>)}
                 </select>
 
@@ -1820,14 +1879,14 @@ export default function LessonBuilder() {
             </DialogHeader>
             <div className="h-[85vh] w-full flex flex-col">
               {/* Header */}
-              <div className="px-5 py-4 border-b bg-gradient-to-r from-sky-50 to-indigo-50">
-                <h2 className="text-xl font-bold tracking-tight text-slate-800">{meta.title || 'Lesson Preview'}</h2>
-                <p className="text-xs text-slate-600">Topic: {meta.topic || 'N/A'} • Grade {meta.grade || 'N/A'} • Preview is non-navigable</p>
-                <div className="mt-2 inline-flex items-center gap-1 rounded-lg border bg-white/70 px-2 py-1 text-xs">
-                  <span className="text-gray-500">Device:</span>
-                  <button className={`px-2 py-0.5 rounded ${previewDevice==='desktop'?'bg-indigo-600 text-white':''}`} onClick={()=>setPreviewDevice('desktop')}>Desktop</button>
-                  <button className={`px-2 py-0.5 rounded ${previewDevice==='tablet'?'bg-indigo-600 text-white':''}`} onClick={()=>setPreviewDevice('tablet')}>Tablet</button>
-                  <button className={`px-2 py-0.5 rounded ${previewDevice==='phone'?'bg-indigo-600 text-white':''}`} onClick={()=>setPreviewDevice('phone')}>Phone</button>
+              <div className="px-6 py-5 border-b border-white/30 bg-gradient-to-r from-white/90 to-white/80 backdrop-blur-xl">
+                <h2 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">{meta.title || 'Lesson Preview'}</h2>
+                <p className="text-sm text-gray-600 mt-1">Topic: {meta.topic || 'N/A'} • Grade {meta.grade || 'N/A'} • Preview is non-navigable</p>
+                <div className="mt-3 inline-flex items-center gap-2 rounded-xl bg-white/80 backdrop-blur border border-white/50 px-4 py-2 shadow-lg">
+                  <span className="text-gray-700 font-medium text-sm">Device:</span>
+                  <button className={`px-3 py-1.5 rounded-lg font-medium text-sm transition-all ${previewDevice==='desktop'?'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md':'bg-white/70 hover:bg-white/90 text-gray-700'}`} onClick={()=>setPreviewDevice('desktop')}>Desktop</button>
+                  <button className={`px-3 py-1.5 rounded-lg font-medium text-sm transition-all ${previewDevice==='tablet'?'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md':'bg-white/70 hover:bg-white/90 text-gray-700'}`} onClick={()=>setPreviewDevice('tablet')}>Tablet</button>
+                  <button className={`px-3 py-1.5 rounded-lg font-medium text-sm transition-all ${previewDevice==='phone'?'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md':'bg-white/70 hover:bg-white/90 text-gray-700'}`} onClick={()=>setPreviewDevice('phone')}>Phone</button>
                 </div>
               </div>
               {/* Scrollable body */}
@@ -1919,14 +1978,14 @@ export default function LessonBuilder() {
             </div>
           </DialogContent>
         </Dialog>
-                <span className="text-gray-300">|</span>
-                <button title="Zoom out" className="px-1 py-0.5 border rounded" onClick={()=>{ userZoomedRef.current = true; setZoom(z=>Math.max(0.5, Math.round((z-0.1)*10)/10)) }}><ZoomOut className="h-3.5 w-3.5"/></button>
-                <span className="px-1">{Math.round(zoom*100)}%</span>
-    <button title="Zoom in" className="px-1 py-0.5 border rounded" onClick={()=>{ userZoomedRef.current = true; setZoom(z=>Math.min(1.5, Math.round((z+0.1)*10)/10)) }}><ZoomIn className="h-3.5 w-3.5"/></button>
-        <button title="100%" className="px-1 py-0.5 border rounded" onClick={()=>{ userZoomedRef.current = true; setZoom(1); setPan(prev=>clampPan(1,{x:0,y:0})) }}>100%</button>
-  <button title="Fit" className="px-1 py-0.5 border rounded" onClick={()=>{ userZoomedRef.current = true; const fit = Math.min(viewportSize.w/canvasSize.w, viewportSize.h/canvasSize.h); const z = Math.max(0.5, Math.min(1.5, Number(fit.toFixed(2)))); setZoom(z); setPan(prev=>clampPan(z,{x:0,y:0})) }}>Fit</button>
-                <span className="text-gray-300">|</span>
-                <button title="Toggle device" className={`px-2 py-0.5 border rounded ${device==='mobile'?'bg-blue-50 border-blue-300':''}`} onClick={()=>setDevice(d=> d==='desktop'?'mobile':'desktop')}><MonitorSmartphone className="h-3.5 w-3.5"/></button>
+                <div className="w-px h-4 bg-gray-300"></div>
+                <button title="Zoom out" className="p-2 bg-white/80 backdrop-blur border border-white/50 rounded-lg hover:bg-white/90 shadow-sm transition-all" onClick={()=>{ userZoomedRef.current = true; setZoom(z=>Math.max(0.5, Math.round((z-0.1)*10)/10)) }}><ZoomOut className="h-4 w-4 text-gray-700"/></button>
+                <span className="px-2 py-1 font-semibold text-gray-700 min-w-[3rem] text-center">{Math.round(zoom*100)}%</span>
+    <button title="Zoom in" className="p-2 bg-white/80 backdrop-blur border border-white/50 rounded-lg hover:bg-white/90 shadow-sm transition-all" onClick={()=>{ userZoomedRef.current = true; setZoom(z=>Math.min(1.5, Math.round((z+0.1)*10)/10)) }}><ZoomIn className="h-4 w-4 text-gray-700"/></button>
+        <button title="100%" className="px-3 py-1.5 bg-white/80 backdrop-blur border border-white/50 rounded-lg hover:bg-white/90 shadow-sm transition-all font-medium text-gray-700" onClick={()=>{ userZoomedRef.current = true; setZoom(1); setPan(prev=>clampPan(1,{x:0,y:0})) }}>100%</button>
+  <button title="Fit" className="px-3 py-1.5 bg-white/80 backdrop-blur border border-white/50 rounded-lg hover:bg-white/90 shadow-sm transition-all font-medium text-gray-700" onClick={()=>{ userZoomedRef.current = true; const fit = Math.min(viewportSize.w/canvasSize.w, viewportSize.h/canvasSize.h); const z = Math.max(0.5, Math.min(1.5, Number(fit.toFixed(2)))); setZoom(z); setPan(prev=>clampPan(z,{x:0,y:0})) }}>Fit</button>
+                <div className="w-px h-4 bg-gray-300"></div>
+                <button title="Toggle device" className={`px-3 py-1.5 border rounded-lg shadow-sm transition-all font-medium ${device==='mobile'?'bg-gradient-to-r from-blue-500 to-indigo-600 text-white border-blue-500':'bg-white/80 backdrop-blur border-white/50 hover:bg-white/90 text-gray-700'}`} onClick={()=>setDevice(d=> d==='desktop'?'mobile':'desktop')}><MonitorSmartphone className="h-4 w-4"/></button>
               </div>
             </div>
             {/* Editor viewport */}
@@ -2118,41 +2177,70 @@ export default function LessonBuilder() {
 
       {/* Lesson settings modal */}
       <Dialog open={showMetaDialog} onOpenChange={setShowMetaDialog}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Lesson settings</DialogTitle>
-            <DialogDescription>These details are required to save your lesson. You can adjust them anytime.</DialogDescription>
+        <DialogContent className="sm:max-w-lg bg-white/95 backdrop-blur-xl border border-white/50 shadow-2xl">
+          <DialogHeader className="pb-4">
+            <DialogTitle className="text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Lesson Settings</DialogTitle>
+            <DialogDescription className="text-gray-600">These details are required to save your lesson. You can adjust them anytime.</DialogDescription>
           </DialogHeader>
-          <div className="grid gap-3">
-            <input className="border rounded p-2" placeholder="Lesson title" value={meta.title} onChange={(e)=>setMeta({...meta,title:e.target.value})} />
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Topic</label>
+          <div className="grid gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">Lesson Title</label>
+              <input 
+                className="w-full bg-white/80 backdrop-blur border border-white/50 rounded-xl p-3 shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all" 
+                placeholder="Enter lesson title" 
+                value={meta.title} 
+                onChange={(e)=>setMeta({...meta,title:e.target.value})} 
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">Topic</label>
               <TopicSelect 
                 value={meta.topicId} 
                 onChange={(topicId: string) => setMeta({...meta, topicId})} 
-                className="w-full border rounded p-2"
+                className="w-full bg-white/80 backdrop-blur border border-white/50 rounded-xl p-3 shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 gradeFilter={meta.grade}
               />
             </div>
-            <div className="grid grid-cols-3 gap-2">
-              <select className="border rounded p-2" value={meta.grade} onChange={(e) => {
-                const newGrade = Number(e.target.value);
-                setMeta({...meta, grade: newGrade, topicId: ''}); // Clear topic when grade changes
-              }}>
-                {[1,2,3,4,5,6].map(g => <option key={g} value={g}>{`Grade ${g}`}</option>)}
-              </select>
-              <select className="border rounded p-2" value={meta.vanta} onChange={(e)=>setMeta({...meta,vanta:e.target.value})}>
-                {['globe','birds','halo','net','topology','clouds2','rings','cells','waves','fog'].map(v=> <option key={v} value={v}>{v}</option>)}
-              </select>
-              <select className="border rounded p-2" value={meta.difficulty} onChange={(e)=>setMeta({...meta,difficulty: Number(e.target.value) as 1|2|3})}>
-                <option value={1}>Easy</option>
-                <option value={2}>Moderate</option>
-                <option value={3}>Challenging</option>
-              </select>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Grade</label>
+                <select 
+                  className="w-full bg-white/80 backdrop-blur border border-white/50 rounded-xl p-3 shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
+                  value={meta.grade} 
+                  onChange={(e) => {
+                    const newGrade = Number(e.target.value);
+                    setMeta({...meta, grade: newGrade, topicId: ''}); // Clear topic when grade changes
+                  }}
+                >
+                  {[1,2,3,4,5,6].map(g => <option key={g} value={g}>{`Grade ${g}`}</option>)}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Effect</label>
+                <select 
+                  className="w-full bg-white/80 backdrop-blur border border-white/50 rounded-xl p-3 shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
+                  value={meta.vanta} 
+                  onChange={(e)=>setMeta({...meta,vanta:e.target.value})}
+                >
+                  {['globe','birds','halo','net','topology','clouds2','rings','cells','waves','fog'].map(v=> <option key={v} value={v}>{v}</option>)}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Difficulty</label>
+                <select 
+                  className="w-full bg-white/80 backdrop-blur border border-white/50 rounded-xl p-3 shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
+                  value={meta.difficulty} 
+                  onChange={(e)=>setMeta({...meta,difficulty: Number(e.target.value) as 1|2|3})}
+                >
+                  <option value={1}>Easy</option>
+                  <option value={2}>Moderate</option>
+                  <option value={3}>Challenging</option>
+                </select>
+              </div>
             </div>
-            <div className="flex items-center justify-end gap-2 pt-2">
-              <Button variant="outline" onClick={()=>setShowMetaDialog(false)}>Close</Button>
-              <Button onClick={()=>setShowMetaDialog(false)}>Done</Button>
+            <div className="flex items-center justify-end gap-3 pt-4">
+              <Button variant="outline" className="bg-white/80 backdrop-blur border-white/50 hover:bg-white/90 shadow-sm" onClick={()=>setShowMetaDialog(false)}>Close</Button>
+              <Button className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 shadow-lg" onClick={()=>setShowMetaDialog(false)}>Done</Button>
             </div>
           </div>
         </DialogContent>

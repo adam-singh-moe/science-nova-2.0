@@ -203,85 +203,189 @@ export function CrosswordViewer({
   const cellSize = isLarge ? 'w-4 h-4 text-xs' : 'w-5 h-5 text-xs'
 
   return (
-    <div className={`grid gap-4 md:grid-cols-[1fr_280px] transition-all duration-500 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-1'}`}>
-      <div className="flex flex-col items-center min-w-0">
-        <div className="bg-gray-700 rounded-lg p-2 max-w-full overflow-auto" role="group" aria-label="Crossword grid">
-          <div className="grid gap-0 mx-auto" style={{ gridTemplateColumns: `repeat(${cols}, 1fr)`, gridTemplateRows: `repeat(${rows}, 1fr)` }}>
-            {Array.from({ length: rows * cols }, (_, index) => {
-              const r = Math.floor(index / cols)
-              const c = index % cols
-              const cell = grid[r]?.[c]
-              const val = responses[cellKey(r, c)] || ""
-              
-              if (!cell) return <div key={index} className={`${cellSize} bg-transparent`} aria-hidden />
-              
-              const isSel = selectedId && cell.words.includes(selectedId)
-              const showCorrect = submitted
-              const correct = showCorrect && isCorrectCell(r, c)
-              const wrongClass = showCorrect && !correct && (responses[cellKey(r,c)] || "").length > 0 ? 'line-through text-red-600' : ''
-              
-              return (
-                <input
-                  key={index}
-                  className={`${cellSize} border-0 text-center uppercase outline-none transition-all text-gray-800 font-medium ${cellClasses(r, c)} ${wrongClass}`}
-                  value={val}
-                  maxLength={1}
-                  readOnly={submitted && correct}
-                  onChange={(e) => onInput(r, c, e.target.value)}
-                  onFocus={() => { selectByCell(r, c); setFocused({ r, c }) }}
-                  onBlur={() => setFocused(null)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'ArrowLeft') { e.preventDefault(); moveFocus(r, c, 'left') }
-                    else if (e.key === 'ArrowRight') { e.preventDefault(); moveFocus(r, c, 'right') }
-                    else if (e.key === 'ArrowUp') { e.preventDefault(); moveFocus(r, c, 'up') }
-                    else if (e.key === 'ArrowDown') { e.preventDefault(); moveFocus(r, c, 'down') }
-                  }}
-                  aria-label={`Cell ${r+1}, ${c+1}${isSel ? ' (in selected word)' : ''}`}
-                />
-              )
-            })}
+    <div className={`space-y-6 transition-all duration-500 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-1'}`}>
+      {/* Enhanced Header with Crossword Theme */}
+      <div className="relative">
+        <div className="absolute inset-0 bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-red-500/10 rounded-3xl blur-2xl"></div>
+        <div className="relative bg-slate-800/95 backdrop-blur-xl border border-slate-600/50 rounded-3xl p-8 shadow-2xl">
+          <div className="flex items-center justify-between gap-6 mb-6">
+            <div className="flex items-center gap-5">
+              <div className="relative">
+                <div className="absolute inset-0 bg-gradient-to-r from-amber-400 via-orange-400 to-red-400 rounded-2xl blur-xl opacity-40 animate-pulse"></div>
+                <div className="relative bg-gradient-to-r from-amber-600 via-orange-600 to-red-500 p-4 rounded-2xl backdrop-blur-sm border border-amber-500/60 shadow-2xl">
+                  <span className="text-white text-2xl font-bold drop-shadow-lg">🔤</span>
+                </div>
+              </div>
+              <div className="space-y-3">
+                <h3 className="text-2xl font-bold bg-gradient-to-r from-amber-200 via-orange-200 to-red-200 bg-clip-text text-transparent drop-shadow-lg">
+                  Crossword Puzzle
+                </h3>
+                <div className="text-sm text-slate-300 font-medium">
+                  Fill in the grid to solve the puzzle
+                </div>
+              </div>
+            </div>
+            
+            <div className="text-right space-y-2">
+              <div className="text-white font-bold text-3xl bg-gradient-to-r from-red-200 to-amber-200 bg-clip-text text-transparent drop-shadow-lg">
+                {words.filter(isCompletedWord).length}/{words.length}
+              </div>
+              <div className="text-sm text-slate-300 font-medium">Words Solved</div>
+            </div>
           </div>
-        </div>
-        <div className="mt-2 flex items-center gap-2 flex-wrap">
-          <button className="px-2 py-1 text-sm rounded border bg-white text-gray-700 hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2" style={{ outlineColor: accent }} onClick={() => setSubmitted(true)}>
-            Check all
-          </button>
-          {submitted && (()=>{
-            try {
-              const [_, lessonId, blockId] = (storageKey || '').split(':')
-              if (lessonId && blockId) {
-                const wordsSolved = words.filter(isCompletedWord).length
-                const completed = wordsSolved === words.length && words.length > 0
-                postLessonEvent({ lessonId, blockId, toolKind: 'CROSSWORD', eventType: 'crossword_check', data: { completed, wordsTotal: words.length, wordsSolved } })
-                // Mark block as completed when all words are solved
-                if (completed) {
-                  setBlockDone({ lessonId, blockId }, true)
-                }
-              }
-            } catch {}
-            return null
-          })()}
-          {selected && (
-            <>
-              <button className="px-2 py-1 text-sm rounded border bg-white text-gray-700 hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2" style={{ outlineColor: accent }} onClick={() => revealWord(selected)}>Reveal word</button>
-            </>
+
+          {/* Enhanced Progress Bar */}
+          {words.length > 0 && (
+            <div className="relative mb-6">
+              <div className="h-3 w-full rounded-full bg-slate-700/80 border border-slate-500/40 overflow-hidden backdrop-blur-sm shadow-inner">
+                <div 
+                  className="h-full bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 rounded-full transition-all duration-1000 ease-out shadow-lg relative"
+                  style={{ width: `${(words.filter(isCompletedWord).length / words.length) * 100}%` }}
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent rounded-full animate-pulse"></div>
+                </div>
+              </div>
+            </div>
           )}
-          <button className="px-2 py-1 text-sm rounded border bg-white text-gray-700 hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2" style={{ outlineColor: accent }} onClick={resetAll}>Reset</button>
         </div>
       </div>
-      <div className="min-w-0">
-        <div className="font-medium mb-2 text-gray-800">Clues</div>
-        <div className="space-y-1 max-h-80 overflow-y-auto">
-          {words.map((w, i) => {
-            const completed = isCompletedWord(w)
-            return (
-              <button key={w.id} className={`w-full text-left px-3 py-2 rounded border transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${selectedId===w.id ? 'bg-gray-100 border-gray-400' : 'bg-white hover:bg-gray-50'} ${completed ? 'opacity-60' : ''}`} style={{ outlineColor: accent }} onClick={() => setSelectedId(w.id)}>
-                <div className="text-sm text-gray-800 leading-relaxed">{i+1}. {w.clue || w.answer}</div>
-                <div className="text-xs text-gray-500 mt-1">{w.dir} at ({w.row+1},{w.col+1}) • {w.answer.length} letters</div>
+
+      <div className={`grid gap-6 md:grid-cols-[1fr_320px]`}>
+        <div className="flex flex-col items-center min-w-0">
+          <div className="bg-slate-800/90 backdrop-blur-lg border border-slate-600/40 rounded-2xl p-4 max-w-full overflow-auto shadow-xl" role="group" aria-label="Crossword grid">
+            <div className="grid gap-0 mx-auto" style={{ gridTemplateColumns: `repeat(${cols}, 1fr)`, gridTemplateRows: `repeat(${rows}, 1fr)` }}>
+              {Array.from({ length: rows * cols }, (_, index) => {
+                const r = Math.floor(index / cols)
+                const c = index % cols
+                const cell = grid[r]?.[c]
+                const val = responses[cellKey(r, c)] || ""
+                
+                if (!cell) return <div key={index} className={`${cellSize} bg-transparent`} aria-hidden />
+                
+                const isSel = selectedId && cell.words.includes(selectedId)
+                const showCorrect = submitted
+                const correct = showCorrect && isCorrectCell(r, c)
+                const wrongClass = showCorrect && !correct && (responses[cellKey(r,c)] || "").length > 0 ? 'line-through text-red-600' : ''
+              
+                return (
+                  <input
+                    key={index}
+                    className={`${cellSize} border-0 text-center uppercase outline-none transition-all text-gray-800 font-medium ${cellClasses(r, c)} ${wrongClass}`}
+                    value={val}
+                    maxLength={1}
+                    readOnly={submitted && correct}
+                    onChange={(e) => onInput(r, c, e.target.value)}
+                    onFocus={() => { selectByCell(r, c); setFocused({ r, c }) }}
+                    onBlur={() => setFocused(null)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'ArrowLeft') { e.preventDefault(); moveFocus(r, c, 'left') }
+                      else if (e.key === 'ArrowRight') { e.preventDefault(); moveFocus(r, c, 'right') }
+                      else if (e.key === 'ArrowUp') { e.preventDefault(); moveFocus(r, c, 'up') }
+                      else if (e.key === 'ArrowDown') { e.preventDefault(); moveFocus(r, c, 'down') }
+                    }}
+                    aria-label={`Cell ${r+1}, ${c+1}${isSel ? ' (in selected word)' : ''}`}
+                  />
+                )
+              })}
+            </div>
+          </div>
+          
+          {/* Enhanced Action Buttons */}
+          <div className="mt-6 flex items-center gap-3 flex-wrap">
+            <button 
+              className="px-6 py-3 text-sm font-medium rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 text-white hover:from-amber-700 hover:to-orange-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400 shadow-lg hover:shadow-amber-500/25 transition-all duration-200 hover:scale-105 backdrop-blur-sm border border-amber-500/40" 
+              onClick={() => setSubmitted(true)}
+            >
+              Check All Answers
+            </button>
+            {submitted && (()=>{
+              try {
+                const [_, lessonId, blockId] = (storageKey || '').split(':')
+                if (lessonId && blockId) {
+                  const wordsSolved = words.filter(isCompletedWord).length
+                  const completed = wordsSolved === words.length && words.length > 0
+                  postLessonEvent({ lessonId, blockId, toolKind: 'CROSSWORD', eventType: 'crossword_check', data: { completed, wordsTotal: words.length, wordsSolved } })
+                  // Mark block as completed when all words are solved
+                  if (completed) {
+                    setBlockDone({ lessonId, blockId }, true)
+                  }
+                }
+              } catch {}
+              return null
+            })()}
+            {selected && (
+              <button 
+                className="px-6 py-3 text-sm font-medium rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 text-white hover:from-blue-700 hover:to-cyan-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400 shadow-lg hover:shadow-blue-500/25 transition-all duration-200 hover:scale-105 backdrop-blur-sm border border-blue-500/40" 
+                onClick={() => revealWord(selected)}
+              >
+                Reveal Word
               </button>
-            )
-          })}
-          {words.length===0 && <div className="text-sm text-gray-500">No words configured.</div>}
+            )}
+            <button 
+              className="px-6 py-3 text-sm font-medium rounded-xl bg-gradient-to-r from-slate-700 to-slate-800 text-white hover:from-slate-800 hover:to-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400 shadow-lg hover:shadow-slate-500/25 transition-all duration-200 hover:scale-105 backdrop-blur-sm border border-slate-600/40" 
+              onClick={resetAll}
+            >
+              Reset Puzzle
+            </button>
+          </div>
+        </div>
+        
+        {/* Enhanced Clues Panel */}
+        <div className="min-w-0">
+          <div className="relative">
+            <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/5 via-purple-500/5 to-pink-500/5 rounded-2xl blur-xl"></div>
+            <div className="relative bg-slate-800/90 backdrop-blur-lg border border-slate-600/40 rounded-2xl p-6 shadow-xl">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 flex items-center justify-center shadow-lg">
+                  <span className="text-white text-sm font-bold">📝</span>
+                </div>
+                <h4 className="text-lg font-bold bg-gradient-to-r from-indigo-200 to-purple-200 bg-clip-text text-transparent">
+                  Clues
+                </h4>
+              </div>
+              
+              <div className="space-y-2 max-h-80 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent">
+                {words.map((w, i) => {
+                  const completed = isCompletedWord(w)
+                  return (
+                    <button 
+                      key={w.id} 
+                      className={`w-full text-left p-4 rounded-xl border transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 hover:scale-[1.02] ${
+                        selectedId===w.id 
+                          ? 'bg-gradient-to-r from-amber-600/30 to-orange-600/30 border-amber-500/60 shadow-lg backdrop-blur-sm' 
+                          : 'bg-slate-700/50 border-slate-600/30 hover:bg-slate-700/70 backdrop-blur-sm shadow-md'
+                      } ${completed ? 'opacity-70 ring-2 ring-green-400/50' : ''}`} 
+                      style={{ outlineColor: accent }} 
+                      onClick={() => setSelectedId(w.id)}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium text-white leading-relaxed">
+                            {i+1}. {w.clue || w.answer}
+                          </div>
+                          <div className="text-xs text-slate-300 mt-2 font-medium">
+                            {w.dir.toUpperCase()} • Position ({w.row+1},{w.col+1}) • {w.answer.length} letters
+                          </div>
+                        </div>
+                        {completed && (
+                          <div className="flex-shrink-0">
+                            <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center shadow-lg">
+                              <span className="text-white text-xs">✓</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </button>
+                  )
+                })}
+                {words.length===0 && (
+                  <div className="text-center py-8">
+                    <div className="text-slate-400 text-sm font-medium">No words configured for this puzzle.</div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
