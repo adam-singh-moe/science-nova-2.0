@@ -1,0 +1,66 @@
+{
+  "timestamp": "2025-10-06T14:35:23.771Z",
+  "total_records": 3,
+  "data": [
+    {
+      "id": "3f339b7f-ee77-4c0d-ac94-3e5548435299",
+      "grade_level": 1,
+      "file_name": "Science Around Us Book 1.pdf",
+      "chunk_index": 0,
+      "content": "[PDF Content Placeholder] Document: Science Around Us Book 1.pdf Size: 4425380 bytes This PDF document has been uploaded and is ready for processing. Full text extraction is being implemented.",
+      "metadata": {
+        "chunk_index": 0,
+        "document_id": "grade_1/Science Around Us Book 1.pdf",
+        "chunk_length": 192,
+        "processed_at": "2025-10-03T19:47:31.989Z",
+        "total_chunks": 1,
+        "document_name": "Science Around Us Book 1.pdf",
+        "document_type": "textbook",
+        "extraction_method": "pdf-placeholder"
+      },
+      "embedding": "[VECTOR_19417_DIMS]",
+      "created_at": "2025-10-03T19:47:33.449844+00:00",
+      "updated_at": "2025-10-03T19:47:33.449844+00:00"
+    },
+    {
+      "id": "f6e33b51-41c1-45f0-b348-272e074c937d",
+      "grade_level": 2,
+      "file_name": "Science Around Us Book 2.pdf",
+      "chunk_index": 0,
+      "content": "[PDF Content Placeholder] Document: Science Around Us Book 2.pdf Size: 2444979 bytes This PDF document has been uploaded and is ready for processing. Full text extraction is being implemented.",
+      "metadata": {
+        "chunk_index": 0,
+        "document_id": "grade_2/Science Around Us Book 2.pdf",
+        "chunk_length": 192,
+        "processed_at": "2025-10-06T13:57:08.107Z",
+        "total_chunks": 1,
+        "document_name": "Science Around Us Book 2.pdf",
+        "document_type": "textbook",
+        "extraction_method": "pdf-placeholder"
+      },
+      "embedding": "[VECTOR_19398_DIMS]",
+      "created_at": "2025-10-06T13:57:08.218702+00:00",
+      "updated_at": "2025-10-06T13:57:08.218702+00:00"
+    },
+    {
+      "id": "6c6e27c1-e259-4597-9ed2-5724b1034bcf",
+      "grade_level": 3,
+      "file_name": "Science Around Us Book 3.pdf",
+      "chunk_index": 0,
+      "content": "[PDF Content Placeholder] Document: Science Around Us Book 3.pdf Size: 16517074 bytes This PDF document has been uploaded and is ready for processing. Full text extraction is being implemented.",
+      "metadata": {
+        "chunk_index": 0,
+        "document_id": "grade_3/Science Around Us Book 3.pdf",
+        "chunk_length": 193,
+        "processed_at": "2025-10-06T13:58:25.837Z",
+        "total_chunks": 1,
+        "document_name": "Science Around Us Book 3.pdf",
+        "document_type": "textbook",
+        "extraction_method": "pdf-placeholder"
+      },
+      "embedding": "[VECTOR_19445_DIMS]",
+      "created_at": "2025-10-06T13:58:26.270848+00:00",
+      "updated_at": "2025-10-06T13:58:26.270848+00:00"
+    }
+  ]
+}

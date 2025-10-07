@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { chunkText, generateBatchEmbeddings } from '@/lib/openai-embeddings'
+import { extractTextFromPDF } from '@/lib/pdf-extractor'
 
 interface DocumentToProcess {
   id: string
@@ -76,18 +77,40 @@ export async function POST(request: NextRequest) {
         // Handle PDF files
         if (doc.path.toLowerCase().endsWith('.pdf')) {
           try {
+            const pdfStartTime = Date.now()
             console.log(`Processing PDF: ${doc.name || doc.id}`)
-            // For now, create placeholder content for PDFs while we resolve parsing issues
-            content = `[PDF Content Placeholder]\nDocument: ${doc.name}\nSize: ${(await fileData.arrayBuffer()).byteLength} bytes\n\nThis PDF document has been uploaded and is ready for processing. Full text extraction is being implemented.`
-            extractionMethod = 'pdf-placeholder'
-            console.log(`Created placeholder content for PDF ${doc.name} - ${content.length} characters`)
+            
+            // Convert file data to buffer for PDF processing
+            const pdfBuffer = Buffer.from(await fileData.arrayBuffer())
+            const sizeMB = (pdfBuffer.length / (1024 * 1024)).toFixed(2)
+            console.log(`PDF size: ${sizeMB} MB`)
+            
+            // Extract real text from PDF using optimized fallback strategies
+            const extractionResult = await extractTextFromPDF(pdfBuffer)
+            
+            if (extractionResult.success && extractionResult.text.length >= 50) {
+              content = extractionResult.text
+              extractionMethod = extractionResult.method
+              console.log(`Successfully extracted ${content.length} characters from PDF ${doc.name} using ${extractionMethod}`)
+            } else {
+              // If extraction failed, log the error and skip this document
+              console.error(`Failed to extract text from PDF ${doc.name}:`, extractionResult.error || 'Unknown extraction error')
+              results.push({
+                id: doc.id,
+                success: false,
+                error: `PDF text extraction failed: ${extractionResult.error || 'No extractable text found'}`,
+                extractionMethod: extractionResult.method || 'extraction-failed'
+              })
+              continue
+            }
+            
           } catch (pdfError) {
-            console.error(`Failed to create placeholder for PDF ${doc.name}:`, pdfError)
+            console.error(`Error processing PDF ${doc.name}:`, pdfError)
             results.push({
               id: doc.id,
               success: false,
-              error: `Failed to parse PDF: ${pdfError instanceof Error ? pdfError.message : 'Unknown PDF parsing error'}`,
-              extractionMethod: 'pdf-parse-failed'
+              error: `Failed to process PDF: ${pdfError instanceof Error ? pdfError.message : 'Unknown PDF processing error'}`,
+              extractionMethod: 'pdf-processing-failed'
             })
             continue
           }

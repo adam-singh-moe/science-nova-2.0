@@ -1,0 +1,49 @@
+{
+  "timestamp": "2025-10-06T20:15:27.043Z",
+  "totalDuration": 919.857,
+  "results": [
+    {
+      "name": "Science Around Us Book 1.pdf",
+      "type": "text-based",
+      "success": true,
+      "method": "docling-hybrid",
+      "duration": 306.82,
+      "characterCount": 26770,
+      "quality": "✅ High-quality extraction",
+      "behavior": "✅ Expected: Fast text extraction",
+      "speed": 0.8253121529896144,
+      "preview": "## Scie n c e Around US Book 1  <!-- image -->  Path Series Easy  <!-- image -->  A GOGIEFA-FTI Project  ## Acknowledgements  The Ministry of Education wishes to acknowledge the work done by the follo"
+    },
+    {
+      "name": "Science Around Us Book 3.pdf",
+      "type": "image-based",
+      "success": true,
+      "method": "docling-hybrid",
+      "duration": 287.496,
+      "characterCount": 65290,
+      "quality": "✅ High-quality extraction",
+      "behavior": "❓ Unexpected behavior",
+      "speed": 3.2874007129103946,
+      "preview": "## Scie n € e Around US Book 3  <!-- image -->  Path Series Easy  <!-- image -->  A GOGIIDB Project  ## SCIENCE AROUND US BOOK 3  Authors:  ## Jennifer Cumberbatch Elizabeth Mangar Dwarka Shivraj Pame"
+    },
+    {
+      "name": "Science Around Us Book 1 - Copy.pdf",
+      "type": "mixed",
+      "success": true,
+      "method": "docling-hybrid",
+      "duration": 325.535,
+      "characterCount": 3425,
+      "quality": "✅ High-quality extraction",
+      "behavior": "✅ Expected: Hybrid processing",
+      "speed": 1.6028775279262344,
+      "preview": "## Around US Book 1  <!-- image -->  Path Series Easy  <!-- image -->  A GOGIEFA-FTI Project  <!-- image -->  <!-- image -->  Eyes to see all things around, Ears to hear the smallest sound, Nose to sm"
+    }
+  ],
+  "summary": {
+    "totalProcessed": 3,
+    "successful": 3,
+    "doclingUsage": 3,
+    "ocrUsage": 0,
+    "successRate": "100.0%"
+  }
+}

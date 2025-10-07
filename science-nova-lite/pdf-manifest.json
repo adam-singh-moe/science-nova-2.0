@@ -1,0 +1,84 @@
+{
+  "timestamp": "2025-10-06T19:58:12.924Z",
+  "totalPDFs": 13,
+  "pdfs": [
+    {
+      "name": "Science Around Us Book 1 - Copy.pdf",
+      "path": "C:\\Users\\adams\\Downloads\\Science Around Us Book 1 - Copy.pdf",
+      "sizeMB": "8.70",
+      "estimatedType": "mixed"
+    },
+    {
+      "name": "Science Around Us Book 1.pdf",
+      "path": "C:\\Users\\adams\\Downloads\\Science Around Us Book 1.pdf",
+      "sizeMB": "4.22",
+      "estimatedType": "text-based"
+    },
+    {
+      "name": "Science Around Us Book 2 - Copy.pdf",
+      "path": "C:\\Users\\adams\\Downloads\\Science Around Us Book 2 - Copy.pdf",
+      "sizeMB": "12.95",
+      "estimatedType": "image-based"
+    },
+    {
+      "name": "Science Around Us Book 2.pdf",
+      "path": "C:\\Users\\adams\\Downloads\\Science Around Us Book 2.pdf",
+      "sizeMB": "2.33",
+      "estimatedType": "text-based"
+    },
+    {
+      "name": "Science Around Us Book 3 (1).pdf",
+      "path": "C:\\Users\\adams\\Downloads\\Science Around Us Book 3 (1).pdf",
+      "sizeMB": "10.84",
+      "estimatedType": "mixed"
+    },
+    {
+      "name": "Science Around Us Book 3 - Copy.pdf",
+      "path": "C:\\Users\\adams\\Downloads\\Science Around Us Book 3 - Copy.pdf",
+      "sizeMB": "18.61",
+      "estimatedType": "image-based"
+    },
+    {
+      "name": "Science Around Us Book 3.pdf",
+      "path": "C:\\Users\\adams\\Downloads\\Science Around Us Book 3.pdf",
+      "sizeMB": "15.75",
+      "estimatedType": "image-based"
+    },
+    {
+      "name": "Science Around Us Book 4 - Copy.pdf",
+      "path": "C:\\Users\\adams\\Downloads\\Science Around Us Book 4 - Copy.pdf",
+      "sizeMB": "30.72",
+      "estimatedType": "image-based"
+    },
+    {
+      "name": "Science Around Us Book 4.pdf",
+      "path": "C:\\Users\\adams\\Downloads\\Science Around Us Book 4.pdf",
+      "sizeMB": "4.39",
+      "estimatedType": "text-based"
+    },
+    {
+      "name": "Science Around Us Book 5 - Copy.pdf",
+      "path": "C:\\Users\\adams\\Downloads\\Science Around Us Book 5 - Copy.pdf",
+      "sizeMB": "43.56",
+      "estimatedType": "image-based"
+    },
+    {
+      "name": "Science Around Us Book 5.pdf",
+      "path": "C:\\Users\\adams\\Downloads\\Science Around Us Book 5.pdf",
+      "sizeMB": "4.32",
+      "estimatedType": "text-based"
+    },
+    {
+      "name": "Science Around Us Book 6 - Copy.pdf",
+      "path": "C:\\Users\\adams\\Downloads\\Science Around Us Book 6 - Copy.pdf",
+      "sizeMB": "24.62",
+      "estimatedType": "image-based"
+    },
+    {
+      "name": "Science Around Us Book 6.pdf",
+      "path": "C:\\Users\\adams\\Downloads\\Science Around Us Book 6.pdf",
+      "sizeMB": "5.00",
+      "estimatedType": "text-based"
+    }
+  ]
+}

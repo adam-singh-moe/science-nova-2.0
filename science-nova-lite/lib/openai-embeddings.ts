@@ -11,7 +11,7 @@ const openai = new OpenAI({
 export async function generateEmbedding(text: string): Promise<number[]> {
   try {
     const response = await openai.embeddings.create({
-      model: 'text-embedding-ada-002',
+      model: 'text-embedding-3-small',
       input: text.replace(/\n/g, ' ').trim()
     })
 
@@ -39,7 +39,7 @@ export async function generateBatchEmbeddings(texts: string[]): Promise<number[]
       const batch = texts.slice(i, i + batchSize)
       
       const response = await openai.embeddings.create({
-        model: 'text-embedding-ada-002',
+        model: 'text-embedding-3-small',
         input: batch.map(text => text.replace(/\n/g, ' ').trim())
       })
 

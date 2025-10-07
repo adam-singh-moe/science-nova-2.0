@@ -1,0 +1,39 @@
+{
+  "timestamp": "2025-10-06T20:50:23.448Z",
+  "totalDuration": 10.950383333333333,
+  "results": [
+    {
+      "success": true,
+      "name": "Science Around Us Book 1.pdf",
+      "type": "text-based",
+      "method": "docling-hybrid",
+      "duration": 316.858,
+      "charactersExtracted": 26770,
+      "chunksCreated": 38,
+      "chunksStored": 38,
+      "speed": 0.7991664240141433,
+      "embeddingTime": 13.077
+    },
+    {
+      "success": true,
+      "name": "Science Around Us Book 3.pdf",
+      "type": "image-based",
+      "method": "docling-hybrid",
+      "duration": 335.147,
+      "charactersExtracted": 65290,
+      "chunksCreated": 89,
+      "chunksStored": 89,
+      "speed": 2.820000045827314,
+      "embeddingTime": 36.587
+    }
+  ],
+  "summary": {
+    "totalProcessed": 2,
+    "successful": 2,
+    "failed": 0,
+    "successRate": "100.0%",
+    "doclingUsage": 2,
+    "totalChunksStored": 127,
+    "totalCharactersExtracted": 92060
+  }
+}
