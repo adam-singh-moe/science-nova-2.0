@@ -226,27 +226,7 @@ export default function DiscoveryPage() {
   const [cardPositions, setCardPositions] = useState<{[key: string]: {x: number, y: number}}>({})
   const [layoutReady, setLayoutReady] = useState(false)
   
-  // Custom scrollbar styles as an object to apply to scrollable areas
-  const scrollbarStyle = {
-    scrollbarWidth: 'thin' as 'thin', // for Firefox
-    scrollbarColor: 'rgba(255,255,255,0.3) rgba(0,0,0,0)', // for Firefox
-    msOverflowStyle: '-ms-autohiding-scrollbar' as '-ms-autohiding-scrollbar', // for IE/Edge
-    '&::-webkit-scrollbar': {
-      width: '6px',
-      height: '6px',
-    },
-    '&::-webkit-scrollbar-track': {
-      background: 'rgba(0,0,0,0.1)',
-      borderRadius: '3px',
-    },
-    '&::-webkit-scrollbar-thumb': {
-      background: 'rgba(255,255,255,0.3)',
-      borderRadius: '3px',
-      '&:hover': {
-        background: 'rgba(255,255,255,0.5)',
-      }
-    }
-  }
+  // Custom scrollbar styles are now handled via CSS classes in globals.css
   
   const { user, profile } = useAuth()
 
@@ -662,10 +642,9 @@ export default function DiscoveryPage() {
               </h3>
               {!isFact && (card.payload?.preview || card.payload?.content) && (
                 <div className="flex-1 flex flex-col">
-                  <div className={`flex-1 ${!isExpanded ? 'overflow-hidden' : 'overflow-y-auto'}`}
+                  <div className={`flex-1 ${!isExpanded ? 'overflow-hidden' : 'overflow-y-auto discovery-scrollbar'}`}
                        style={isExpanded ? {
-                         maxHeight: `${expandedHeight - 100}px`,
-                         ...scrollbarStyle
+                         maxHeight: `${expandedHeight - 100}px`
                        } : {}}>
                     <p className={`text-white/90 leading-relaxed ${
                       isExpanded ? 'text-base' : 'text-sm'
@@ -711,11 +690,10 @@ export default function DiscoveryPage() {
               minHeight: `${expandedHeight}px`
             }}>
               <div className="text-center h-full flex flex-col justify-between">
-                <div className="flex-1 flex flex-col py-2" 
+                <div className="flex-1 flex flex-col py-2 discovery-scrollbar" 
                      style={{
                        maxHeight: `${expandedHeight - 80}px`, 
-                       overflowY: 'auto',
-                       ...scrollbarStyle
+                       overflowY: 'auto'
                      }}>
                   <Lightbulb className="h-6 w-6 mx-auto text-yellow-300 mb-3" />
                   <p className="text-sm text-white leading-relaxed break-words mb-2">

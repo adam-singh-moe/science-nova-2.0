@@ -1468,6 +1468,30 @@ body {
 .tool-content {
   display: flex;
   flex-direction: column;
+
+/* Custom Scrollbar Styles for Discovery Page */
+.discovery-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(139, 92, 246, 0.6) rgba(0, 0, 0, 0.1);
+}
+
+.discovery-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.discovery-scrollbar::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+}
+
+.discovery-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(139, 92, 246, 0.6);
+  border-radius: 4px;
+}
+
+.discovery-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(139, 92, 246, 0.8);
+}
   height: 100%;
 }
 
